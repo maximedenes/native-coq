@@ -639,3 +639,6 @@ val hcons1_types : types -> types
 (**************************************)
 
 type values
+
+val expr_of_values : values -> MLast.expr
+val values : MLast.expr -> values
