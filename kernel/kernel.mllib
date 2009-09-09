@@ -30,4 +30,5 @@ Safe_typing
 
 Vm
 Csymtable
+Nativecode
 Vconv
