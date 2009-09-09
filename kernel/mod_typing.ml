@@ -90,6 +90,7 @@ and check_with_aux_def env sign with_decl mp equiv =
 			 const_body = body;
 			 const_body_code = Cemitcodes.from_val 
 			   (compile_constant_body env' body false);
+			 const_body_ast = None;
                          const_constraints = cst} in
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | Opaque (Some b) -> assert false
@@ -116,6 +117,7 @@ and check_with_aux_def env sign with_decl mp equiv =
 			 const_body = body;
 			 const_body_code = Cemitcodes.from_val
                            (compile_constant_body env' body false);
+			 const_body_ast = None;
                          const_constraints = cst} in
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | Primitive _ -> assert false

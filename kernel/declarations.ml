@@ -59,6 +59,8 @@ type constant_body = {
     const_body : constr_substituted constant_def;
     const_type : constant_type;
     const_body_code : Cemitcodes.to_patch_substituted;
+   (* const_type_code : Cemitcodes.to_patch; *)
+    mutable const_body_ast : values option;
     const_constraints : constraints;
     const_inline : bool;
     const_inline_code : bool}
@@ -230,11 +232,11 @@ let subst_const_body sub cb =
    const_body = subst_constant_def sub cb.const_body;
    const_type = subst_arity sub cb.const_type;
    const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
+   const_body_ast = None;
    const_constraints = cb.const_constraints;
    const_inline = cb.const_inline;
    const_inline_code = cb.const_inline_code
  } 
-  
 let subst_arity sub = function
 | Monomorphic s ->
     Monomorphic {
