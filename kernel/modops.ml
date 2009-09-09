@@ -263,9 +263,9 @@ let strengthen_const env mp_from l cb resolver =
 	const_body = const_subs;
 	const_body_code = Cemitcodes.from_val
 	  (compile_constant_body env const_subs false);
+	const_body_ast = None;
 	const_inline_code = false
       }
-	  
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then
