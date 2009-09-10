@@ -49,7 +49,7 @@ let string_of_constructor (ind, i) =
 (* First argument the index of the constructor *)
 let make_constructor_pattern i args =
   let f arg = <:patt< $lid:lid_of_name arg$ >> in
-    <:patt< Const $int:string_of_int (i + 1)$ [| $list:List.map f args$ |] >>
+    <:patt< Const $int:string_of_int i$ [| $list:List.rev (List.map f args)$ |] >>
 
 let rec push_value id body env =
   print_endline ("adding " ^ string_of_id id);
