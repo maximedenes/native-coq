@@ -63,7 +63,7 @@ and translate_constant env c =
   let cb = lookup_constant c (pre_env env) in
     match cb.const_body with
       | Some body -> (match cb.const_body_ast with
-	  | Some ast -> expr_of_values ast
+	  | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
 	  | None -> let ast = translate env (Declarations.force body) in
 	      cb.const_body_ast <- Some (values ast);
 	      env_updated := true;
