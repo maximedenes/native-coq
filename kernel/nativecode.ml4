@@ -144,14 +144,67 @@ and translate (env : Environ.env) t =
   ) with Not_found -> print_endline "not found"; invalid_arg "bleh"
     | _ -> print_endline "exception!"; invalid_arg "bleh"
 
-let structure_of_env env =
-  let f (id, value) vs = match !value with
-    | VKvalue (v, _) -> (<:str_item< value $lid:lid_of_string (string_of_id id)$ = $expr_of_values v$ >>, loc) :: vs
-    | VKnone -> vs in
-  let g c ck vs = match (fst ck).const_body_ast with
-    | Some v -> (<:str_item< value $lid:lid_of_string (string_of_con c)$ = $expr_of_values v$ >>, loc) :: vs
-    | None -> vs in
-    (<:str_item< open Nbe >>, loc) :: List.fold_right f env.env_named_vals [] @ Cmap.fold g env.env_globals.env_constants []
+module StringOrdered =
+struct
+  type t = string
+  let compare = Pervasives.compare
+end
+
+module Smap = Map.Make(StringOrdered)
+module Sset = Set.Make(StringOrdered)
+
+(* Collect all variables and constants in the term. *)
+let assums t =
+  let rec aux xs t =
+    match kind_of_term t with
+      | Var id -> string_of_id id :: xs
+      | Const c -> string_of_con c :: xs
+      | _ -> fold_constr aux xs t
+  in aux [] t
+
+let add_value env (id, value) xs =
+  match !value with
+    | VKvalue (v, _) ->
+	let sid = string_of_id id in
+	let ast = (<:str_item< value $lid:lid_of_string sid$ = $expr_of_values v$ >>, loc) in
+	let deps = match named_body id (env_of_pre_env env) with
+	  | Some body -> assums body
+	  | None -> []
+	in Smap.add sid (ast, deps) xs
+    | VKnone -> xs
+
+let add_constant c ck xs =
+  match (fst ck).const_body_ast with
+    | Some v ->
+	let sc = string_of_con c in
+	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
+	let deps = match (fst ck).const_body with
+	  | Some body -> assums (Declarations.force body)
+	  | None -> []
+	in Smap.add sc (ast, deps) xs
+    | None -> xs
+
+let topological_sort init xs =
+  let visited = ref Sset.empty in
+  let rec aux s result =
+    print_endline s;
+    if Sset.mem s !visited
+    then result
+    else begin
+      try
+	let (x, deps) = Smap.find s xs in
+	  visited := Sset.add s !visited;
+	  x :: List.fold_right aux deps result
+      with Not_found -> result
+	| _ -> print_endline "exception in tsort!"; invalid_arg "bleh"
+    end
+  in List.fold_right aux init []
+
+let dump_env t1 t2 env =
+  let vars = List.fold_right (add_value env) env.env_named_vals Smap.empty in
+  let vars_and_cons = Cmap.fold add_constant env.env_globals.env_constants vars in
+  let initial_set = assums t1 @ assums t2
+  in (<:str_item< open Nbe >>, loc) :: topological_sort initial_set vars_and_cons
 
 let ocaml_version = "3.11.1"
 let ast_impl_magic_number = "Caml1999M012"
