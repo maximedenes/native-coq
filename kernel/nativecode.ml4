@@ -224,7 +224,12 @@ let compile env t1 t2 =
   let code2 = translate env t2 in
     print_endline "done translate";
     if !env_updated then
-      print_implem "env.ml" (structure_of_env (pre_env env));
+      begin
+	Pcaml.input_file := "envi.ml";
+	Pcaml.output_file := Some "envpr.ml";
+	!Pcaml.print_implem (dump_env t1 t2 (pre_env env));
+	print_implem "env.ml" (dump_env t1 t2 (pre_env env))
+      end;
     print_endline "done env";
     print_implem "terms.ml"
       [(<:str_item< open Nbe >>, loc);
