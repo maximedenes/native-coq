@@ -128,7 +128,7 @@ and translate (env : Environ.env) t =
 	    let (args, b) =
 	      decompose_lam_n_assum ci.ci_cstr_nargs.(i) branches.(i) in
 	    let name (n, _, _) = n in
-	    let pat = make_constructor_pattern i (List.map name args) in
+	    let pat = make_constructor_pattern (i + 1) (List.map name args) in
 	    let newenv = push_rel_context args env in
 	      (pat, None, translate newenv b) :: f (i - 1) in
 	  f (Array.length branches - 1) in
