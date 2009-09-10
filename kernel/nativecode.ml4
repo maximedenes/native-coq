@@ -122,22 +122,21 @@ and translate (env : Environ.env) t =
 	(* let mib = lookup_mind (fst ci.ci_ind) env in *)
 	(* let oib = mib.mind_packets.(snd ci.ci_ind) in *)
 	(* default branch *)
-	let rec f i =
-	  if i < 0 then [] else
-	    let (args, b) =
-	      decompose_lam_n_assum ci.ci_cstr_nargs.(i) branches.(i) in
-	    let name (n, _, _) = n in
-	    let pat = make_constructor_pattern (i + 1) (List.map name args) in
-	    let newenv = push_rel_context args env in
-	      (pat, None, translate newenv b) :: f (i - 1) in
-	  f (Array.length branches - 1) in
-	<:expr< match $translate env c$ with [$list: vs @ [default]$] >>
-  | Fix ((recargs, i), (names, types, bodies)) -> print_endline "fix";
-      let rec f i =
-	if i < 0 then []
-	else let newenv = Environ.push_rel (names.(i), Some bodies.(i), types.(i)) env in
-	  (<:patt< $lid:lid_of_name names.(i)$ >>, translate newenv bodies.(i)) :: f (i - 1)
-      in <:expr< let rec $list:f i$ in $lid:lid_of_name names.(i)$ >>
+	let f i =
+	  let (args, b) =
+	    decompose_lam_n_assum ci.ci_cstr_nargs.(i) branches.(i) in
+	  let name (n, _, _) = n in
+	  let pat = make_constructor_pattern (i + 1) (List.map name args) in
+	  let newenv = push_rel_context args env in
+	    (pat, None, translate newenv b)
+	in Array.to_list (Array.init (Array.length branches) f)
+      in <:expr< match $translate env c$ with [$list: vs @ [default]$] >>
+  | Fix ((recargs, i), (names, types, bodies)) ->
+      let f i =
+	let newenv = Environ.push_rel (names.(i), Some bodies.(i), types.(i)) env in
+	  (<:patt< $lid:lid_of_name names.(i)$ >>, translate newenv bodies.(i))
+      in let functions = Array.to_list (Array.init (Array.length names) f)
+      in <:expr< let rec $list:functions$ in $lid:lid_of_name names.(i)$ >>
   | CoFix(ln, (_, tl, bl)) -> print_endline "cofix"; invalid_arg "translate"
   | _ -> print_endline "invalid arg"; invalid_arg "translate"
   ) with Not_found -> print_endline "not found"; invalid_arg "bleh"
