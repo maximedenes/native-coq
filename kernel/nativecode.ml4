@@ -52,7 +52,6 @@ let make_constructor_pattern i args =
     <:patt< Const $int:string_of_int i$ [| $list:List.rev (List.map f args)$ |] >>
 
 let rec push_value id body env =
-  print_endline ("adding " ^ string_of_id id);
   env_updated := true;
   let kind = lookup_named_val id (pre_env env) in
     match !kind with
@@ -77,7 +76,7 @@ and translate_constant env c =
 and translate (env : Environ.env) t =
   try (
   match kind_of_term t with
-  | Rel x -> print_endline ("rel " ^ lid_of_name (match lookup_rel x env with name, _, _ -> name));
+  | Rel x ->
       <:expr< $lid: lid_of_name (match lookup_rel x env with name, _, _ -> name)$ >>
   | Var id -> let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
       print_endline ("adding " ^ string_of_id id);
@@ -88,36 +87,36 @@ and translate (env : Environ.env) t =
   | Sort (Prop Null) -> <:expr< Prop >>
   | Sort (Prop Pos) -> <:expr< Set >>
   | Sort (Type _) -> <:expr< Type >>
-  | Cast (c, _, ty) -> print_endline "cast";
+  | Cast (c, _, ty) ->
       translate env c
-  | Prod (x, t, c) -> print_endline "prod";
+  | Prod (x, t, c) ->
       let newenv = Environ.push_rel (x, None, t) env in
 	<:expr< Prod ($translate env t$, (fun $lid:lid_of_name x$ -> $translate newenv c$)) >>
-  | Lambda (x, t, c) -> print_endline "lambda";
+  | Lambda (x, t, c) ->
       let newenv = Environ.push_rel (x, None, t) env in
 	<:expr< Lam (fun $lid:lid_of_name x$ -> $translate newenv c$) >>
-  | LetIn (x, b, t, c) -> print_endline "letin";
+  | LetIn (x, b, t, c) ->
       let newenv = Environ.push_rel (x, Some b, t) env in
 	<:expr< let $lid:lid_of_name x$ = $translate env b$
                 in $translate newenv c$ >>
   | App (c, args) -> (match kind_of_term c with
-      | Construct cstr -> print_endline "construct app";
+      | Construct cstr ->
 	  let f arg vs = translate env arg :: vs in
 	  let vs = Array.fold_right f args [] in
 	  let i = index_of_constructor cstr in
   	    <:expr< Const $int:string_of_int i$ [| $list:vs$ |] >>
-      | _ -> print_endline "app";
+      | _ ->
 	  let zero = translate env c in
 	  let f apps x = <:expr< app $apps$ $translate env x$ >> in
 	    Array.fold_left f zero args)
-  | Const c -> print_endline ("const " ^ string_of_con c);
+  | Const c ->
       translate_constant env c
-  | Ind c -> print_endline ("ind " ^ string_of_inductive c);
+  | Ind c ->
       <:expr< Con $str:string_of_inductive c$ >>
-  | Construct cstr -> print_endline ("construct " ^ string_of_constructor cstr);
+  | Construct cstr ->
       let i = index_of_constructor cstr in
       <:expr< Const $int:string_of_int i$ [||] >>
-  | Case (ci, p, c, branches) -> print_endline "case";
+  | Case (ci, p, c, branches) ->
       let default = (<:patt< x >>, None, <:expr< bug x >>) in
       let vs =
 	(* let mib = lookup_mind (fst ci.ci_ind) env in *)
@@ -187,7 +186,6 @@ let add_constant c ck xs =
 let topological_sort init xs =
   let visited = ref Sset.empty in
   let rec aux s result =
-    print_endline s;
     if Sset.mem s !visited
     then result
     else begin
