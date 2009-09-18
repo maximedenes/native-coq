@@ -236,6 +236,12 @@ let print_implem fname ast =
   output_value oc pt;
   close_out oc
 
+let compute_loc xs =
+  let rec f n = function
+    | [] -> []
+    | (str_item, _) :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
+  in f 0 xs
+
 let compile env t1 t2 =
   print_endline "compile";
   let code1 = translate env (it_mkLambda_or_LetIn t1 (rel_context env)) in
@@ -245,16 +251,24 @@ let compile env t1 t2 =
       begin
 	Pcaml.input_file := "envi.ml";
 	Pcaml.output_file := Some "envpr.ml";
-	!Pcaml.print_implem (dump_env t1 t2 (pre_env env));
-	print_implem "env.ml" (dump_env t1 t2 (pre_env env))
+	(* !Pcaml.print_implem (dump_env t1 t2 (pre_env env)); *)
+	print_implem "env.ml" (compute_loc (dump_env t1 t2 (pre_env env)))
       end;
     print_endline "done env";
+    Pcaml.input_file := "termsi.ml";
+    Pcaml.output_file := Some "termspr.ml";
+    (* !Pcaml.print_implem *)
+    (* 	 [(<:str_item< open Nbe >>, loc); *)
+    (* 	  (<:str_item< open Env >>, loc); *)
+    (* 	  (<:str_item< value t1 = $code1$ >>, loc); *)
+    (* 	  (<:str_item< value t2 = $code2$ >>, loc); *)
+    (* 	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)]; *)
     print_implem "terms.ml"
-      [(<:str_item< open Nbe >>, loc);
-       (<:str_item< open Env >>, loc);
-       (<:str_item< value t1 = $code1$ >>, loc);
-       (<:str_item< value t2 = $code2$ >>, loc);
-       (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
+	 [(<:str_item< open Nbe >>, loc);
+	  (<:str_item< open Env >>, loc);
+	  (<:str_item< value t1 = $code1$ >>, loc);
+	  (<:str_item< value t2 = $code2$ >>, loc);
+	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
     print_endline "done term";
     print_endline "done compile";
     env_updated := false;
