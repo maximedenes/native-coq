@@ -75,11 +75,14 @@ and translate_constant env c =
   let cb = lookup_constant c (pre_env env) in
     match cb.const_body with
       | Some body -> (match cb.const_body_ast with
-	  | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
+	  | Some _ ->
+	      <:expr< do { (* print_endline $str:string_of_con c$;  *)$lid:lid_of_string (string_of_con c)$ } >>
+	      (* <:expr< $lid:lid_of_string (string_of_con c)$ >> *)
 	  | None -> let ast = translate env (Declarations.force body) in
 	      cb.const_body_ast <- Some (values ast);
 	      env_updated := true;
-	      <:expr< $lid:lid_of_string (string_of_con c)$ >>)
+	      <:expr< do { (* print_endline $str:string_of_con c$; *) $lid:lid_of_string (string_of_con c)$ } >>)
+	      (* <:expr< $lid:lid_of_string (string_of_con c)$ >>) *)
       | None -> <:expr< Con $str:string_of_con c$ >>
 
 (** The side-effect of translate is to add the translated construction
