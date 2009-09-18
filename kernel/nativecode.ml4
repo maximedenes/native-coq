@@ -13,6 +13,8 @@ let loc = Ploc.dummy
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
 
+let rec drop n xs = if n = 0 then xs else drop (n - 1) (List.tl xs)
+
 let lid_of_string s = "x" ^ s
 let uid_of_string s = "X" ^ s
 
@@ -51,6 +53,17 @@ let make_constructor_pattern i args =
   let f arg = <:patt< $lid:lid_of_name arg$ >> in
     <:patt< Const $int:string_of_int i$ [| $list:List.rev (List.map f args)$ |] >>
 
+exception NonNat
+
+let rec is_nat_literal ind c =
+  let rec f c = match c with
+    | App (c', args) when isConstruct c' -> 1 + f (kind_of_term args.(0))
+    | Construct cstr -> 0
+    | _ -> raise NonNat in
+    match string_of_inductive ind with
+      | "Coq_Init_Datatype_nat" -> f c
+      | _ -> raise NonNat
+
 let rec push_value id body env =
   env_updated := true;
   let kind = lookup_named_val id (pre_env env) in
@@ -75,70 +88,78 @@ and translate_constant env c =
    de Bruijn indices as de Bruijn levels. *)
 and translate (env : Environ.env) t =
   try (
-  match kind_of_term t with
-  | Rel x ->
-      <:expr< $lid: lid_of_name (match lookup_rel x env with name, _, _ -> name)$ >>
-  | Var id -> let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
-      print_endline ("adding " ^ string_of_id id);
-      (match named_body id env with
-	  (* Add compiled form of definition to environment if not already present. *)
-	 | Some body -> push_value id body env; v
-	 | None -> v)
-  | Sort (Prop Null) -> <:expr< Prop >>
-  | Sort (Prop Pos) -> <:expr< Set >>
-  | Sort (Type _) -> <:expr< Type >>
-  | Cast (c, _, ty) ->
-      translate env c
-  | Prod (x, t, c) ->
-      let newenv = Environ.push_rel (x, None, t) env in
-	<:expr< Prod ($translate env t$, (fun $lid:lid_of_name x$ -> $translate newenv c$)) >>
-  | Lambda (x, t, c) ->
-      let newenv = Environ.push_rel (x, None, t) env in
-	<:expr< Lam (fun $lid:lid_of_name x$ -> $translate newenv c$) >>
-  | LetIn (x, b, t, c) ->
-      let newenv = Environ.push_rel (x, Some b, t) env in
-	<:expr< let $lid:lid_of_name x$ = $translate env b$
-                in $translate newenv c$ >>
-  | App (c, args) -> (match kind_of_term c with
-      | Construct cstr ->
-	  let f arg vs = translate env arg :: vs in
-	  let vs = Array.fold_right f args [] in
-	  let i = index_of_constructor cstr in
-  	    <:expr< Const $int:string_of_int i$ [| $list:vs$ |] >>
-      | _ ->
-	  let zero = translate env c in
-	  let f apps x = <:expr< app $apps$ $translate env x$ >> in
-	    Array.fold_left f zero args)
-  | Const c ->
-      translate_constant env c
-  | Ind c ->
-      <:expr< Con $str:string_of_inductive c$ >>
-  | Construct cstr ->
-      let i = index_of_constructor cstr in
-      <:expr< Const $int:string_of_int i$ [||] >>
-  | Case (ci, p, c, branches) ->
-      let default = (<:patt< x >>, None, <:expr< bug x >>) in
-      let vs =
-	(* let mib = lookup_mind (fst ci.ci_ind) env in *)
-	(* let oib = mib.mind_packets.(snd ci.ci_ind) in *)
-	(* default branch *)
-	let f i =
-	  let (args, b) =
-	    decompose_lam_n_assum ci.ci_cstr_nargs.(i) branches.(i) in
-	  let name (n, _, _) = n in
-	  let pat = make_constructor_pattern (i + 1) (List.map name args) in
-	  let newenv = push_rel_context args env in
-	    (pat, None, translate newenv b)
-	in Array.to_list (Array.init (Array.length branches) f)
-      in <:expr< match $translate env c$ with [$list: vs @ [default]$] >>
-  | Fix ((recargs, i), (names, types, bodies)) ->
-      let f i =
-	let newenv = Environ.push_rel (names.(i), Some bodies.(i), types.(i)) env in
-	  (<:patt< $lid:lid_of_name names.(i)$ >>, translate newenv bodies.(i))
-      in let functions = Array.to_list (Array.init (Array.length names) f)
-      in <:expr< let rec $list:functions$ in $lid:lid_of_name names.(i)$ >>
-  | CoFix(ln, (_, tl, bl)) -> print_endline "cofix"; invalid_arg "translate"
-  | _ -> print_endline "invalid arg"; invalid_arg "translate"
+    match kind_of_term t with
+    | Rel x ->
+	<:expr< $lid: lid_of_name (match lookup_rel x env with name, _, _ -> name)$ >>
+    | Var id ->
+	let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
+	  (match named_body id env with
+	       (* Add compiled form of definition to environment if not already present. *)
+	     | Some body -> push_value id body env; v
+	     | None -> v)
+    | Sort (Prop Null) -> <:expr< Prop >>
+    | Sort (Prop Pos) -> <:expr< Set >>
+    | Sort (Type _) -> <:expr< Type >>
+    | Cast (c, _, ty) ->
+	translate env c
+    | Prod (x, t, c) ->
+	let newenv = Environ.push_rel (x, None, t) env in
+	  <:expr< Prod ($translate env t$, (fun $lid:lid_of_name x$ -> $translate newenv c$)) >>
+    | Lambda (x, t, c) ->
+	let newenv = Environ.push_rel (x, None, t) env in
+	  <:expr< Lam (fun $lid:lid_of_name x$ -> $translate newenv c$) >>
+    | LetIn (x, b, t, c) -> print_endline (lid_of_name x);
+	let newenv = Environ.push_rel (x, Some b, t) env in
+	  <:expr< let $lid:lid_of_name x$ = $translate env b$
+          in $translate newenv c$ >>
+    | App (c, args) as t -> (match kind_of_term c with
+			  | Construct cstr ->
+			      let f arg vs = translate env arg :: vs in
+			      let i = index_of_constructor cstr in
+			      let ind = inductive_of_constructor cstr in
+			      let mb = lookup_mind (fst ind) (pre_env env) in
+			      let ob = mb.mind_packets.(snd ind) in
+			      let vs = Array.fold_right f args [] in
+			      let vs' = drop (List.length vs - ob.mind_consnrealdecls.(i-1)) vs in
+  				(try let n = is_nat_literal ind t in
+				   <:expr< __from_nat $int:string_of_int n$ >>
+				 with NonNat -> <:expr< Const $int:string_of_int i$ [| $list:vs'$ |] >>)
+			  | _ ->
+			      let zero = translate env c in
+			      let f apps x = <:expr< app $apps$ $translate env x$ >> in
+				Array.fold_left f zero args)
+    | Const c ->
+	translate_constant env c
+    | Ind c ->
+	<:expr< Con $str:string_of_inductive c$ >>
+    | Construct cstr ->
+	let i = index_of_constructor cstr in
+	  <:expr< Const $int:string_of_int i$ [||] >>
+    | Case (ci, p, c, branches) ->
+	let default = (<:patt< x >>, None, <:expr< bug x >>) in
+	let vs =
+	  (* let mib = lookup_mind (fst ci.ci_ind) env in *)
+	  (* let oib = mib.mind_packets.(snd ci.ci_ind) in *)
+	  (* default branch *)
+	  let f i =
+	    let (args, b) =
+	      decompose_lam_n_assum ci.ci_cstr_nargs.(i) branches.(i) in
+	    let name (n, _, _) = n in
+	    let pat = make_constructor_pattern (i + 1) (List.map name args) in
+	    let newenv = push_rel_context args env in
+	      (pat, None, translate newenv b)
+	  in Array.to_list (Array.init (Array.length branches) f)
+	in <:expr< match $translate env c$ with [$list: vs @ [default]$] >>
+	  | Fix ((recargs, i), (names, types, bodies)) ->
+	      let n = Array.length names in
+	      let fix_context = Array.to_list (Array.init n (fun i -> (names.(i), Some bodies.(i), types.(i)))) in
+	      let f i =
+		let newenv = Environ.push_rel_context fix_context env in
+		  (<:patt< $lid:lid_of_name names.(i)$ >>, translate newenv bodies.(i))
+	      in let functions = Array.to_list (Array.init n f)
+	      in <:expr< let rec $list:functions$ in $lid:lid_of_name names.(i)$ >>
+	  | CoFix(ln, (_, tl, bl)) -> print_endline "cofix"; invalid_arg "translate"
+	  | _ -> print_endline "invalid arg"; invalid_arg "translate"
   ) with Not_found -> print_endline "not found"; invalid_arg "bleh"
     | _ -> print_endline "exception!"; invalid_arg "bleh"
 
@@ -195,7 +216,7 @@ let topological_sort init xs =
       with Not_found -> result
 	| _ -> print_endline "exception in tsort!"; invalid_arg "bleh"
     end
-  in List.fold_right aux init []
+  in List.rev (List.fold_right aux init [])
 
 let dump_env t1 t2 env =
   let vars = List.fold_right (add_value env) env.env_named_vals Smap.empty in
