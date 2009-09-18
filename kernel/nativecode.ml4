@@ -238,8 +238,8 @@ let print_implem fname ast =
 
 let compile env t1 t2 =
   print_endline "compile";
-  let code1 = translate env t1 in
-  let code2 = translate env t2 in
+  let code1 = translate env (it_mkLambda_or_LetIn t1 (rel_context env)) in
+  let code2 = translate env (it_mkLambda_or_LetIn t2 (rel_context env)) in
     print_endline "done translate";
     if !env_updated then
       begin
