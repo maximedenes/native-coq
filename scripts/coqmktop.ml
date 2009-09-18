@@ -18,7 +18,8 @@ open Unix
 let ocamlobjs = ["str.cma";"unix.cma";"nums.cma"]
 let dynobjs = ["dynlink.cma"]
 let camlp4objs =
-  if Coq_config.camlp4 = "camlp5" then ["gramlib.cma"] else ["camlp4lib.cma"]
+  if Coq_config.camlp4 = "camlp5" then ["camlp5.cma"; "pr_r.cmo"]
+  else ["camlp4lib.cma"]
 let libobjs = ocamlobjs @ camlp4objs
 
 let spaces = Str.regexp "[ \t\n]+"
