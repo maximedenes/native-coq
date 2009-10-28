@@ -31,7 +31,6 @@ let string_of_dirpath = function
 let rec string_of_mp = function
   | MPfile sl -> string_of_dirpath (repr_dirpath sl)
   | MPbound uid -> string_of_mbid uid
-  | MPself uid -> string_of_msid uid
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
 let string_of_kn kn =
@@ -42,8 +41,8 @@ let string_of_con con =
   let (modpath, _dirpath, label) = repr_con con in
     string_of_mp modpath ^ "_" ^ string_of_label label
 
-let string_of_inductive (kn, i) =
-  string_of_kn kn ^ string_of_int i
+let string_of_inductive (mind, i) =
+  string_of_mind mind ^ string_of_int i
 
 let string_of_constructor (ind, i) =
   string_of_inductive ind ^ "c" ^ string_of_int i
@@ -115,22 +114,24 @@ and translate (env : Environ.env) t =
 	let newenv = Environ.push_rel (x, Some b, t) env in
 	  <:expr< let $lid:lid_of_name x$ = $translate env b$
           in $translate newenv c$ >>
-    | App (c, args) as t -> (match kind_of_term c with
-			  | Construct cstr ->
-			      let f arg vs = translate env arg :: vs in
-			      let i = index_of_constructor cstr in
-			      let ind = inductive_of_constructor cstr in
-			      let mb = lookup_mind (fst ind) (pre_env env) in
-			      let ob = mb.mind_packets.(snd ind) in
-			      let vs = Array.fold_right f args [] in
-			      let vs' = drop (List.length vs - ob.mind_consnrealdecls.(i-1)) vs in
-  				(try let n = is_nat_literal ind t in
-				   <:expr< __from_nat $int:string_of_int n$ >>
-				 with NonNat -> <:expr< Const $int:string_of_int i$ [| $list:vs'$ |] >>)
-			  | _ ->
-			      let zero = translate env c in
-			      let f apps x = <:expr< app $apps$ $translate env x$ >> in
-				Array.fold_left f zero args)
+    | App (c, args) as t ->
+	(match kind_of_term c with
+	   | Construct cstr ->
+	       let f arg vs = translate env arg :: vs in
+	       let i = index_of_constructor cstr in
+	       let ind = inductive_of_constructor cstr in
+	       let mb = lookup_mind (fst ind) (pre_env env) in
+	       let ob = mb.mind_packets.(snd ind) in
+	       let vs = Array.fold_right f args [] in
+	       let vs' = drop (List.length vs - ob.mind_consnrealdecls.(i-1)) vs in
+  		 (* (try let n = is_nat_literal ind t in *)
+		 (*    <:expr< __from_nat $int:string_of_int n$ >> *)
+		 (*  with NonNat -> <:expr< Const $int:string_of_int i$ [| $list:vs'$ |] >>) *)
+		 <:expr< Const $int:string_of_int i$ [| $list:vs'$ |] >>
+	   | _ ->
+	       let zero = translate env c in
+	       let f apps x = <:expr< app $apps$ $translate env x$ >> in
+		 Array.fold_left f zero args)
     | Const c ->
 	translate_constant env c
     | Ind c ->
@@ -223,7 +224,7 @@ let topological_sort init xs =
 
 let dump_env t1 t2 env =
   let vars = List.fold_right (add_value env) env.env_named_vals Smap.empty in
-  let vars_and_cons = Cmap.fold add_constant env.env_globals.env_constants vars in
+  let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
   let initial_set = assums t1 @ assums t2
   in (<:str_item< open Nbe >>, loc) :: topological_sort initial_set vars_and_cons
 
