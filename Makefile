@@ -275,3 +275,5 @@ ifdef COQ_CONFIGURED
 else
 	@echo "Please run ./configure first" >&2; exit 1
 endif
+
+lala: $(PLUGINSOPT)
