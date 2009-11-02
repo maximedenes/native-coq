@@ -238,12 +238,24 @@ and conv_eq_vect vt1 vt2 cu =
   else raise NotConvertible
 
 let vconv pb env t1 t2 =
-    try print_endline "blah1"; conv_eq pb t1 t2 Constraint.empty
+    try conv_eq pb t1 t2 Constraint.empty
     with NotConvertible ->
-      print_endline "notconvert";
-      let values = Nativecode.compile env t1 t2 in
-      let cu = Nativecode.compare values Constraint.empty in
-        print_endline "blah"; cu
+      print_string "converting... ";
+      if false then
+	begin
+	  print_endline "bogus.";
+	  Constraint.empty
+	end
+      else
+	begin
+	  print_string "actual... ";
+	  let values = Nativecode.compile env t1 t2 in
+	  let cu = Nativecode.compare values Constraint.empty in
+            print_endline "done."; cu
+	end
+
+(* let vconv_profile = Profile.declare_profile "vconv" *)
+(* let vconv = Profile.profile4 vconv_profile vconv *)
     
 let _ = Reduction.set_vm_conv vconv
 
