@@ -6,24 +6,13 @@ open Environ
 open Pre_env
 open Pcaml
 open Declarations
+open Util
 
 
 let id = ref 0
 let uniq = ref 256
 
 let loc = Ploc.dummy
-
-let rec drop n xs = match n, xs with
-  | 0, _ -> xs
-  | _, [] -> []
-  | n, x :: xs when n > 0 -> drop (n - 1) xs
-  | _, _ -> raise (Invalid_argument "drop")
-
-let rec take n xs = match n, xs with
-  | 0, _ -> []
-  | _, [] -> []
-  | n, x :: xs when n > 0 -> x :: take (n - 1) xs
-  | _, _ -> raise (Invalid_argument "take")
 
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
@@ -240,7 +229,7 @@ and translate (env : Environ.env) t =
 	       let ob = mb.mind_packets.(snd ind) in
 	       let nparams = rel_context_length ob.mind_arity_ctxt in
 	       let nargs = Array.length args in
-	       let vs = drop (min nparams nargs) (Array.fold_right f args []) in
+	       let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
 	       let missing = ob.mind_consnrealdecls.(i-1) - nargs + nparams in
 	       let underscores = max (nparams - nargs) 0 in
 	       let names = gen_names (missing - underscores) in
