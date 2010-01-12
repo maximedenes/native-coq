@@ -10,7 +10,7 @@ open Util
 
 
 let max_arity = 8
-let id = ref 0
+
 let uniq = ref 256
 
 let loc = Ploc.dummy
@@ -283,8 +283,7 @@ and translate (env : Environ.env) t =
 	let i = index_of_constructor cstr in
 	  <:expr< Const $int:string_of_int i$ [||] >>
     | Case (ci, p, c, branches) ->
-	id := !id + 1;
-	let default = (<:patt< x >>, None, <:expr< do {print_endline $str:string_of_int !id$; bug x} >>) in
+	let default = (<:patt< x >>, None, <:expr< bug x >>) in
 	let vs =
 	  (* let mib = lookup_mind (fst ci.ci_ind) env in *)
 	  (* let oib = mib.mind_packets.(snd ci.ci_ind) in *)
