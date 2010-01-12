@@ -9,6 +9,7 @@ open Declarations
 open Util
 
 
+let max_arity = 8
 let id = ref 0
 let uniq = ref 256
 
@@ -69,23 +70,20 @@ let rec pop_applications n t =
     else function f -> (f, args)
   in aux n [] t
 
+let push_applications f args =
+  let n = List.length args in
+    List.fold_left (fun e arg -> <:expr< $e$ $arg$ >>) <:expr< $lid:"app" ^ string_of_int n$ f >> args
+
 let rec collapse_abstractions t =
-  let vars, body = pop_abstractions 6 t in
+  let vars, body = pop_abstractions max_arity t in
     if List.length vars = 0 then uncurrify body else
       let func = List.fold_right (fun x t -> <:expr< fun $x$ -> $t$ >>) vars (collapse_abstractions body) in
 	<:expr< $uid:"Lam" ^ string_of_int (List.length vars)$ $func$ >>
 
 and collapse_applications t =
-  let f, args = pop_applications 6 t in
+  let f, args = pop_applications max_arity t in
   let f, args = uncurrify f, List.map uncurrify args in
-    match args with
-      | [t1] -> <:expr< app1 $f$ $t1$ >>
-      | [t1; t2] -> <:expr< app2 $f$ $t1$ $t2$ >>
-      | [t1; t2; t3] -> <:expr< app3 $f$ $t1$ $t2$ $t3$ >>
-      | [t1; t2; t3; t4] -> <:expr< app4 $f$ $t1$ $t2$ $t3$ $t4$ >>
-      | [t1; t2; t3; t4; t5] -> <:expr< app5 $f$ $t1$ $t2$ $t3$ $t4$ $t5$ >>
-      | [t1; t2; t3; t4; t5; t6] -> <:expr< app6 $f$ $t1$ $t2$ $t3$ $t4$ $t5$ $t6$ >>
-      | _ -> assert false
+    push_applications f args
 
 (* Uncurrification optimization. This consists in replacing
 
