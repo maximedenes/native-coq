@@ -17,6 +17,8 @@ let loc = Ploc.dummy
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
 
+(* Bringert and Ranta's 'descend' operator for OCaml representations
+   of the target code. *)
 let descend_ast f t = match t with
   | <:expr< Con $_$ >> -> t
   | <:expr< Lam (fun $x$ -> $body$) >> -> <:expr< Lam (fun $x$ -> $f body$) >>
@@ -35,11 +37,12 @@ let descend_ast f t = match t with
       let defs' = List.map (fun (p, t) -> (p, f t)) defs in
 	<:expr< let $flag:r$ $list:defs'$ in $f t$ >>
   | <:expr< do { $list:_$ } >> -> t
-  | _ -> let s = Eprinter.apply Pcaml.pr_expr Pprintf.empty_pc t
-    in print_endline s; raise (Invalid_argument "descend_ast")
+  | _ -> let s = Eprinter.apply Pcaml.pr_expr Pprintf.empty_pc t in
+      print_endline s; raise (Invalid_argument "descend_ast")
 
 let subst rho x = try List.assoc x rho with Not_found -> x
 
+(* Shrinking reduction. This is essentially eta-reduction. *)
 let rec shrink rho = function
   | <:expr< app $t1$ $lid:y$ >> ->
     (match shrink rho t1 with
@@ -84,6 +87,17 @@ and collapse_applications t =
       | [t1; t2; t3; t4; t5; t6] -> <:expr< app6 $f$ $t1$ $t2$ $t3$ $t4$ $t5$ $t6$ >>
       | _ -> assert false
 
+(* Uncurrification optimization. This consists in replacing
+
+   Lam (fun x1 => ... (Lam (fun xn => ...) 
+
+   with
+
+   Lam_n (fun x1 xn => ...)
+
+   and replacing unary applications with n-ary applications where possible.
+
+*)
 and uncurrify t = match t with
   | <:expr< Lam $_$ >> -> collapse_abstractions t
   | <:expr< app $_$ $_$ >> -> collapse_applications t
