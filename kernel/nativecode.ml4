@@ -43,7 +43,9 @@ let descend_ast f t = match t with
 
 let subst rho x = try List.assoc x rho with Not_found -> x
 
-(* Shrinking reduction. This is essentially eta-reduction. *)
+(* A shrinking reduction. This is essentially eta-reduction. Whenever
+   a lambda is applied to a variable then beta-reduce. The size of the
+   resulting term is strictly smaller. *)
 let rec shrink rho = function
   | <:expr< app $t1$ $lid:y$ >> ->
     (match shrink rho t1 with
@@ -60,7 +62,7 @@ let rec pop_abstractions n =
 	(x :: vars, body)
     | t -> ([], t)
   else function t -> ([], t)
-	
+    
 let rec pop_applications n t =
   let rec aux n args =
     if n > 0 then function
