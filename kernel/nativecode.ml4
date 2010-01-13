@@ -48,6 +48,8 @@ let descend_ast f t = match t with
   | <:expr< let $flag:r$ $list:defs$ in $t$ >> ->
       let defs' = List.map (fun (p, t) -> (p, f t)) defs in
 	<:expr< let $flag:r$ $list:defs'$ in $f t$ >>
+  (* Don't rewrite inside default case of match, which are represented
+     with a do construct. *)
   | <:expr< do { $list:_$ } >> -> t
   | _ -> raise (Invalid_argument "descend_ast")
 
@@ -282,7 +284,7 @@ and translate (env : Environ.env) t =
 	let i = index_of_constructor cstr in
 	  <:expr< Const $int:string_of_int i$ [||] >>
     | Case (ci, p, c, branches) ->
-	let default = (<:patt< x >>, None, <:expr< bug x >>) in
+	let default = (<:patt< x >>, None, <:expr< do { bug x } >>) in
 	let vs =
 	  let f i =
 	    let args = gen_names ci.ci_cstr_nargs.(i) in
