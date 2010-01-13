@@ -358,11 +358,11 @@ let compile env t1 t2 =
   let code2 = translate env (it_mkLambda_or_LetIn t2 (rel_context env)) in
     if !env_updated then
       begin
-	Pcaml.input_file := "envi.ml";
+	Pcaml.input_file := "/dev/null";
 	Pcaml.output_file := Some "env.ml";
 	!Pcaml.print_implem (dump_env t1 t2 (pre_env env));
       end;
-    Pcaml.input_file := "termsi.ml";
+    Pcaml.input_file := "/dev/null";
     Pcaml.output_file := Some "terms.ml";
     !Pcaml.print_implem
     	 [(<:str_item< open Nbe >>, loc);
