@@ -246,13 +246,12 @@ let vconv pb env t1 t2 =
 	  print_endline "bogus.";
 	  Constraint.empty
 	end
-      else
-	begin
-	  print_string "actual... ";
-	  let values = Nativecode.compile env t1 t2 in
-	  let cu = Nativecode.compare values Constraint.empty in
-            print_endline "done."; cu
-	end
+      else try
+	print_string "actual... ";
+        let values = Nativecode.compile env t1 t2 in
+        let cu = Nativecode.compare values Constraint.empty in
+          print_endline "done."; cu
+      with e -> Util.anomaly (Printexc.to_string e)
 
 (* let vconv_profile = Profile.declare_profile "vconv" *)
 (* let vconv = Profile.profile4 vconv_profile vconv *)
