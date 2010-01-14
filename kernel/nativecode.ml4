@@ -21,7 +21,7 @@ let ast_intf_magic_number = "Caml1999N011"
    application operators required. *)
 let max_arity = 8
 
-let uniq = ref 256
+let uniq = ref 0
 
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
@@ -166,7 +166,7 @@ let rec gen_names = function
   | 0 -> []
   | n when n > 0 ->
       let xs = gen_names (n - 1) in
-	uniq := !uniq + 1;
+	incr uniq;
 	("x" ^ string_of_int !uniq) :: xs
   | _ -> raise (Invalid_argument "gen_names")
 
@@ -220,21 +220,21 @@ and translate (env : Environ.env) t =
     | Prod (x, t, c) ->
 	let x' = if is_bound x env then
 	  (match x with
-	     | Name id -> uniq := !uniq + 1; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
+	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
 	     | Anonymous -> Anonymous) else x in
 	let newenv = Environ.push_rel (x', None, t) env in
 	  <:expr< Prod $translate env t$ (fun $lid:lid_of_name x'$ -> $translate newenv c$) >>
     | Lambda (x, t, c) ->
 	let x' = if is_bound x env then
 	  (match x with
-	     | Name id -> uniq := !uniq + 1; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
+	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
 	     | Anonymous -> Anonymous) else x in
 	let newenv = Environ.push_rel (x', None, t) env in
 	  <:expr< Lam (fun $lid:lid_of_name x'$ -> $translate newenv c$) >>
     | LetIn (x, b, t, c) ->
 	let x' = if is_bound x env then
 	  (match x with
-	     | Name id -> uniq := !uniq + 1; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
+	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
 	     | Anonymous -> Anonymous) else x in
 	let newenv = Environ.push_rel (x', Some b, t) env in
 	  <:expr< let $lid:lid_of_name x'$ = $translate env b$ in $translate newenv c$ >>
