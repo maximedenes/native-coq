@@ -9,10 +9,6 @@ open Declarations
 open Util
 
 
-(*  *)
-let ast_impl_magic_number = "Caml1999M012"
-let ast_intf_magic_number = "Caml1999N011"
-
 (* One of the optimizations performed on the target code is
    uncurrying, meaning collapsing functions into n-ary functions and
    introducing a family of application operators that apply an n-ary
