@@ -146,18 +146,6 @@ let make_constructor_pattern i args =
   let f arg = <:patt< $lid:arg$ >> in
     <:patt< Const $int:string_of_int i$ [| $list:List.map f args$ |] >>
 
-exception NonNat
-exception Pass
-
-let rec is_nat_literal ind c =
-  let rec f c = match c with
-    | App (c', args) when isConstruct c' -> 1 + f (kind_of_term args.(0))
-    | Construct cstr -> 0
-    | _ -> raise NonNat in
-    match string_of_inductive ind with
-      | "Coq_Init_Datatype_nat" -> f c
-      | _ -> raise NonNat
-
 let rec gen_names = function
   | 0 -> []
   | n when n > 0 ->
@@ -259,9 +247,6 @@ and translate (env : Environ.env) t =
 		       <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
 		       names)
 	       in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
-  		 (* (try let n = is_nat_literal ind t in *)
-		 (*    <:expr< __from_nat $int:string_of_int n$ >> *)
-		 (*  with NonNat -> <:expr< Const $int:string_of_int i$ [| $list:vs'$ |] >>) *)
 	   | Const name ->
 	       let zero = translate env c in
 	       let f apps x = <:expr< app $apps$ $translate env x$ >> in
