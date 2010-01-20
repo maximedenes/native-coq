@@ -9,12 +9,16 @@ open Declarations
 open Util
 
 
-(* One of the optimizations performed on the target code is
-   uncurrying, meaning collapsing functions into n-ary functions and
-   introducing a family of application operators that apply an n-ary
-   function to m arguments in one go. This constant defines the
-   maximum arity of functions, hence bounding the number of
-   application operators required. *)
+(** One of the optimizations performed on the target code is
+    uncurrying, meaning collapsing functions into n-ary functions and
+    introducing a family of application operators that apply an n-ary
+    function to m arguments in one go. This constant defines the
+    maximum arity of functions, hence bounding the number of
+    application operators required.
+
+    BEWARE: changing the value of this constant requires changing
+    nbe.ml accordingly to have at least as many abstraction
+    constructors and application operators. *)
 let max_arity = 8
 
 let uniq = ref 0
@@ -109,7 +113,7 @@ and uncurrify t = match t with
   | <:expr< app $_$ $_$ >> -> collapse_applications t
   | _ -> descend_ast uncurrify t
 
-let lid_of_string s = "z" ^ s
+let lid_of_string s = "x" ^ s
 let uid_of_string s = "X" ^ s
 
 let lid_of_name = function
@@ -258,7 +262,7 @@ and translate (env : Environ.env) t =
     | Const c ->
 	translate_constant (env_of_pre_env { pre_env env with env_rel_context = [] }) c
     | Ind c ->
-	<:expr< Con () (* $str:string_of_inductive c$ *) >>
+	<:expr< Con () (* xxx $str:string_of_inductive c$ *) >>
     | Construct cstr ->
 	let i = index_of_constructor cstr in
 	  <:expr< Const $int:string_of_int i$ [||] >>
