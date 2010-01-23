@@ -21,8 +21,6 @@ open Util
     constructors and application operators. *)
 let max_arity = 8
 
-let uniq = ref 0
-
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
@@ -150,142 +148,105 @@ let make_constructor_pattern i args =
   let f arg = <:patt< $lid:arg$ >> in
     <:patt< Const $int:string_of_int i$ [| $list:List.map f args$ |] >>
 
-let rec gen_names = function
-  | 0 -> []
-  | n when n > 0 ->
-      let xs = gen_names (n - 1) in
-	incr uniq;
-	("x" ^ string_of_int !uniq) :: xs
-  | _ -> raise (Invalid_argument "gen_names")
+let lid_of_index n = "x" ^ string_of_int n
 
-exception Bound
-
-let is_bound x env =
-  try
-    List.iter (fun (y, _, _) -> if x = y then raise Bound else ())
-      (pre_env env).env_rel_context; false
-  with Bound -> true
+let rec gen_names start len =
+  if len = 0 then []
+  else if len > 0 then
+    lid_of_index start :: gen_names (start + 1) (len - 1)
+  else raise (Invalid_argument "gen_names")
 
 let rec push_value id body env =
   env_updated := true;
   let kind = lookup_named_val id (pre_env env) in
     match !kind with
-    | VKvalue (v, _) -> ()
-    | VKnone -> kind := VKvalue (values (translate env body), Idset.empty)
+      | VKvalue (v, _) -> ()
+      | VKnone -> kind := VKvalue (values (translate env body), Idset.empty)
 
 and translate_constant env c =
   let cb = lookup_constant c (pre_env env) in
     match cb.const_body with
       | Some body -> (match cb.const_body_ast with
-	  | Some _ ->
-	      <:expr< $lid:lid_of_string (string_of_con c)$ >>
-	  | None ->
-	      let ast = translate env (Declarations.force body) in
-	      cb.const_body_ast <- Some (values (uncurrify (shrink [] ast)));
-	      env_updated := true;
-	      <:expr< $lid:lid_of_string (string_of_con c)$ >>)
-      | None -> <:expr< Con () (* $str:string_of_con c$ *) >>
+		| Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
+		| None ->
+		    let ast = translate env (Declarations.force body) in
+		      cb.const_body_ast <- Some (values (uncurrify (shrink [] ast)));
+		      env_updated := true;
+		      <:expr< $lid:lid_of_string (string_of_con c)$ >>)
+      | None -> <:expr< Con () >>	(* xxx *)
 
 (** The side-effect of translate is to add the translated construction
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate (env : Environ.env) t =
-  match kind_of_term t with
-    | Rel x ->
-	<:expr< $lid: lid_of_name (match lookup_rel x env with name, _, _ -> name)$ >>
-    | Var id ->
-	let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
-	  (match named_body id env with
-	       (* Add compiled form of definition to environment if not already present. *)
-	     | Some body -> push_value id body env; v
-	     | None -> v)
-    | Sort (Prop Null) -> <:expr< Prop >>
-    | Sort (Prop Pos) -> <:expr< Set >>
-    | Sort (Type _) -> <:expr< Type 0 >>
-    | Cast (c, _, ty) ->
-	translate env c
-    | Prod (x, t, c) ->
-	let x' = if is_bound x env then
-	  (match x with
-	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
-	     | Anonymous -> Anonymous) else x in
-	let newenv = Environ.push_rel (x', None, t) env in
-	  <:expr< Prod $translate env t$ (fun $lid:lid_of_name x'$ -> $translate newenv c$) >>
-    | Lambda (x, t, c) ->
-	let x' = if is_bound x env then
-	  (match x with
-	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
-	     | Anonymous -> Anonymous) else x in
-	let newenv = Environ.push_rel (x', None, t) env in
-	  <:expr< Lam (fun $lid:lid_of_name x'$ -> $translate newenv c$) >>
-    | LetIn (x, b, t, c) ->
-	let x' = if is_bound x env then
-	  (match x with
-	     | Name id -> incr uniq; Name (id_of_string (string_of_id id ^ string_of_int !uniq))
-	     | Anonymous -> Anonymous) else x in
-	let newenv = Environ.push_rel (x', Some b, t) env in
-	  <:expr< let $lid:lid_of_name x'$ = $translate env b$ in $translate newenv c$ >>
-    | App (c, args) ->
-	(match kind_of_term c with
-	   | Construct cstr ->
-	       let f arg vs = translate env arg :: vs in
-	       let i = index_of_constructor cstr in
-	       let ind = inductive_of_constructor cstr in
-	       let mb = lookup_mind (fst ind) (pre_env env) in
-	       let ob = mb.mind_packets.(snd ind) in
-	       let nparams = rel_context_length ob.mind_arity_ctxt in
-	       let nargs = Array.length args in
-	       let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
-	       let missing = ob.mind_consnrealdecls.(i-1) - nargs + nparams in
-	       let underscores = max (nparams - nargs) 0 in
-	       let names = gen_names (missing - underscores) in
-	       let pad = List.map (fun x -> <:expr< $lid:x$ >>) names in
-	       let prefix =
-		 let rec aux n z =
-		   if n = 0
-		   then z
-		   else aux (n - 1) <:expr< Lam (fun _ -> $z$) >>
-		 in aux underscores
-		      (List.fold_left (fun e x -> <:expr< Lam (fun $lid:x$ -> $e$) >>)
-		       <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
-		       names)
-	       in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
-	   | Const name ->
-	       let zero = translate env c in
-	       let f apps x = <:expr< app $apps$ $translate env x$ >> in
-		 Array.fold_left f zero args
-	   | _ ->
-	       let zero = translate env c in
-	       let f apps x = <:expr< app $apps$ $translate env x$ >> in
-		 Array.fold_left f zero args)
-    | Const c ->
-	translate_constant (env_of_pre_env { pre_env env with env_rel_context = [] }) c
-    | Ind c ->
-	<:expr< Con () (* xxx $str:string_of_inductive c$ *) >>
-    | Construct cstr ->
-	let i = index_of_constructor cstr in
-	  <:expr< Const $int:string_of_int i$ [||] >>
-    | Case (ci, p, c, branches) ->
-	let default = (<:patt< x >>, None, <:expr< bug x >>) in
-	let vs =
+and translate env t =
+  let rec translate n t =
+    match kind_of_term t with
+      | Rel x -> <:expr< $lid:lid_of_index x$ >>
+      | Var id -> <:expr< Con () >>	(* xxx *)
+      | Sort (Prop Null) -> <:expr< Prop >>
+      | Sort (Prop Pos) -> <:expr< Set >>
+      | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
+      | Cast (c, _, ty) -> translate n c
+      | Prod (_, t, c) ->
+	  <:expr< Prod $translate n t$ (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
+      | Lambda (_, t, c) ->
+	  <:expr< Lam (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
+      | LetIn (_, b, t, c) ->
+	  <:expr< let $lid:lid_of_index n$ = $translate n b$ in $translate (n + 1) c$ >>
+      | App (c, args) ->
+	  (match kind_of_term c with
+	     | Construct cstr ->
+		 let f arg vs = translate n arg :: vs in
+		 let i = index_of_constructor cstr in
+		 let ind = inductive_of_constructor cstr in
+		 let mb = lookup_mind (fst ind) (pre_env env) in
+		 let ob = mb.mind_packets.(snd ind) in
+		 let nparams = rel_context_length ob.mind_arity_ctxt in
+		 let nargs = Array.length args in
+		 let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
+		 let missing = ob.mind_consnrealdecls.(i-1) - nargs + nparams in
+		 let underscores = max (nparams - nargs) 0 in
+		 let names = gen_names n (missing - underscores) in
+		 let pad = List.map (fun x -> <:expr< $lid:x$ >>) names in
+		 let prefix =
+		   let rec aux n z =
+		     if n = 0
+		     then z
+		     else aux (n - 1) <:expr< Lam (fun _ -> $z$) >>
+		   in aux underscores
+			(List.fold_left (fun e x -> <:expr< Lam (fun $lid:x$ -> $e$) >>)
+			 <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
+			 names)
+		 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
+	     | _ ->
+		 let zero = translate n c in
+		 let f apps x = <:expr< app $apps$ $translate n x$ >> in
+		   Array.fold_left f zero args)
+      | Const c -> translate_constant env c
+      | Ind c -> <:expr< Con () >>	(* xxx *)
+      | Construct cstr ->
+	  let i = index_of_constructor cstr in
+	    <:expr< Const $int:string_of_int i$ [||] >>
+      | Case (ci, p, c, branches) ->
+	  let default = (<:patt< x >>, None, <:expr< bug x >>) in
+	  let vs =
+	    let f i =
+	      let args = gen_names n ci.ci_cstr_nargs.(i) in
+	      let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
+	      let pat = make_constructor_pattern (i + 1) args in
+		(pat, None, apps (translate (n + ci.ci_cstr_nargs.(i)) branches.(i)) args)
+	    in Array.to_list (Array.init (Array.length branches) f)
+	  in <:expr< match $translate n c$ with [$list: vs @ [default]$] >>
+      | Fix ((recargs, i), (_, _, bodies)) ->
+	  let m = Array.length bodies in
 	  let f i =
-	    let args = gen_names ci.ci_cstr_nargs.(i) in
-	    let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
-	    let pat = make_constructor_pattern (i + 1) args in
-	      (pat, None, apps (translate env branches.(i)) args)
-	  in Array.to_list (Array.init (Array.length branches) f)
-	in <:expr< match $translate env c$ with [$list: vs @ [default]$] >>
-    | Fix ((recargs, i), (names, types, bodies)) ->
-	let n = Array.length names in
-	let fix_context = Array.to_list (Array.init n (fun i -> (names.(i), Some bodies.(i), types.(i)))) in
-	let f i =
-	  let newenv = Environ.push_rel_context fix_context env in
-	    (<:patt< $lid:lid_of_name names.(i)$ >>, translate newenv bodies.(i))
-	in let functions = Array.to_list (Array.init n f)
-	in <:expr< let rec $list:functions$ in $lid:lid_of_name names.(i)$ >>
-    | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
-    | _ -> invalid_arg "translate"
+	      (<:patt< $lid:lid_of_index (n + i)$ >>, translate (n + m) bodies.(i))
+	  in let functions = Array.to_list (Array.init m f)
+	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
+      | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
+      | _ -> invalid_arg "translate"
+  in translate 0 t
 
 (* Collect all variables and constants in the term. *)
 let assums t =
