@@ -51,9 +51,9 @@ let descend_ast f t = match t with
 
 let subst rho x = try List.assoc x rho with Not_found -> x
 
-(* A shrinking reduction. This is essentially eta-reduction. Whenever
-   a lambda is applied to a variable then beta-reduce. The size of the
-   resulting term is strictly smaller. *)
+(** A shrinking reduction. This is essentially eta-reduction. Whenever
+    a lambda is applied to a variable then beta-reduce. The size of the
+    resulting term is strictly smaller. *)
 let rec shrink rho = function
   | <:expr< app $t1$ $lid:y$ >> ->
     (match shrink rho t1 with
@@ -70,7 +70,7 @@ let rec pop_abstractions n =
 	(x :: vars, body)
     | t -> ([], t)
   else function t -> ([], t)
-    
+
 let rec pop_applications n t =
   let rec aux n args =
     if n > 0 then function
@@ -82,13 +82,16 @@ let rec pop_applications n t =
 
 let push_applications f args =
   let n = List.length args in
-    List.fold_left (fun e arg -> <:expr< $e$ $arg$ >>) <:expr< $lid:"app" ^ string_of_int n$ f >> args
+    List.fold_left (fun e arg -> <:expr< $e$ $arg$ >>)
+      <:expr< $lid:"app" ^ string_of_int n$ f >> args
 
 let rec collapse_abstractions t =
   let vars, body = pop_abstractions max_arity t in
     if List.length vars = 0 then uncurrify body else
-      let func = List.fold_right (fun x t -> <:expr< fun $x$ -> $t$ >>) vars (collapse_abstractions body) in
-	<:expr< $uid:"Lam" ^ string_of_int (List.length vars)$ $func$ >>
+      let func =
+	List.fold_right (fun x t -> <:expr< fun $x$ -> $t$ >>)
+	  vars (collapse_abstractions body)
+      in <:expr< $uid:"Lam" ^ string_of_int (List.length vars)$ $func$ >>
 
 and collapse_applications t =
   let f, args = pop_applications max_arity t in
@@ -97,7 +100,7 @@ and collapse_applications t =
 
 (* Uncurrification optimization. This consists in replacing
 
-   Lam (fun x1 => ... (Lam (fun xn => ...) 
+   Lam (fun x1 => ... (Lam (fun xn => ...)
 
    with
 
@@ -248,7 +251,7 @@ and translate env t =
       | _ -> invalid_arg "translate"
   in translate 0 t
 
-(* Collect all variables and constants in the term. *)
+(** Collect all variables and constants in the term. *)
 let assums t =
   let rec aux xs t =
     match kind_of_term t with
