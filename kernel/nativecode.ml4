@@ -188,7 +188,12 @@ and translate env t =
   let rec translate n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index x$ >>
-      | Var id -> <:expr< Con () >>	(* xxx *)
+      | Var id ->
+	  let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
+            (match named_body id env with
+		 (* Add compiled form of definition to environment if not already present. *)
+		    | Some body -> push_value id body env; v
+		    | None -> v)
       | Sort (Prop Null) -> <:expr< Prop >>
       | Sort (Prop Pos) -> <:expr< Set >>
       | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
