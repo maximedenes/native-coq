@@ -169,13 +169,15 @@ let rec push_value id body env =
 and translate_constant env c =
   let cb = lookup_constant c (pre_env env) in
     match cb.const_body with
-      | Some body -> (match cb.const_body_ast with
-		| Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
-		| None ->
-		    let ast = translate env (Declarations.force body) in
-		      cb.const_body_ast <- Some (values (uncurrify (shrink [] ast)));
-		      env_updated := true;
-		      <:expr< $lid:lid_of_string (string_of_con c)$ >>)
+      | Some body -> begin
+	  match cb.const_body_ast with
+	    | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
+	    | None ->
+		let ast = translate env (Declarations.force body) in
+		  cb.const_body_ast <- Some (values (uncurrify (shrink [] ast)));
+		  env_updated := true;
+		  <:expr< $lid:lid_of_string (string_of_con c)$ >>
+	end
       | None -> <:expr< Con () >>	(* xxx *)
 
 (** The side-effect of translate is to add the translated construction
