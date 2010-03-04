@@ -187,7 +187,7 @@ and translate_constant env c =
 and translate env t =
   let rec translate n t =
     match kind_of_term t with
-      | Rel x -> <:expr< $lid:lid_of_index x$ >>
+      | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>
       | Var id ->
 	  let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
             (match named_body id env with
