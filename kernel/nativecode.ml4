@@ -245,7 +245,7 @@ and translate env t =
 	      let args = gen_names n ci.ci_cstr_nargs.(i) in
 	      let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
 	      let pat = make_constructor_pattern (i + 1) args in
-		(pat, None, apps (translate (n + ci.ci_cstr_nargs.(i)) branches.(i)) args)
+		(pat, None, apps (translate n branches.(i)) args)
 	    in Array.to_list (Array.init (Array.length branches) f)
 	  in <:expr< match $translate n c$ with [$list: vs @ [default]$] >>
       | Fix ((recargs, i), (_, _, bodies)) ->
