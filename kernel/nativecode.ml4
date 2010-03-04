@@ -19,7 +19,7 @@ open Util
     BEWARE: changing the value of this constant requires changing
     nbe.ml accordingly to have at least as many abstraction
     constructors and application operators. *)
-let max_arity = 8
+let max_arity = 6
 
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
