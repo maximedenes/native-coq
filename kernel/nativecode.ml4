@@ -312,6 +312,8 @@ let dump_env t1 t2 env =
 let compile env t1 t2 =
   let code1 = translate env (it_mkLambda_or_LetIn t1 (rel_context env)) in
   let code2 = translate env (it_mkLambda_or_LetIn t2 (rel_context env)) in
+  let code1 = uncurrify code1 in
+  let code2 = uncurrify code2 in
     Pcaml.input_file := "/dev/null";
     if !env_updated then begin
 	Pcaml.output_file := Some "env.ml";
