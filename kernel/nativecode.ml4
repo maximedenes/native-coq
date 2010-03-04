@@ -83,7 +83,7 @@ let rec pop_applications n t =
 let push_applications f args =
   let n = List.length args in
     List.fold_left (fun e arg -> <:expr< $e$ $arg$ >>)
-      <:expr< $lid:"app" ^ string_of_int n$ f >> args
+      <:expr< $lid:"app" ^ string_of_int n$ $f$ >> args
 
 let rec collapse_abstractions t =
   let vars, body = pop_abstractions max_arity t in
