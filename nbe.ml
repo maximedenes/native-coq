@@ -16,13 +16,17 @@ type term = Con of unit
 
 let rec string_of_term n = function
   | Con c -> "Con " ^ "" (* c *)
-(*  | Lam f -> "Lam (" ^ string_of_term (n + 1) (f (Con ("v" ^ string_of_int n))) ^ ")" *)
+  | Lam1 f -> (try
+      ("Lam " ^ (string_of_int n) ^ ". (" ^ string_of_term (n + 1) (f (Con ())) ^ ")")
+      with Bug _ -> 
+         ("Lam " ^ (string_of_int n) ^ ". (...)"))
   | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <f>"
-  | App xs -> "App"
+  | App xs -> "App" ^ List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
   | Set -> "Set"
   | Prop -> "Prop"
   | Type i -> "Type " ^ string_of_int i
   | Const (i, args) -> "Const " ^ string_of_int i ^ " [" ^ Array.fold_right (fun x xs -> string_of_term n x ^ ", " ^ xs) args "" ^ "]"
+  | _ -> "nopp"
 
 let bug x = print_endline (string_of_term 0 x); raise (Bug (string_of_term 0 x))
 
