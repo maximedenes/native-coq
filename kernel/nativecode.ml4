@@ -31,7 +31,7 @@ let env_updated = ref false
    of the target code. *)
 let descend_ast f t = match t with
   | <:expr< Con $_$ >> -> t
-  | <:expr< Lam (fun $x$ -> $body$) >> -> <:expr< Lam (fun $x$ -> $f body$) >>
+  | <:expr< Lam1 (fun $x$ -> $body$) >> -> <:expr< Lam1 (fun $x$ -> $f body$) >>
   | <:expr< Prod $dom$ (fun $lid:x$ -> $cod$) >> -> <:expr< Prod $f dom$ (fun $lid:x$ -> $f cod$) >>
   | <:expr< app $t1$ $t2$ >> -> <:expr< app $f t1$ $f t2$ >>
   | <:expr< Const $i$ [| $list:args$ |] >> ->
@@ -57,7 +57,7 @@ let subst rho x = try List.assoc x rho with Not_found -> x
 let rec shrink rho = function
   | <:expr< app $t1$ $lid:y$ >> ->
     (match shrink rho t1 with
-       | <:expr< Lam (fun $lid:x$ -> $body$) >> ->
+       | <:expr< Lam1 (fun $lid:x$ -> $body$) >> ->
 	 shrink ((x, y) :: rho) body
        | t -> <:expr< app $t$ $lid:subst rho y$ >>)
   | <:expr< $lid:x$ >> -> <:expr< $lid:subst rho x$ >>
@@ -65,7 +65,7 @@ let rec shrink rho = function
 
 let rec pop_abstractions n =
   if n > 0 then function
-    | <:expr< Lam (fun $x$ -> $t$) >> ->
+    | <:expr< Lam1 (fun $x$ -> $t$) >> ->
       let vars, body = pop_abstractions (n - 1) t in
 	(x :: vars, body)
     | t -> ([], t)
@@ -100,7 +100,7 @@ and collapse_applications t =
 
 (* Uncurrification optimization. This consists in replacing
 
-   Lam (fun x1 => ... (Lam (fun xn => ...)
+   Lam1 (fun x1 => ... (Lam1 (fun xn => ...)
 
    with
 
@@ -109,10 +109,10 @@ and collapse_applications t =
    and replacing unary applications with n-ary applications where possible.
 
 *)
-and uncurrify t = match t with
-  | <:expr< Lam $_$ >> -> collapse_abstractions t
+and uncurrify t = t (*match t with
+  | <:expr< Lam1 $_$ >> -> collapse_abstractions t
   | <:expr< app $_$ $_$ >> -> collapse_applications t
-  | _ -> descend_ast uncurrify t
+  | _ -> descend_ast uncurrify t*)
 
 let lid_of_string s = "x" ^ s
 let uid_of_string s = "X" ^ s
@@ -201,7 +201,7 @@ and translate env t =
       | Prod (_, t, c) ->
 	  <:expr< Prod $translate n t$ (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
       | Lambda (_, t, c) ->
-	  <:expr< Lam (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
+	  <:expr< Lam1 (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
       | LetIn (_, b, t, c) ->
 	  <:expr< let $lid:lid_of_index n$ = $translate n b$ in $translate (n + 1) c$ >>
       | App (c, args) ->
@@ -223,9 +223,9 @@ and translate env t =
 		   let rec aux n z =
 		     if n = 0
 		     then z
-		     else aux (n - 1) <:expr< Lam (fun _ -> $z$) >>
+		     else aux (n - 1) <:expr< Lam1 (fun _ -> $z$) >>
 		   in aux underscores
-			(List.fold_left (fun e x -> <:expr< Lam (fun $lid:x$ -> $e$) >>)
+			(List.fold_left (fun e x -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
 			 <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
 			 names)
 		 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
