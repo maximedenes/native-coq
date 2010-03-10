@@ -26,7 +26,7 @@ let ast_intf_magic_number = "Caml1999N011"
 
 let max_arity = 6
 
-let uniq = ref 0
+let uniq = ref 256
 
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
@@ -321,6 +321,24 @@ let dump_env t1 t2 env =
   let initial_set = assums t1 @ assums t2
   in (<:str_item< open Nbe >>, loc) :: topological_sort initial_set vars_and_cons
 
+let ocaml_version = "3.11.1"
+let ast_impl_magic_number = "Caml1999M012"
+let ast_intf_magic_number = "Caml1999N011"
+
+let print_implem fname ast =
+  let pt = Ast2pt.implem fname (List.map fst ast) in
+  let oc = open_out_bin fname in
+  output_string oc ast_impl_magic_number;
+  output_value oc fname;
+  output_value oc pt;
+  close_out oc
+
+let compute_loc xs =
+  let rec f n = function
+    | [] -> []
+    | (str_item, _) :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
+  in f 0 xs
+
 let compile env t1 t2 =
   let code1 = translate env (it_mkLambda_or_LetIn t1 (rel_context env)) in
   let code2 = translate env (it_mkLambda_or_LetIn t2 (rel_context env)) in
@@ -328,10 +346,11 @@ let compile env t1 t2 =
   let code2 = uncurrify code2 in
     Pcaml.input_file := "/dev/null";
     if !env_updated then begin
-	Pcaml.output_file := Some "env.ml";
-	!Pcaml.print_implem (dump_env t1 t2 (pre_env env));
+        Pcaml.output_file := Some "envpr.ml";
+        !Pcaml.print_implem (dump_env t1 t2 (pre_env env));
+	print_implem "env.ml" (compute_loc (dump_env t1 t2 (pre_env env)))
       end;
-    Pcaml.output_file := Some "terms.ml";
+    Pcaml.output_file := Some "termspr.ml";
     !Pcaml.print_implem
     	 [(<:str_item< open Nbe >>, loc);
     	  (<:str_item< open Env >>, loc);
@@ -340,6 +359,14 @@ let compile env t1 t2 =
     	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
     	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
     	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
+    print_implem "terms.ml"
+	 [(<:str_item< open Nbe >>, loc);
+	  (<:str_item< open Env >>, loc);
+	  (<:str_item< value t1 = $code1$ >>, loc);
+	  (<:str_item< value t2 = $code2$ >>, loc);
+    	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
+    	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
+	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
     env_updated := false;
     (values code1, values code2)
 
