@@ -9,6 +9,10 @@ open Declarations
 open Util
 
 
+(*  *)
+let ast_impl_magic_number = "Caml1999M012"
+let ast_intf_magic_number = "Caml1999N011"
+
 (** One of the optimizations performed on the target code is
     uncurrying, meaning collapsing functions into n-ary functions and
     introducing a family of application operators that apply an n-ary
@@ -19,7 +23,15 @@ open Util
     BEWARE: changing the value of this constant requires changing
     nbe.ml accordingly to have at least as many abstraction
     constructors and application operators. *)
+
 let max_arity = 6
+
+let uniq = ref 0
+
+(* Required to make camlp5 happy. *)
+let loc = Ploc.dummy
+
+(* Flag to signal whether recompilation is needed. *)
 
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
