@@ -325,8 +325,19 @@ let compile env t1 t2 =
     	  (<:str_item< open Env >>, loc);
     	  (<:str_item< value t1 = $code1$ >>, loc);
     	  (<:str_item< value t2 = $code2$ >>, loc);
+    	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
+    	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
     	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
     env_updated := false;
     (values code1, values code2)
 
-let compare (v1, v2) cu = cu		(* xxx *)
+let compare (v1, v2) cu =
+  let _ = Unix.system "touch env.ml" in
+  match Unix.system "ocamlopt nbe.ml env.ml terms.ml" with
+    | Unix.WEXITED 0 ->
+      begin
+      match Unix.system "./a.out" with
+        | Unix.WEXITED 0 -> cu
+        | _ -> raise Reduction.NotConvertible
+      end
+    | _ -> raise Reduction.NotConvertible
