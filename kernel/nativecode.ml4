@@ -193,7 +193,7 @@ and translate env t =
             (match named_body id env with
 		 (* Add compiled form of definition to environment if not already present. *)
 		    | Some body -> push_value id body env; v
-		    | None -> v)
+		    | None -> <:expr< Con ()>>)
       | Sort (Prop Null) -> <:expr< Prop >>
       | Sort (Prop Pos) -> <:expr< Set >>
       | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
