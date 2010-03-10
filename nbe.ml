@@ -13,6 +13,7 @@ type term = Con of unit
 	    | Prop
 	    | Type of int
 	    | Const of int * term array
+            | Var of int
 
 let rec string_of_term n = function
   | Con c -> "Con " ^ "" (* c *)
@@ -38,6 +39,7 @@ let app1 t1 t2 = match t1 with
   | Lam5 f -> Lam4 (f t2)
   | Lam6 f -> Lam5 (f t2)
   | Con x ->  App (Con x :: [t2])
+  | Var x ->  App (Var x :: [t2])
   | App xs -> App (xs @ [t2])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app2 t1 t2 t3 = match t1 with
@@ -94,6 +96,7 @@ let app = app1
 
 let rec compare n t1 t2 = match t1, t2 with
   | Con c, Con c' when c = c' -> ()
+  | Var c, Var c' when c = c' -> ()
   | Prod (t, f), Prod (t', f') ->
       compare n t t';
       compare (n + 1) (f (Con ())) (f' (Con ()))
@@ -103,4 +106,5 @@ let rec compare n t1 t2 = match t1, t2 with
   | Type i, Type i' when i = i' -> ()
   | Const (i, args), Const (i', args') when i = i' ->
       Array.iteri (fun i _ -> compare n args.(i) args'.(i)) args
+  | Lam1 f, Lam1 g -> compare (n+1) (f (Var n)) (g (Var n))
   | _ -> print_endline (string_of_term n t1); print_endline (string_of_term n t2); exit 1
