@@ -43,9 +43,11 @@ let env_updated = ref false
    of the target code. *)
 let descend_ast f t = match t with
   | <:expr< Con $_$ >> -> t
+  | <:expr< Var $_$ >> -> t
   | <:expr< Lam1 (fun $x$ -> $body$) >> -> <:expr< Lam1 (fun $x$ -> $f body$) >>
   | <:expr< Prod $dom$ (fun $lid:x$ -> $cod$) >> -> <:expr< Prod $f dom$ (fun $lid:x$ -> $f cod$) >>
   | <:expr< app $t1$ $t2$ >> -> <:expr< app $f t1$ $f t2$ >>
+  | <:expr< App $_$ >> -> t 
   | <:expr< Const $i$ [| $list:args$ |] >> ->
       <:expr< Const $i$ [| $list:List.fold_right (fun t ts -> f t :: ts) args []$ |] >>
   | <:expr< Set >> -> t
@@ -172,6 +174,23 @@ let rec gen_names start len =
     lid_of_index start :: gen_names (start + 1) (len - 1)
   else raise (Invalid_argument "gen_names")
 
+let rec patch_fix f n =
+  if n > 0 then function
+    | <:expr< Lam1 (fun $x$ -> $t$) >> ->
+          <:expr< Lam1 (fun $x$ -> $patch_fix f (n-1) t$) >>
+    | _ -> invalid_arg "translate.patch_fix"
+  else
+  function
+    | <:expr< Lam1 (fun $lid:x$ -> $t$) >> ->
+      let const_branch = (<:patt< Const _ _ >>, None, <:expr< $lid:f$ >>) in
+      (* TODO : ensure Var below is fresh *)
+      let default = (<:patt< _ >>, None, <:expr< Lam1 (fun x -> App [Var 0;x]) >>) in
+      let capture = <:expr< let $lid:f$ = match $lid:x$ with [$list:[const_branch;default]$]  in $t$ >>
+      in
+        <:expr< Lam1 (fun $lid:x$ -> $capture$) >>
+    | _ -> invalid_arg "translate.patch_fix.2"
+
+
 let rec push_value id body env =
   env_updated := true;
   let kind = lookup_named_val id (pre_env env) in
@@ -269,7 +288,11 @@ and translate env t =
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
 	  let f i =
-	      (<:patt< $lid:lid_of_index (n + i)$ >>, translate (n + m) bodies.(i))
+              let trans = translate (n + m) bodies.(i) in
+              let fix_lid = lid_of_index (n + i) in
+              print_endline "Translating fixpoint...";
+	      let r = (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid i trans) in
+              print_endline "done"; r
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
       | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
