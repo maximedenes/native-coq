@@ -51,6 +51,7 @@ let descend_ast f t = match t with
   | <:expr< Set >> -> t
   | <:expr< Prop >> -> t
   | <:expr< Type $_$ >> -> t
+  | <:expr< Match $_$ >> -> t
   | <:expr< $lid:x$ >> -> t
   | <:expr< match $scrutinee$ with [ $list:branches$ ] >> ->
       let bs = List.fold_right (fun (p, w, body) bs -> (p, w, f body) :: bs) branches [] in
@@ -251,15 +252,20 @@ and translate env t =
 	  let i = index_of_constructor cstr in
 	    <:expr< Const $int:string_of_int i$ [||] >>
       | Case (ci, p, c, branches) ->
-	  let default = (<:patt< x >>, None, <:expr< bug x >>) in
+          let trans_branches = Array.to_list (Array.map (translate n) branches) in
+          let trans_c = translate n c in
 	  let vs =
-	    let f i =
+	    let f i trans_br =
 	      let args = gen_names n ci.ci_cstr_nargs.(i) in
 	      let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
 	      let pat = make_constructor_pattern (i + 1) args in
-		(pat, None, apps (translate n branches.(i)) args)
-	    in Array.to_list (Array.init (Array.length branches) f)
-	  in <:expr< match $translate n c$ with [$list: vs @ [default]$] >>
+		(pat, None, apps trans_br args)
+            in list_map_i f 0 trans_branches
+          in let neutral_match =
+            <:expr< Match [| $list:trans_c::trans_branches$ |]>>
+          in let default =
+            (<:patt< x >>, None, neutral_match)
+	  in <:expr< match $trans_c$ with [$list: vs @ [default]$] >>
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
 	  let f i =

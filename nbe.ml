@@ -9,11 +9,18 @@ type term = Con of unit
             | Lam6 of (term -> term -> term -> term -> term -> term -> term)
 	    | Prod of term * (term -> term)
 	    | App of term list
+            | Match of term array
 	    | Set
 	    | Prop
 	    | Type of int
 	    | Const of int * term array
             | Var of int
+
+let array_iter2 f v1 v2 =
+  let n = Array.length v1 in
+  if Array.length v2 <> n then invalid_arg "array_iter2"
+  else for i = 0 to n - 1 do f v1.(i) v2.(i) done
+
 
 let rec string_of_term n = function
   | Con c -> "Con " ^ "" (* c *)
@@ -23,6 +30,7 @@ let rec string_of_term n = function
          ("Lam " ^ (string_of_int n) ^ ". (...)"))
   | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <f>"
   | App xs -> "App" ^ List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
+  | Match xs -> "Match" ^ Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
   | Set -> "Set"
   | Prop -> "Prop"
   | Type i -> "Type " ^ string_of_int i
@@ -101,6 +109,7 @@ let rec compare n t1 t2 = match t1, t2 with
       compare n t t';
       compare (n + 1) (f (Con ())) (f' (Con ()))
   | App xs, App xs' -> List.iter2 (compare n) xs xs'
+  | Match xs, Match xs' -> array_iter2 (compare n) xs xs' 
   | Set, Set -> ()
   | Prop, Prop -> ()
   | Type i, Type i' when i = i' -> ()
