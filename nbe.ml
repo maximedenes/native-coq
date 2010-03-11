@@ -24,12 +24,13 @@ let array_iter2 f v1 v2 =
 
 let rec string_of_term n = function
   | Con c -> "Con " ^ "" (* c *)
+  | Var x -> "Var " ^ (string_of_int x)
   | Lam1 f -> (try
       ("Lam " ^ (string_of_int n) ^ ". (" ^ string_of_term (n + 1) (f (Con ())) ^ ")")
       with Bug _ -> 
          ("Lam " ^ (string_of_int n) ^ ". (...)"))
-  | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <f>"
-  | App xs -> "App" ^ List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
+  | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <" ^ string_of_term (n+1) (f (Var n))  ^ ">"
+  | App xs -> "(" ^ List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
   | Match xs -> "Match" ^ Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
   | Set -> "Set"
   | Prop -> "Prop"
@@ -49,6 +50,7 @@ let app1 t1 t2 = match t1 with
   | Con x ->  App (Con x :: [t2])
   | Var x ->  App (Var x :: [t2])
   | App xs -> App (xs @ [t2])
+  | Match _ -> App (t1 :: [t2])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app2 t1 t2 t3 = match t1 with
   | Lam1 f -> app1 (f t2) t3
