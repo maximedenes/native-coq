@@ -351,7 +351,7 @@ let compile env t1 t2 =
   let code1 = uncurrify code1 in
   let code2 = uncurrify code2 in
     Pcaml.input_file := "/dev/null";
-    if !env_updated then begin
+    if true (* TODO : dump env for whole vo file *) then begin
         Pcaml.output_file := Some "envpr.ml";
         !Pcaml.print_implem (dump_env t1 t2 (pre_env env));
 	print_implem "env.ml" (compute_loc (dump_env t1 t2 (pre_env env)))
