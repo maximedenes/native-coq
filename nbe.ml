@@ -31,7 +31,7 @@ let rec string_of_term n = function
          ("Lam " ^ (string_of_int n) ^ ". (...)"))
   | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <" ^ string_of_term (n+1) (f (Var n))  ^ ">"
   | App xs -> "(" ^ List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
-  | Match xs -> "Match" ^ Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs
+  | Match xs -> "(Match" ^ Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
   | Set -> "Set"
   | Prop -> "Prop"
   | Type i -> "Type " ^ string_of_int i
@@ -109,7 +109,7 @@ let rec compare n t1 t2 = match t1, t2 with
   | Var c, Var c' when c = c' -> ()
   | Prod (t, f), Prod (t', f') ->
       compare n t t';
-      compare (n + 1) (f (Con ())) (f' (Con ()))
+      compare (n + 1) (f (Var n)) (f' (Var n))
   | App xs, App xs' -> List.iter2 (compare n) xs xs'
   | Match xs, Match xs' -> array_iter2 (compare n) xs xs' 
   | Set, Set -> ()

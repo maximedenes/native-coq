@@ -291,7 +291,7 @@ and translate env t =
               let trans = translate (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
               print_endline "Translating fixpoint...";
-	      let r = (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid i trans) in
+	      let r = (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid recargs.(i) trans) in
               print_endline "done"; r
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
