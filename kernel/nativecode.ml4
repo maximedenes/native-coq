@@ -210,14 +210,14 @@ and translate_constant env c =
 		  env_updated := true;
 		  <:expr< $lid:lid_of_string (string_of_con c)$ >>
 	end
-      | None -> <:expr< Con () >>	(* xxx *)
+      | _ -> <:expr< Con $str:string_of_con c$ >>	(* xxx *)
 
 (** The side-effect of translate is to add the translated construction
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
 and translate env t =
-  let rec translate n t =
+  (let rec translate n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>
       | Var id ->
@@ -237,39 +237,19 @@ and translate env t =
       | LetIn (_, b, t, c) ->
 	  <:expr< let $lid:lid_of_index n$ = $translate n b$ in $translate (n + 1) c$ >>
       | App (c, args) ->
-	  (match kind_of_term c with
-	     | Construct cstr ->
-		 let f arg vs = translate n arg :: vs in
-		 let i = index_of_constructor cstr in
-		 let ind = inductive_of_constructor cstr in
-		 let mb = lookup_mind (fst ind) (pre_env env) in
-		 let ob = mb.mind_packets.(snd ind) in
-		 let nparams = rel_context_length ob.mind_arity_ctxt in
-		 let nargs = Array.length args in
-		 let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
-		 let missing = ob.mind_consnrealdecls.(i-1) - nargs + nparams in
-		 let underscores = max (nparams - nargs) 0 in
-		 let names = gen_names n (missing - underscores) in
-		 let pad = List.map (fun x -> <:expr< $lid:x$ >>) names in
-		 let prefix =
-		   let rec aux n z =
-		     if n = 0
-		     then z
-		     else aux (n - 1) <:expr< Lam1 (fun _ -> $z$) >>
-		   in aux underscores
-			(List.fold_left (fun e x -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
-			 <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
-			 names)
-		 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
-	     | _ ->
-		 let zero = translate n c in
-		 let f apps x = <:expr< app $apps$ $translate n x$ >> in
-		   Array.fold_left f zero args)
+          translate_app n c args
       | Const c -> translate_constant env c
-      | Ind c -> <:expr< Con () >>	(* xxx *)
+      | Ind c -> <:expr< Con $str:string_of_inductive c$ >>	(* xxx *)
       | Construct cstr ->
 	  let i = index_of_constructor cstr in
+	  let ind = inductive_of_constructor cstr in
+	  let mb = lookup_mind (fst ind) env in
+	  let ob = mb.mind_packets.(snd ind) in
+	  let nparams = mb.mind_nparams in
+          let _,arity = ob.mind_reloc_tbl.(i-1) in
+          if nparams+arity = 0 then
 	    <:expr< Const $int:string_of_int i$ [||] >>
+          else translate_app n t [||]
       | Case (ci, p, c, branches) ->
           let trans_branches = Array.to_list (Array.map (translate n) branches) in
           let trans_c = translate n c in
@@ -290,124 +270,39 @@ and translate env t =
 	  let f i =
               let trans = translate (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
-              print_endline "Translating fixpoint...";
-	      let r = (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid recargs.(i) trans) in
-              print_endline "done"; r
+	      (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid recargs.(i) trans)
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
       | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
       | _ -> invalid_arg "translate"
-  in translate 0 t
-
-(** Collect all variables and constants in the term. *)
-let assums t =
-  let rec aux xs t =
-    match kind_of_term t with
-      | Var id -> string_of_id id :: xs
-      | Const c -> string_of_con c :: xs
-      | _ -> fold_constr aux xs t
-  in aux [] t
-
-let add_value env (id, value) xs =
-  match !value with
-    | VKvalue (v, _) ->
-	let sid = string_of_id id in
-	let ast = (<:str_item< value $lid:lid_of_string sid$ = $expr_of_values v$ >>, loc) in
-	let deps = match named_body id (env_of_pre_env env) with
-	  | Some body -> assums body
-	  | None -> []
-	in Stringmap.add sid (ast, deps) xs
-    | VKnone -> xs
-
-let add_constant c ck xs =
-  match (fst ck).const_body_ast with
-    | Some v ->
-	let sc = string_of_con c in
-	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
-	let deps = match (fst ck).const_body with
-	  | Some body -> assums (Declarations.force body)
-	  | None -> []
-	in Stringmap.add sc (ast, deps) xs
-    | None -> xs
-
-let topological_sort init xs =
-  let visited = ref Stringset.empty in
-  let rec aux s result =
-    if Stringset.mem s !visited
-    then result
-    else begin
-      try
-	let (x, deps) = Stringmap.find s xs in
-	  visited := Stringset.add s !visited;
-	  x :: List.fold_right aux deps result
-      with Not_found -> result
-    end
-  in List.rev (List.fold_right aux init [])
-
-let dump_env t1 t2 env =
-  let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
-  let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
-  let initial_set = assums t1 @ assums t2
-  in (<:str_item< open Nbe >>, loc) :: topological_sort initial_set vars_and_cons
-
-let ocaml_version = "3.11.1"
-let ast_impl_magic_number = "Caml1999M012"
-let ast_intf_magic_number = "Caml1999N011"
-
-let print_implem fname ast =
-  let pt = Ast2pt.implem fname (List.map fst ast) in
-  let oc = open_out_bin fname in
-  output_string oc ast_impl_magic_number;
-  output_value oc fname;
-  output_value oc pt;
-  close_out oc
-
-let compute_loc xs =
-  let rec f n = function
-    | [] -> []
-    | (str_item, _) :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
-  in f 0 xs
-
-let compile env t1 t2 =
-  let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
-  let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
-  let code1 = translate env t1 in
-  let code2 = translate env t2 in
-  let code1 = uncurrify code1 in
-  let code2 = uncurrify code2 in
-    Pcaml.input_file := "/dev/null";
-    if true (* TODO : dump env for whole vo file *) then begin
-        Pcaml.output_file := Some "envpr.ml";
-        !Pcaml.print_implem (dump_env t1 t2 (pre_env env));
-	print_implem "env.ml" (compute_loc (dump_env t1 t2 (pre_env env)))
-      end;
-    Pcaml.output_file := Some "termspr.ml";
-    !Pcaml.print_implem
-    	 [(<:str_item< open Nbe >>, loc);
-    	  (<:str_item< open Env >>, loc);
-    	  (<:str_item< value t1 = $code1$ >>, loc);
-    	  (<:str_item< value t2 = $code2$ >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
-    	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
-    print_implem "terms.ml"
-	 [(<:str_item< open Nbe >>, loc);
-	  (<:str_item< open Env >>, loc);
-	  (<:str_item< value t1 = $code1$ >>, loc);
-	  (<:str_item< value t2 = $code2$ >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
-	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
-    env_updated := false;
-    (values code1, values code2)
-
-let compare (v1, v2) cu =
-  let _ = Unix.system "touch env.ml" in
-  match Unix.system "ocamlopt nbe.ml env.ml terms.ml" with
-    | Unix.WEXITED 0 ->
-      begin
-      match Unix.system "./a.out" with
-        | Unix.WEXITED 0 -> cu
-        | _ -> raise Reduction.NotConvertible
-      end
-    | _ -> raise Reduction.NotConvertible
+and translate_app n c args =
+  match kind_of_term c with
+     | Construct cstr ->
+	 let f arg vs = translate n arg :: vs in
+	 let i = index_of_constructor cstr in
+	 let ind = inductive_of_constructor cstr in
+	 let mb = lookup_mind (fst ind) env in
+	 let ob = mb.mind_packets.(snd ind) in
+	 let nparams = mb.mind_nparams in
+	 let nargs = Array.length args in
+	 let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
+         let _,arity = ob.mind_reloc_tbl.(i-1) in
+	 let missing = arity + nparams - nargs in
+	 let underscores = max (nparams - nargs) 0 in
+	 let names = gen_names n (missing - underscores) in
+	 let pad = List.map (fun x -> <:expr< $lid:x$ >>) names in
+	 let prefix =
+	   let rec aux n z =
+	     if n = 0
+	     then z
+	     else aux (n - 1) <:expr< Lam1 (fun _ -> $z$) >>
+	   in aux underscores
+		(List.fold_right (fun x e -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
+		 names <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
+		 )
+	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
+     | _ ->
+	 let zero = translate n c in
+	 let f apps x = <:expr< app $apps$ $translate n x$ >> in
+	   Array.fold_left f zero args
+  in uncurrify (translate 0 t))
