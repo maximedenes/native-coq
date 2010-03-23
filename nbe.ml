@@ -1,6 +1,6 @@
 exception Bug of string
 
-type term = Con of unit
+type term = Con of string
 	    | Lam1 of (term -> term)
             | Lam2 of (term -> term -> term)
             | Lam3 of (term -> term -> term -> term)
@@ -23,10 +23,10 @@ let array_iter2 f v1 v2 =
 
 
 let rec string_of_term n = function
-  | Con c -> "Con " ^ "" (* c *)
+  | Con c -> "Con " ^ c
   | Var x -> "Var " ^ (string_of_int x)
   | Lam1 f -> (try
-      ("Lam " ^ (string_of_int n) ^ ". (" ^ string_of_term (n + 1) (f (Con ())) ^ ")")
+      ("Lam " ^ (string_of_int n) ^ ". (" ^ string_of_term (n + 1) (f (Var n)) ^ ")")
       with Bug _ -> 
          ("Lam " ^ (string_of_int n) ^ ". (...)"))
   | Prod (ty, f) -> "Prod " ^ string_of_term n ty ^ " <" ^ string_of_term (n+1) (f (Var n))  ^ ">"

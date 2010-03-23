@@ -1,8 +1,6 @@
 open Names
 open Term
-open Environ
+open Pre_env
 open Univ
 
 val translate : env -> constr -> MLast.expr
-val compile : env -> constr -> constr -> values * values
-val compare : values * values -> Univ.constraints -> Univ.constraints

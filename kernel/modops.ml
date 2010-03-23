@@ -258,12 +258,12 @@ let strengthen_const env mp_from l cb resolver =
       let con = make_con mp_from empty_dirpath l in
       let con =  constant_of_delta resolver con in
       let const = mkConst con in 
-      let const_subs = Def (Declarations.from_val const) in
+      let const_subs = Declarations.from_val const in
       { cb with 
-	const_body = const_subs;
+	const_body = (Def const_subs);
 	const_body_code = Cemitcodes.from_val
-	  (compile_constant_body env const_subs false);
-	const_body_ast = None;
+	  (compile_constant_body env (Def const_subs) false);
+	const_body_ast = Some (values (translate env (Declarations.force const_subs)));
 	const_inline_code = false
       }
 
