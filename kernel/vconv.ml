@@ -248,9 +248,11 @@ let vconv pb env t1 t2 =
 	end
       else try
 	print_string "actual... ";
-        let values = Nativecode.compile env t1 t2 in
-        let cu = Nativecode.compare values Constraint.empty in
-          print_endline "done."; cu
+        let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
+        let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
+        let values = Nbeconv.compile (pre_env env) t1 t2 in
+        let cu = Nbeconv.compare values Constraint.empty in
+          print_endline "done."; cu (*Constraint.empty*)
       with e -> Util.anomaly (Printexc.to_string e)
 
 (* let vconv_profile = Profile.declare_profile "vconv" *)

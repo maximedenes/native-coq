@@ -2,12 +2,12 @@
 
 open Names
 open Term
-open Environ
 open Pre_env
 open Pcaml
 open Declarations
 open Util
 
+exception NotConvertible
 
 (*  *)
 let ast_impl_magic_number = "Caml1999M012"
@@ -193,7 +193,7 @@ let rec patch_fix f n =
 
 let rec push_value id body env =
   env_updated := true;
-  let kind = lookup_named_val id (pre_env env) in
+  let kind = lookup_named_val id env in
     match !kind with
       | VKvalue (v, _) -> ()
       | VKnone -> kind := VKvalue (values (translate env body), Idset.empty)
