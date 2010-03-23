@@ -199,9 +199,10 @@ let rec push_value id body env =
       | VKnone -> kind := VKvalue (values (translate env body), Idset.empty)
 
 and translate_constant env c =
-  let cb = lookup_constant c (pre_env env) in
-    match cb.const_body with
-      | Some body -> begin
+  print_endline ("Translating constant "^string_of_con c);
+  let cb = lookup_constant c env in
+    match (cb.const_opaque, cb.const_body) with
+      | false, Some body -> begin
 	  match cb.const_body_ast with
 	    | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
 	    | None ->
@@ -221,11 +222,11 @@ and translate env t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>
       | Var id ->
-	  let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
-            (match named_body id env with
-		 (* Add compiled form of definition to environment if not already present. *)
-		    | Some body -> push_value id body env; v
-		    | None -> <:expr< Con ()>>)
+	  (let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
+          let (_, b, _) = Sign.lookup_named id env.env_named_context in
+	      match b with
+		| None -> <:expr< Con $str:string_of_id id$ >>
+		| Some body -> push_value id body env; v)
       | Sort (Prop Null) -> <:expr< Prop >>
       | Sort (Prop Pos) -> <:expr< Set >>
       | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
