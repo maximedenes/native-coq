@@ -160,7 +160,7 @@ let compile env t1 t2 =
 
 let compare (v1, v2) cu =
   let _ = Unix.system "touch env.ml" in
-  match Unix.system "ocamlopt nbe.ml env.ml terms.ml" with
+  match Unix.system "ocamlopt.opt nbe.ml env.ml terms.ml" with
     | Unix.WEXITED 0 ->
       begin
       match Unix.system "./a.out" with
