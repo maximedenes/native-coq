@@ -167,6 +167,7 @@ let make_constructor_pattern i args =
     <:patt< Const $int:string_of_int i$ [| $list:List.map f args$ |] >>
 
 let lid_of_index n = "x" ^ string_of_int n
+let code_lid_of_index p = "b" ^ string_of_int p
 
 let rec gen_names start len =
   if len = 0 then []
@@ -251,21 +252,27 @@ and translate env t =
           if nparams+arity = 0 then
 	    <:expr< Const $int:string_of_int i$ [||] >>
           else translate_app n t [||]
-      | Case (ci, p, c, branches) ->
-          let trans_branches = Array.to_list (Array.map (translate n) branches) in
-          let trans_c = translate n c in
-	  let vs =
-	    let f i trans_br =
-	      let args = gen_names n ci.ci_cstr_nargs.(i) in
-	      let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
-	      let pat = make_constructor_pattern (i + 1) args in
-		(pat, None, apps trans_br args)
-            in list_map_i f 0 trans_branches
-          in let neutral_match =
-            <:expr< Match [| $list:trans_c::trans_branches$ |]>>
-          in let default =
-            (<:patt< x >>, None, neutral_match)
-	  in <:expr< match $trans_c$ with [$list: vs @ [default]$] >>
+      | Case (ci, pi, c, branches) ->
+	  let f i br (xs1,xs2,xs3) =
+            let b = code_lid_of_index (i+1) in
+	    let args = gen_names n ci.ci_cstr_nargs.(i) in
+            let vars = gen_vars n  ci.ci_cstr_nargs.(i) in
+    	    let caml_apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
+    	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
+            let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
+       	    let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in
+	    let pat1 = make_constructor_pattern (i + 1) args in
+            let pat2 = <:patt< $lid:b$ >> in
+            let body = abs args (apps (translate n br) args) in
+	      ((pat1, None, caml_apps <:expr< $lid:b$ >> args)::xs1,
+                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> vars :: xs3)
+          in
+          let (vs,bodies,neutrals) = array_fold_right_i f branches ([],[],[]) in 
+          let neutral_match = <:expr< Match [| $list:neutrals$ |]>> in
+          let default = (<:patt< x >>, None, neutral_match) in
+          let match_body = <:expr< match $lid:code_lid_of_index 0$ with [$list:vs@[default]$] >> in
+          let letdefs = (<:patt< $lid:code_lid_of_index 0$ >>, translate n c)::bodies in
+          <:expr< let $list:letdefs$ in $match_body$ >>
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
 	  let f i =
