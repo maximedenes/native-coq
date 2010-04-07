@@ -61,6 +61,7 @@ let descend_ast f t = match t with
   | <:expr< let $flag:r$ $list:defs$ in $t$ >> ->
       let defs' = List.map (fun (p, t) -> (p, f t)) defs in
 	<:expr< let $flag:r$ $list:defs'$ in $f t$ >>
+  | <:expr< ($list:l$) >> -> <:expr< ($list:List.map f l$) >>
   | <:expr< bug x >> -> t
   | _ -> raise (Invalid_argument "descend_ast")
 
@@ -175,18 +176,33 @@ let rec gen_names start len =
     lid_of_index start :: gen_names (start + 1) (len - 1)
   else raise (Invalid_argument "gen_names")
 
-let rec patch_fix f n =
+let rec gen_vars start len =
+  if len = 0 then []
+  else if len > 0 then
+    <:expr< Var $int:string_of_int start$ >> :: gen_vars (start + 1) (len - 1)
+  else raise (Invalid_argument "gen_vars")
+
+let rec patch_fix l n =
   if n > 0 then function
     | <:expr< Lam1 (fun $x$ -> $t$) >> ->
-          <:expr< Lam1 (fun $x$ -> $patch_fix f (n-1) t$) >>
+          <:expr< Lam1 (fun $x$ -> $patch_fix l (n-1) t$) >>
     | _ -> invalid_arg "translate.patch_fix"
   else
   function
     | <:expr< Lam1 (fun $lid:x$ -> $t$) >> ->
-      let const_branch = (<:patt< Const _ _ >>, None, <:expr< $lid:f$ >>) in
+      let mk_patt x = <:patt< $lid:x$>> in
+      let mk_expr x = <:expr< $lid:x$>> in
+      let mk_eta_expr x = <:expr< Lam1 (fun x -> App [Var 0;x])>> in
+      let const_branch =
+        (<:patt< Const _ _ >>, None, <:expr< ($list:(List.map mk_expr l)$) >>)
+      in
       (* TODO : ensure Var below is fresh *)
-      let default = (<:patt< _ >>, None, <:expr< Lam1 (fun x -> App [Var 0;x]) >>) in
-      let capture = <:expr< let $lid:f$ = match $lid:x$ with [$list:[const_branch;default]$]  in $t$ >>
+      let default =
+        (<:patt< _ >>, None, <:expr< ($list:List.map mk_eta_expr l$) >>)
+      in
+      let capture =
+        let match_body = <:expr< match $lid:x$ with [$list:[const_branch;default]$] >> in
+        <:expr< let ($list:List.map mk_patt l$) = $match_body$  in $t$ >>
       in
         <:expr< Lam1 (fun $lid:x$ -> $capture$) >>
     | _ -> invalid_arg "translate.patch_fix.2"
@@ -278,7 +294,8 @@ and translate env t =
 	  let f i =
               let trans = translate (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
-	      (<:patt< $lid:fix_lid$ >>, patch_fix fix_lid recargs.(i) trans)
+              let lids = (gen_names n m) in
+	      (<:patt< $lid:fix_lid$ >>, patch_fix lids recargs.(i) trans)
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
       | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
