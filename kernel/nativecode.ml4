@@ -207,7 +207,7 @@ and translate_constant env c =
 	    | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
 	    | None ->
 		let ast = translate env (Declarations.force body) in
-		  cb.const_body_ast <- Some (values (uncurrify (shrink [] ast)));
+		  cb.const_body_ast <- Some (values (uncurrify ((*shrink []*) ast)));
 		  env_updated := true;
 		  <:expr< $lid:lid_of_string (string_of_con c)$ >>
 	end
