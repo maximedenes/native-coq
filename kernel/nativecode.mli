@@ -3,4 +3,6 @@ open Term
 open Pre_env
 open Univ
 
+val string_of_con : constant -> string
+
 val translate : env -> constr -> MLast.expr
