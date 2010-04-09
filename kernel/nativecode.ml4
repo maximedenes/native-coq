@@ -148,13 +148,12 @@ let rec string_of_mp = function
   | MPbound uid -> string_of_mbid uid
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
-let string_of_kn kn =
+(*let string_of_kn kn =
   let (modpath, _dirpath, label) = repr_kn kn in
-    string_of_mp modpath ^ "_" ^ string_of_label label
+    string_of_mp modpath ^ "_" ^ string_of_label label*)
 
 let string_of_con con =
-  let (modpath, _dirpath, label) = repr_con con in
-    string_of_mp modpath ^ "_" ^ string_of_label label
+  string_of_kn (canonical_con con)
 
 let string_of_inductive (mind, i) =
   string_of_mind mind ^ string_of_int i
