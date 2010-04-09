@@ -178,7 +178,7 @@ let rec gen_names start len =
 let rec gen_vars start len =
   if len = 0 then []
   else if len > 0 then
-    <:expr< Var $int:string_of_int start$ >> :: gen_vars (start + 1) (len - 1)
+    <:expr< Var 0 >> :: gen_vars (start + 1) (len - 1)
   else raise (Invalid_argument "gen_vars")
 
 let rec patch_fix l n =
