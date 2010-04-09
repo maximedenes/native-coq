@@ -135,7 +135,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
   let tps = Cemitcodes.from_val (compile_constant_body env body boxed) in
   let ast = match body with
               Def b -> Some (values (translate env (Declarations.force b)))
-              | None -> None
+              | _ -> Some (values Nativecode.opaque_const) 
   in
   let hyps = keep_hyps env ids in
     { const_hyps = hyps;

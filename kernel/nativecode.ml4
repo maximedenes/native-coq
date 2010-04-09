@@ -255,7 +255,7 @@ and translate env t =
 	  <:expr< let $lid:lid_of_index n$ = $translate n b$ in $translate (n + 1) c$ >>
       | App (c, args) ->
           translate_app n c args
-      | Const c -> translate_constant env c
+      | Const c -> <:expr< $lid:lid_of_string (string_of_con c)$ >> (* translate_constant env c *)
       | Ind c -> <:expr< Con $str:string_of_inductive c$ >>	(* xxx *)
       | Construct cstr ->
 	  let i = index_of_constructor cstr in
@@ -330,3 +330,6 @@ and translate_app n c args =
 	 let f apps x = <:expr< app $apps$ $translate n x$ >> in
 	   Array.fold_left f zero args
   in uncurrify (translate 0 t))
+
+let opaque_const =
+  <:expr< Con "xx">>
