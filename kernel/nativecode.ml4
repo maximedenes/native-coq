@@ -212,7 +212,9 @@ let rec push_value id body env =
   let kind = lookup_named_val id env in
     match !kind with
       | VKvalue (v, _) -> ()
-      | VKnone -> kind := VKvalue (values (translate env body), Idset.empty)
+      | VKnone ->
+	 let v,d = (values (translate env body), Idset.empty) (* TODO : compute actual idset *)
+         in kind := VKvalue (v,d)
 
 and translate_constant env c =
   print_endline ("Translating constant "^string_of_con c);
@@ -297,8 +299,8 @@ and translate env t =
 	      (<:patt< $lid:fix_lid$ >>, patch_fix lids recargs.(i) trans)
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
-      | CoFix(ln, (_, tl, bl)) -> invalid_arg "translate"
-      | _ -> invalid_arg "translate"
+      | CoFix(ln, (_, tl, bl)) -> <:expr< Con $str:"cofix"$ >>(* invalid_arg "translate"*)
+      | _ -> <:expr< Con $str:"other"$ >>(* invalid_arg "translate"*)
 and translate_app n c args =
   match kind_of_term c with
      | Construct cstr ->
