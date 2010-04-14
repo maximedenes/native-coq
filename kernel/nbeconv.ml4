@@ -126,13 +126,24 @@ let compute_loc xs =
   in f 0 xs
 
 let compile env t1 t2 =
+  let _ = Unix.system "rm envpr.ml" in
+  let _ = Unix.system "rm termspr.ml" in
+  let _ = Unix.system "rm env.ml" in
+  let _ = Unix.system "rm terms.ml" in
+  print_endline "Translating t1";
   let code1 = translate env t1 in
+  print_endline "Translating t2";
   let code2 = translate env t2 in
     Pcaml.input_file := "/dev/null";
     if true (* TODO : dump env for whole vo file *) then begin
+        print_endline "Dumping env";
         Pcaml.output_file := Some "envpr.ml";
-        !Pcaml.print_implem (dump_env t1 t2 env);
-	print_implem "env.ml" (compute_loc (dump_env t1 t2 env))
+        let dump = dump_env t1 t2 env in
+        print_endline "Dumped env.";
+        !Pcaml.print_implem (dump);
+        print_endline "Generated envpr.ml";
+	print_implem "env.ml" (compute_loc dump);
+        print_endline "Generated env.ml";
       end;
     Pcaml.output_file := Some "termspr.ml";
     !Pcaml.print_implem
