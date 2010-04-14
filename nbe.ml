@@ -60,7 +60,9 @@ let app2 t1 t2 t3 = match t1 with
   | Lam5 f -> Lam3 (f t2 t3)
   | Lam6 f -> Lam4 (f t2 t3)
   | Con x ->  App (Con x :: [t2; t3])
+  | Var x ->  App (Var x :: [t2; t3])
   | App xs -> App (xs @ [t2; t3])
+  | Match _ -> App (t1 :: [t2; t3])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app3 t1 t2 t3 t4 = match t1 with
   | Lam1 f -> app2 (f t2) t3 t4
@@ -70,7 +72,9 @@ let app3 t1 t2 t3 t4 = match t1 with
   | Lam5 f -> Lam2 (f t2 t3 t4)
   | Lam6 f -> Lam3 (f t2 t3 t4)
   | Con x ->  App (Con x :: [t2; t3; t4])
+  | Var x ->  App (Var x :: [t2; t3; t4])
   | App xs -> App (xs @ [t2; t3; t4])
+  | Match _ -> App (t1 :: [t2; t3; t4])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app4 t1 t2 t3 t4 t5 = match t1 with
   | Lam1 f -> app3 (f t2) t3 t4 t5
@@ -80,7 +84,9 @@ let app4 t1 t2 t3 t4 t5 = match t1 with
   | Lam5 f -> Lam1 (f t2 t3 t4 t5)
   | Lam6 f -> Lam2 (f t2 t3 t4 t5)
   | Con x ->  App (Con x :: [t2; t3; t4; t5])
+  | Var x ->  App (Var x :: [t2; t3; t4; t5])
   | App xs -> App (xs @ [t2; t3; t4; t5])
+  | Match _ -> App (t1 :: [t2; t3; t4; t5])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app5 t1 t2 t3 t4 t5 t6 = match t1 with
   | Lam1 f -> app4 (f t2) t3 t4 t5 t6
@@ -90,7 +96,9 @@ let app5 t1 t2 t3 t4 t5 t6 = match t1 with
   | Lam5 f -> f t2 t3 t4 t5 t6
   | Lam6 f -> Lam1 (f t2 t3 t4 t5 t6)
   | Con x ->  App (Con x :: [t2; t3; t4; t5; t6])
+  | Var x ->  App (Var x :: [t2; t3; t4; t5; t6])
   | App xs -> App (xs @ [t2; t3; t4; t5; t6])
+  | Match _ -> App (t1 :: [t2; t3; t4; t5; t6])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app6 t1 t2 t3 t4 t5 t6 t7 = match t1 with
   | Lam1 f -> app5 (f t2) t3 t4 t5 t6 t7
@@ -100,7 +108,9 @@ let app6 t1 t2 t3 t4 t5 t6 t7 = match t1 with
   | Lam5 f -> app1 (f t2 t3 t4 t5 t6) t7
   | Lam6 f -> f t2 t3 t4 t5 t6 t7
   | Con x ->  App (Con x :: [t2; t3; t4; t5; t6; t7])
+  | Var x ->  App (Var x :: [t2; t3; t4; t5; t6; t7])
   | App xs -> App (xs @ [t2; t3; t4; t5; t6; t7])
+  | Match _ -> App (t1 :: [t2; t3; t4; t5; t6; t7])
   | _ -> print_endline "impossible happened in app."; bug t1
 let app = app1
 
@@ -117,5 +127,17 @@ let rec compare n t1 t2 = match t1, t2 with
   | Type i, Type i' when i = i' -> ()
   | Const (i, args), Const (i', args') when i = i' ->
       Array.iteri (fun i _ -> compare n args.(i) args'.(i)) args
-  | Lam1 f, Lam1 g -> compare (n+1) (f (Var n)) (g (Var n))
+  | Lam1 f, Lam1 g -> compare (n+1) (f (Var n))
+                                    (g (Var n))
+  | Lam2 f, Lam2 g -> compare (n+2) (f (Var n) (Var (n+1)))
+                                    (g (Var n) (Var (n+1)))
+  | Lam3 f, Lam3 g -> compare (n+3) (f (Var n) (Var (n+1)) (Var (n+2)))
+                                    (g (Var n) (Var (n+1)) (Var (n+2)))
+  | Lam4 f, Lam4 g -> compare (n+4) (f (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)))
+                                    (g (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)))
+  | Lam5 f, Lam5 g -> compare (n+5) (f (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)))
+                                    (g (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)))
+  | Lam6 f, Lam6 g -> compare (n+6) (f (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)) (Var (n+5)))
+                                    (g (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)) (Var (n+5)))
+
   | _ -> print_endline (string_of_term n t1); print_endline (string_of_term n t2); exit 1
