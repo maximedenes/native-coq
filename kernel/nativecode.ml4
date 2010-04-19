@@ -272,8 +272,8 @@ and translate env t =
       | Case (ci, pi, c, branches) ->
 	  let f i br (xs1,xs2,xs3) =
             let b = code_lid_of_index (i+1) in
-	    let args = gen_names n ci.ci_cstr_nargs.(i) in
-            let vars = gen_vars n  ci.ci_cstr_nargs.(i) in
+	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
+            let vars = gen_vars n  ci.ci_cstr_ndecls.(i) in
     	    let caml_apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
     	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
             let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
