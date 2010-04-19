@@ -259,11 +259,15 @@ let strengthen_const env mp_from l cb resolver =
       let con =  constant_of_delta resolver con in
       let const = mkConst con in 
       let const_subs = Declarations.from_val const in
+      let body = Declarations.force const_subs in
+      let ast = values (translate env body) in
+      let deps = Nativecode.assums body in
       { cb with 
 	const_body = (Def const_subs);
 	const_body_code = Cemitcodes.from_val
 	  (compile_constant_body env (Def const_subs) false);
-	const_body_ast = Some (values (translate env (Declarations.force const_subs)));
+	const_body_ast = Some ast;
+        const_body_deps = Some deps
 	const_inline_code = false
       }
 
