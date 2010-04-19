@@ -789,6 +789,10 @@ let rec whd_betaiota_preserving_vm_cast env sigma t =
            let c = app_stack (whrec (c,empty_stack)) in
            let t = app_stack (whrec (t,empty_stack)) in
            (mkCast(c,VMcast,t),stack)
+       | Cast (c,NATIVEcast,t) ->
+           let c = app_stack (whrec (c,empty_stack)) in
+           let t = app_stack (whrec (t,empty_stack)) in
+           (mkCast(c,NATIVEcast,t),stack)
        | Cast (c,DEFAULTcast,_) ->
            whrec (c, stack)
        | App (f,cl)  -> whrec (f, append_stack cl stack)

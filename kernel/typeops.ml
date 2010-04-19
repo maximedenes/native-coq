@@ -288,6 +288,7 @@ let type_of_cast env c t k expected_type =
     let cst =
       match k with
       | VMcast -> vm_conv CUMUL env t expected_type
+      | NATIVEcast -> native_conv CUMUL env t expected_type
       | DEFAULTcast -> conv_leq env t expected_type in
     expected_type, cst
   with NotConvertible ->

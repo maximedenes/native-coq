@@ -655,6 +655,20 @@ let conv env t1 t2 =
   Profile.profile4 convleqkey conv env t1 t2;;
 *)
 
+let native_conv cv_pb env t1 t2 =
+  if eq_constr t1 t2 then Constraint.empty
+  else begin
+    print_string "converting... ";
+     try
+	print_string "actual... ";
+        let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
+        let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
+        let values = Nbeconv.compile (pre_env env) t1 t2 in
+        let cu = Nbeconv.compare values Constraint.empty in
+          print_endline "done."; cu (*Constraint.empty*)
+      with e -> Util.anomaly (Printexc.to_string e)
+  end
+
 (********************************************************************)
 (*             Special-Purpose Reduction                            *)
 (********************************************************************)

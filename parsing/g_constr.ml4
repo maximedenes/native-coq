@@ -152,6 +152,10 @@ GEXTEND Gram
                  CCast(loc,c1, CastConv (VMcast,c2))
       | c1 = operconstr; "<:"; c2 = SELF ->
                  CCast(loc,c1, CastConv (VMcast,c2))
+      | c1 = operconstr; "<<:"; c2 = binder_constr ->
+                 CCast(loc,c1, CastConv (NATIVEcast,c2))
+      | c1 = operconstr; "<<:"; c2 = SELF ->
+                 CCast(loc,c1, CastConv (NATIVEcast,c2))
       | c1 = operconstr; ":";c2 = binder_constr ->
                  CCast(loc,c1, CastConv (DEFAULTcast,c2))
       | c1 = operconstr; ":"; c2 = SELF ->

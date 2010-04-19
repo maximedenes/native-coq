@@ -152,6 +152,7 @@ let cnt = ref 0
 let cast_kind_display k =
   match k with
   | VMcast -> "VMcast"
+  | NATIVEcast -> "NATIVEcast"
   | DEFAULTcast -> "DEFAULTcast"
 
 let constr_display csr =
