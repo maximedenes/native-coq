@@ -216,21 +216,6 @@ let rec push_value id body env =
 	 let v,d = (values (translate env body), Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
-and translate_constant env c =
-  print_endline ("Translating constant "^string_of_con c);
-  let cb = lookup_constant c env in
-    match (cb.const_opaque, cb.const_body) with
-      | false, Some body -> begin
-	  match cb.const_body_ast with
-	    | Some _ -> <:expr< $lid:lid_of_string (string_of_con c)$ >>
-	    | None ->
-		let ast = translate env (Declarations.force body) in
-		  cb.const_body_ast <- Some (values (uncurrify ((*shrink []*) ast)));
-		  env_updated := true;
-		  <:expr< $lid:lid_of_string (string_of_con c)$ >>
-	end
-      | _ -> <:expr< Con $str:string_of_con c$ >>	(* xxx *)
-
 (** The side-effect of translate is to add the translated construction
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
@@ -335,3 +320,13 @@ and translate_app n c args =
 
 let opaque_const =
   <:expr< Con "xx">>
+
+(** Collect all variables and constants in the term. *)
+let assums t =
+  let rec aux xs t =
+    match kind_of_term t with
+      | Var id -> string_of_id id :: xs
+      | Const c -> string_of_con c :: xs
+      | _ -> fold_constr aux xs t
+  in aux [] t
+

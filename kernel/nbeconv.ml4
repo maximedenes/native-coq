@@ -55,15 +55,6 @@ let rec string_of_mp = function
   | MPbound uid -> string_of_mbid uid
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
-(** Collect all variables and constants in the term. *)
-let assums t =
-  let rec aux xs t =
-    match kind_of_term t with
-      | Var id -> string_of_id id :: xs
-      | Const c -> Nativecode.string_of_con c :: xs
-      | _ -> fold_constr aux xs t
-  in aux [] t
-
 let add_value env (id, value) xs =
   match !value with
     | VKvalue (v, _) ->
@@ -81,8 +72,8 @@ let add_constant c ck xs =
     | Some v ->
 	let sc = Nativecode.string_of_con c in
 	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
-	let deps = match (fst ck).const_body with
-	  | Some body -> assums (Declarations.force body)
+	let deps = match (fst ck).const_body_deps with
+	  | Some l -> print_endline (sc^" assums "^String.concat "," l); l 
 	  | None -> []
 	in Stringmap.add sc (ast, deps) xs
     | None -> (print_endline ("Const body AST not found: "^Nativecode.string_of_con c); xs)
