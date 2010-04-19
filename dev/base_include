@@ -59,6 +59,8 @@ open Inductive
 open Indtypes
 open Cooking
 open Closure
+open Nativecode
+open Nbeconv
 open Reduction
 open Safe_typing
 open Declare
