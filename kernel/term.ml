@@ -71,7 +71,7 @@ let family_of_sort = function
 (*       Constructions as implemented                               *)
 (********************************************************************)
 
-type cast_kind = VMcast | DEFAULTcast
+type cast_kind = VMcast | NATIVEcast | DEFAULTcast
 
 (* [constr array] is an instance matching definitional [named_context] in
    the same order (i.e. last argument first) *)

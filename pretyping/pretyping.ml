@@ -629,6 +629,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
     | RCast (loc,c,k) ->
 	let cj =
 	  match k with
+<<<<<<< HEAD
 	    CastCoerce ->
 	      let cj = pretype empty_tycon env evdref lvar c in
 	      evd_comb1 (Coercion.inh_coerce_to_base loc env) evdref cj
@@ -639,6 +640,8 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	      let cj = match k with
 	      | VMcast when not (occur_existential cty || occur_existential tval) ->
 		  ignore (Reduction.vm_conv Reduction.CUMUL env cty tval); cj
+	      | NATIVEcast when not (occur_existential cty || occur_existential tval) ->
+		  ignore (Reduction.native_conv Reduction.CUMUL env cty tval); cj
 	      | _ -> inh_conv_coerce_to_tycon loc env evdref cj (mk_tycon tval)
 	      in
 	      let v = mkCast (cj.uj_val, k, tval) in
