@@ -63,7 +63,14 @@ let descend_ast f t = match t with
 	<:expr< let $flag:r$ $list:defs'$ in $f t$ >>
   | <:expr< ($list:l$) >> -> <:expr< ($list:List.map f l$) >>
   | <:expr< bug x >> -> t
-  | _ -> raise (Invalid_argument "descend_ast")
+  | <:expr< fun $x$ -> $body$ >> -> <:expr< fun $x$ -> $f body$ >>
+  | <:expr< $app$ $arg$ >> -> <:expr< $f app$ $f arg$ >>
+  | _ -> begin
+           (*Pcaml.input_file := "/dev/null";
+           Pcaml.output_file := Some "debug_descend.ml";
+           !Pcaml.print_implem ([(<:str_item< value _ = $t$ >>,loc)]);*)
+           raise (Invalid_argument "descend_ast")
+         end
 
 let subst rho x = try List.assoc x rho with Not_found -> x
 
@@ -125,10 +132,10 @@ and collapse_applications t =
    and replacing unary applications with n-ary applications where possible.
 
 *)
-and uncurrify t = t (*match t with
+and uncurrify t = match t with
   | <:expr< Lam1 $_$ >> -> collapse_abstractions t
   | <:expr< app $_$ $_$ >> -> collapse_applications t
-  | _ -> descend_ast uncurrify t*)
+  | _ -> descend_ast uncurrify t
 
 let lid_of_string s = "x" ^ s
 let uid_of_string s = "X" ^ s
