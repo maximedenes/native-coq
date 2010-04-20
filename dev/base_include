@@ -60,6 +60,7 @@ open Indtypes
 open Cooking
 open Closure
 open Nativecode
+open Nbegen
 open Nbeconv
 open Reduction
 open Safe_typing

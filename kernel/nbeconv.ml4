@@ -7,6 +7,7 @@ open Pcaml
 open Declarations
 open Util
 open Nativecode
+open Nbegen
 (*open Reduction*)
 
 exception NotConvertible
@@ -127,8 +128,10 @@ let compile env t1 t2 =
   let code2 = translate env t2 in
     Pcaml.input_file := "/dev/null";
     if true (* TODO : dump env for whole vo file *) then begin
-        print_endline "Dumping env";
-        Pcaml.output_file := Some "envpr.ml";
+        (*print_endline "Dumping env";*)
+        Pcaml.output_file := Some "nbepr.ml";
+        !Pcaml.print_implem nbe_implem;
+        print_implem "nbe.ml" nbe_implem; 
         let dump = dump_env t1 t2 env in
         print_endline "Dumped env.";
         !Pcaml.print_implem (dump);

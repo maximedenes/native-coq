@@ -45,11 +45,11 @@ let descend_ast f t = match t with
   | <:expr< Con $_$ >> -> t
   | <:expr< Var $_$ >> -> t
   | <:expr< Lam1 (fun $x$ -> $body$) >> -> <:expr< Lam1 (fun $x$ -> $f body$) >>
-  | <:expr< Prod $dom$ (fun $lid:x$ -> $cod$) >> -> <:expr< Prod $f dom$ (fun $lid:x$ -> $f cod$) >>
+  | <:expr< Prod ($dom$,(fun $lid:x$ -> $cod$)) >> -> <:expr< Prod ($f dom$,(fun $lid:x$ -> $f cod$)) >>
   | <:expr< app $t1$ $t2$ >> -> <:expr< app $f t1$ $f t2$ >>
   | <:expr< App $_$ >> -> t 
-  | <:expr< Const $i$ [| $list:args$ |] >> ->
-      <:expr< Const $i$ [| $list:List.fold_right (fun t ts -> f t :: ts) args []$ |] >>
+  | <:expr< Const ($i$,[| $list:args$ |]) >> ->
+      <:expr< Const ($i$,[| $list:List.fold_right (fun t ts -> f t :: ts) args []$ |]) >>
   | <:expr< Set >> -> t
   | <:expr< Prop >> -> t
   | <:expr< Type $_$ >> -> t
@@ -164,7 +164,7 @@ let string_of_constructor (ind, i) =
 (* First argument the index of the constructor *)
 let make_constructor_pattern i args =
   let f arg = <:patt< $lid:arg$ >> in
-    <:patt< Const $int:string_of_int i$ [| $list:List.map f args$ |] >>
+    <:patt< Const ($int:string_of_int i$,[| $list:List.map f args$ |]) >>
 
 let lid_of_index n = "x" ^ string_of_int n
 let code_lid_of_index p = "b" ^ string_of_int p
@@ -193,7 +193,7 @@ let rec patch_fix l n =
       let mk_expr x = <:expr< $lid:x$>> in
       let mk_eta_expr x = <:expr< Lam1 (fun x -> App [Var 0;x])>> in
       let const_branch =
-        (<:patt< Const _ _ >>, None, <:expr< ($list:(List.map mk_expr l)$) >>)
+        (<:patt< Const _ >>, None, <:expr< ($list:(List.map mk_expr l)$) >>)
       in
       (* TODO : ensure Var below is fresh *)
       let default =
@@ -235,7 +235,7 @@ and translate env t =
       | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
       | Cast (c, _, ty) -> translate n c
       | Prod (_, t, c) ->
-	  <:expr< Prod $translate n t$ (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
+	  <:expr< Prod ($translate n t$,(fun $lid:lid_of_index n$ -> $translate (n + 1) c$)) >>
       | Lambda (_, t, c) ->
 	  <:expr< Lam1 (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
       | LetIn (_, b, t, c) ->
@@ -252,7 +252,7 @@ and translate env t =
 	  let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-	    <:expr< Const $int:string_of_int i$ [||] >>
+	    <:expr< Const ($int:string_of_int i$,[||]) >>
           else translate_app n t [||]
       | Case (ci, pi, c, branches) ->
 	  let f i br (xs1,xs2,xs3) =
@@ -309,7 +309,7 @@ and translate_app n c args =
 	     else aux (n - 1) <:expr< Lam1 (fun _ -> $z$) >>
 	   in aux underscores
 		(List.fold_right (fun x e -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
-		 names <:expr< Const $int:string_of_int i$ [| $list: vs @ pad$ |] >>
+		 names <:expr< Const ($int:string_of_int i$,[| $list: vs @ pad$ |]) >>
 		 )
 	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
      | _ ->
