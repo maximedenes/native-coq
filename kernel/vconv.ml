@@ -238,26 +238,16 @@ and conv_eq_vect vt1 vt2 cu =
   else raise NotConvertible
 
 let vconv pb env t1 t2 =
+  let cu =
     try conv_eq pb t1 t2 Constraint.empty
     with NotConvertible ->
-      print_string "converting... ";
-      if false then
-	begin
-	  print_endline "bogus.";
-	  Constraint.empty
-	end
-      else try
-	print_string "actual... ";
-        let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
-        let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
-        let values = Nbeconv.compile (pre_env env) t1 t2 in
-        let cu = Nbeconv.compare values Constraint.empty in
-          print_endline "done."; cu (*Constraint.empty*)
-      with e -> Util.anomaly (Printexc.to_string e)
+      infos := create_clos_infos betaiotazeta env;
+      let v1 = val_of_constr env t1 in
+      let v2 = val_of_constr env t2 in
+      let cu = conv_val pb (nb_rel env) v1 v2 Constraint.empty in
+      cu
+  in cu
 
-(* let vconv_profile = Profile.declare_profile "vconv" *)
-(* let vconv = Profile.profile4 vconv_profile vconv *)
-    
 let _ = Reduction.set_vm_conv vconv
 
 let use_vm = ref false
@@ -268,3 +258,5 @@ let set_use_vm b =
   else Reduction.set_default_conv Reduction.conv_cmp
 
 let use_vm _ = !use_vm
+
+
