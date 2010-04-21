@@ -12,6 +12,10 @@ open Nbegen
 
 exception NotConvertible
 
+let nbe_name = "Coq_conv_nbe"
+let env_name = "Coq_conv_env"
+let terms_name = "Coq_conv_terms"
+
 (*  *)
 let ast_impl_magic_number = "Caml1999M012"
 let ast_intf_magic_number = "Caml1999N011"
@@ -64,7 +68,9 @@ let add_value env (id, value) xs =
         let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	let deps = (match b with
           | None -> [] 
-	  | Some body -> let res = assums body in print_endline (sid^"(named_val) assums "^String.concat "," res); res)
+	  | Some body -> let res = assums body in
+             (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
+              res)
         in Stringmap.add sid (ast, deps) xs
     | VKnone -> xs
 
@@ -74,10 +80,11 @@ let add_constant c ck xs =
 	let sc = Nativecode.string_of_con c in
 	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
 	let deps = match (fst ck).const_body_deps with
-	  | Some l -> print_endline (sc^" assums "^String.concat "," l); l 
+	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
 	  | None -> []
 	in Stringmap.add sc (ast, deps) xs
-    | None -> (print_endline ("Const body AST not found: "^Nativecode.string_of_con c); xs)
+    | None ->
+        ((*print_endline ("Const body AST not found: "^Nativecode.string_of_con c);*) xs)
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
@@ -96,8 +103,9 @@ let topological_sort init xs =
 let dump_env t1 t2 env =
   let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
   let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
-  let initial_set = assums t1 @ assums t2
-  in (<:str_item< open Nbe >>, loc) :: topological_sort initial_set vars_and_cons
+  let initial_set = assums t1 @ assums t2 in
+  let header = (<:str_item< open $list:[nbe_name]$ >>, loc) in
+    header :: topological_sort initial_set vars_and_cons
 
 let ocaml_version = "3.11.1"
 let ast_impl_magic_number = "Caml1999M012"
@@ -118,28 +126,31 @@ let compute_loc xs =
   in f 0 xs
 
 let compile env t1 t2 =
-  let _ = Unix.system "rm envpr.ml" in
-  let _ = Unix.system "rm termspr.ml" in
-  let _ = Unix.system "rm env.ml" in
-  let _ = Unix.system "rm terms.ml" in
-  print_endline "Translating t1";
+  if Sys.file_exists (nbe_name^".ml") then
+    anomaly (nbe_name ^".ml already exists");
+  if Sys.file_exists (env_name^".ml") then
+    anomaly (env_name ^".ml already exists");
+  if Sys.file_exists (terms_name^".ml") then
+    anomaly (terms_name ^".ml already exists");
+  (*print_endline "Translating t1";*)
   let code1 = translate env t1 in
-  print_endline "Translating t2";
+  (*print_endline "Translating t2";*)
   let code2 = translate env t2 in
     Pcaml.input_file := "/dev/null";
     if true (* TODO : dump env for whole vo file *) then begin
-        (*print_endline "Dumping env";*)
+        (*print_endline "Dumping env";
         Pcaml.output_file := Some "nbepr.ml";
-        !Pcaml.print_implem nbe_implem;
-        print_implem "nbe.ml" nbe_implem; 
+        !Pcaml.print_implem nbe_implem;*)
+        print_implem (nbe_name^".ml") nbe_implem; 
         let dump = dump_env t1 t2 env in
-        print_endline "Dumped env.";
+        (*print_endline "Dumped env.";
+        Pcaml.output_file := Some "envpr.ml";
         !Pcaml.print_implem (dump);
-        print_endline "Generated envpr.ml";
-	print_implem "env.ml" (compute_loc dump);
-        print_endline "Generated env.ml";
+        print_endline "Generated envpr.ml";*)
+	print_implem (env_name^".ml") (compute_loc dump)(*;
+        print_endline "Generated env.ml";*)
       end;
-    Pcaml.output_file := Some "termspr.ml";
+    (*Pcaml.output_file := Some "termspr.ml";
     !Pcaml.print_implem
     	 [(<:str_item< open Nbe >>, loc);
     	  (<:str_item< open Env >>, loc);
@@ -147,24 +158,29 @@ let compile env t1 t2 =
     	  (<:str_item< value t2 = $code2$ >>, loc);
     	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
     	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
-    	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
-    print_implem "terms.ml"
-	 [(<:str_item< open Nbe >>, loc);
-	  (<:str_item< open Env >>, loc);
+    	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];*)
+    print_implem (terms_name^".ml")
+	 [(<:str_item< open $list:[nbe_name]$ >>, loc);
+	  (<:str_item< open $list:[env_name]$ >>, loc);
 	  (<:str_item< value t1 = $code1$ >>, loc);
 	  (<:str_item< value t2 = $code2$ >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);
-    	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
+    	  (*(<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);*)
+    	  (*(<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);*)
 	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
     env_updated := false;
     (values code1, values code2)
 
 let compare (v1, v2) cu =
-  let _ = Unix.system "touch env.ml" in
-  match Unix.system "ocamlopt.opt nbe.ml env.ml terms.ml" with
+  let file_names = nbe_name^".ml "^env_name^".ml "^terms_name^".ml" in
+  let _ = Unix.system ("touch "^env_name^".ml") in
+  print_endline "Compilation...";
+  let res = Unix.system ("time ocamlopt.opt "^file_names) in
+  let _ = Unix.system ("rm "^file_names) in
+  match res with
     | Unix.WEXITED 0 ->
       begin
-      match Unix.system "./a.out" with
+      print_endline "Running conversion test...";
+      match Unix.system "time ./a.out; rm a.out" with
         | Unix.WEXITED 0 -> cu
         | _ -> (print_endline "Conversion test failure"; raise NotConvertible)
       end
