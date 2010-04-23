@@ -4,7 +4,8 @@ let loc = Ploc.dummy
 
 let nbe_implem = [(<:str_item< exception Bug of string >>,loc);
 
-(<:str_item< type term = [ Con of string
+(<:str_item< type term = [ Rel of int
+            | Con of string
 	    | Lam1 of (term -> term)
             | Lam2 of (term -> term -> term)
             | Lam3 of (term -> term -> term -> term)
@@ -18,7 +19,9 @@ let nbe_implem = [(<:str_item< exception Bug of string >>,loc);
 	    | Prop
 	    | Type of int
 	    | Const of (int * (array term))
-            | Var of int ] >>,loc);
+            | Var of int
+            | Lambda of term
+            | Product of (term*term)] >>,loc);
 
 (<:str_item< value array_iter2 f v1 v2 =
   let n = Array.length v1 in
@@ -144,4 +147,21 @@ let nbe_implem = [(<:str_item< exception Bug of string >>,loc);
   | (Lam6 f, Lam6 g) -> compare (n+6) (f (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)) (Var (n+5)))
                                     (g (Var n) (Var (n+1)) (Var (n+2)) (Var (n+3)) (Var (n+4)) (Var (n+5)))
 
-  | _ -> do {print_endline (string_of_term n t1); print_endline (string_of_term n t2); exit 1} ] >>,loc)]
+  | _ -> do {print_endline (string_of_term n t1); print_endline (string_of_term n t2); exit 1} ] >>,loc);
+
+(<:str_item< value rec normalize n c =
+  match c with
+    [ Lam1 f -> Lambda (normalize (n+1) (f (Rel n)))
+    | Lam2 f -> Lambda (Lambda (normalize (n+2) (f (Rel n) (Rel (n+1)))))
+    | Lam3 f -> Lambda (Lambda (Lambda (normalize (n+3) (f (Rel n) (Rel (n+1)) (Rel (n+2))))))
+    | Lam4 f -> Lambda (Lambda (Lambda (Lambda (normalize (n+4) (f (Rel n) (Rel (n+1)) (Rel (n+2)) (Rel (n+3)))))))
+    | Lam5 f -> Lambda (Lambda (Lambda (Lambda (Lambda (normalize (n+5) (f (Rel n) (Rel (n+1)) (Rel (n+2)) (Rel (n+3)) (Rel (n+4))))))))
+    | Lam6 f -> Lambda (Lambda (Lambda (Lambda (Lambda (Lambda (normalize (n+6) (f (Rel n) (Rel (n+1)) (Rel (n+2)) (Rel (n+3)) (Rel (n+4)) (Rel (n+5)))))))))
+    | Prod (t,f) -> Product (normalize n t, normalize (n+1) (f (Rel n)))
+    | App l -> App (List.map (normalize n) l)
+    | Match xs -> Match (Array.map (normalize n) xs)
+    | Const (i,xs) -> Const (i,Array.map (normalize n) xs)
+    | _ -> c ]
+ >>,loc);
+
+(<:str_item< value print_nf c = Marshal.to_channel stdout (normalize 0 c) [] >>,loc)]
