@@ -251,7 +251,7 @@ let bind_red_expr_occurrences occs nbcl redexp =
 	else
 	  Simpl (Some (occs,c))
     | Red _ | Hnf | Cbv _ | Lazy _
-    | ExtraRedExpr _ | CbvVm | Fold _ | Simpl None ->
+    | ExtraRedExpr _ | CbvVm | CbvNbe | Fold _ | Simpl None ->
 	error_occurrences_not_unsupported ()
     | Unfold [] | Pattern [] ->
 	assert false
