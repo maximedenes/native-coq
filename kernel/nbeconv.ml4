@@ -100,10 +100,10 @@ let topological_sort init xs =
     end
   in List.rev (List.fold_right aux init [])
 
-let dump_env t1 t2 env =
+let dump_env terms env =
   let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
   let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
-  let initial_set = assums t1 @ assums t2 in
+  let initial_set = List.fold_left (fun acc t -> assums t @ acc) [] terms in
   let header = (<:str_item< open $list:[nbe_name]$ >>, loc) in
     header :: topological_sort initial_set vars_and_cons
 
@@ -142,7 +142,7 @@ let compile env t1 t2 =
         Pcaml.output_file := Some "nbepr.ml";
         !Pcaml.print_implem nbe_implem;*)
         print_implem (nbe_name^".ml") nbe_implem; 
-        let dump = dump_env t1 t2 env in
+        let dump = dump_env [t1;t2] env in
         (*print_endline "Dumped env.";
         Pcaml.output_file := Some "envpr.ml";
         !Pcaml.print_implem (dump);
