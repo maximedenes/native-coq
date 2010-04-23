@@ -154,6 +154,7 @@ type ('a,'b,'c) red_expr_gen =
   | Pattern of 'a with_occurrences list
   | ExtraRedExpr of string
   | CbvVm
+  | CbvNbe
 
 type ('a,'b,'c) may_eval =
   | ConstrTerm of 'a

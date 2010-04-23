@@ -626,6 +626,7 @@ let pr_red_expr (pr_constr,pr_lconstr,pr_ref,pr_pattern) = function
   | Red true -> error "Shouldn't be accessible from user."
   | ExtraRedExpr s -> str s
   | CbvVm -> str "vm_compute"
+  | CbvNbe -> str "native_compute"
 
 let rec pr_may_eval test prc prlc pr2 pr3 = function
   | ConstrEval (r,c) ->

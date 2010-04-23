@@ -568,7 +568,7 @@ let intern_red_expr ist = function
   | Lazy f -> Lazy (intern_flag ist f)
   | Pattern l -> Pattern (List.map (intern_constr_with_occurrences ist) l)
   | Simpl o -> Simpl (Option.map (intern_typed_pattern_with_occurrences ist) o)
-  | (Red _ | Hnf | ExtraRedExpr _ | CbvVm as r ) -> r
+  | (Red _ | Hnf | ExtraRedExpr _ | CbvVm | CbvNbe as r ) -> r
 
 let intern_in_hyp_as ist lf (id,ipat) =
   (intern_hyp_or_metaid ist id, Option.map (intern_intro_pattern lf ist) ipat)
@@ -1390,7 +1390,7 @@ let interp_red_expr ist sigma env = function
       Pattern (List.map (interp_constr_with_occurrences ist env sigma) l)
   | Simpl o ->
       Simpl(Option.map (interp_closed_typed_pattern_with_occurrences ist env sigma) o)
-  | (Red _ |  Hnf | ExtraRedExpr _ | CbvVm as r) -> r
+  | (Red _ |  Hnf | ExtraRedExpr _ | CbvVm | CbvNbe as r) -> r
 
 let pf_interp_red_expr ist gl = interp_red_expr ist (project gl) (pf_env gl)
 
@@ -2608,7 +2608,7 @@ let subst_redexp subst = function
   | Lazy f -> Lazy (subst_flag subst f)
   | Pattern l -> Pattern (List.map (subst_constr_with_occurrences subst) l)
   | Simpl o -> Simpl (Option.map (subst_pattern_with_occurrences subst) o)
-  | (Red _ | Hnf | ExtraRedExpr _ | CbvVm as r) -> r
+  | (Red _ | Hnf | ExtraRedExpr _ | CbvVm | CbvNbe as r) -> r
 
 let subst_raw_may_eval subst = function
   | ConstrEval (r,c) -> ConstrEval (subst_redexp subst r,subst_rawconstr subst c)

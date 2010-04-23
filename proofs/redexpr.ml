@@ -26,6 +26,10 @@ let cbv_vm env _ c =
   let ctyp = (fst (Typeops.infer env c)).Environ.uj_type in
   Vnorm.cbv_vm env c ctyp
 
+let cbv_nbe env _ c =
+  let ctyp = (fst (Typeops.infer env c)).Environ.uj_type in
+  Nativenorm.native_norm env c ctyp
+
 
 let set_strategy_one ref l  =
   let k =
@@ -189,6 +193,7 @@ let rec reduction_of_red_expr = function
 	 with Not_found ->
 	   error("unknown user-defined reduction \""^s^"\"")))
   | CbvVm -> (cbv_vm ,VMcast)
+  | CbvNbe -> (cbv_nbe ,NATIVEcast)
 
 
 let subst_flags subs flags =
