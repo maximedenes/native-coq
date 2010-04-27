@@ -1,6 +1,7 @@
 (*i camlp4use: "q_MLast.cmo" i*)
 open Term
 open Environ
+open Reduction
 open Util
 open Nativecode
 open Nbegen
@@ -45,11 +46,16 @@ let compile env c =
 	  (<:str_item< value c = $code$ >>, loc);
 	  (<:str_item< value _ = print_nf c >>, loc)]
 
-let rec rebuild_constr n t ty =
+let rec rebuild_constr n env t ty =
   match t with
     | Set -> mkSet
     | Prop -> mkProp
-    | Lambda -> mkLambda Anonymous (rebuild)
+    | Type u -> mkType u
+    | Lambda st ->
+        let ty_whd = whd_betadeltaiota env ty in
+        let (name,dom,codom as res) = destProd ty_whd in
+        mkLambda (name,dom,rebuild_constr (n+1) env st codom)
+    | Rel i -> mkRel (i+1)
     | _ -> assert false
 
 let native_norm env c ty =
@@ -61,26 +67,8 @@ let native_norm env c ty =
   let _ = Unix.system ("rm "^file_names) in
   match res with
     | Unix.WEXITED 0 ->
-      begin
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
       let nf = Marshal.from_channel ch_in in
-      (*let (fd_in,fd_out) = Unix.pipe() in
-      match Unix.fork() with
-        | 0 ->
-          dup2 fd_out strdout;
-          close fd_in;
-          execvp "a.out"
-        | _ ->
-          close fd_out;
-          let nf = Narshal.from_channel *)
-      match nf with
-        | Set ->
-           mkSet
-        | _ ->
-           mkProp
-(*      match Unix.system "time ./a.out; rm a.out" with
-        | Unix.WEXITED 0 -> cu
-        | _ -> (print_endline "Conversion test failure"; raise NotConvertible)*)
-      end
+        rebuild_constr 0 env nf ty
     | _ -> anomaly "Compilation failure" 
