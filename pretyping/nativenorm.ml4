@@ -29,19 +29,16 @@ type term = | Rel of int
 
 
 let compile env c =
-  if Sys.file_exists (nbe_name^".ml") then
-    anomaly (nbe_name ^".ml already exists");
   if Sys.file_exists (env_name^".ml") then
     anomaly (env_name ^".ml already exists");
   if Sys.file_exists (terms_name^".ml") then
     anomaly (terms_name ^".ml already exists");
   let code = translate env c in
     Pcaml.input_file := "/dev/null";
-    print_implem (nbe_name^".ml") nbe_implem; 
     let dump = dump_env [c] env in
     print_implem (env_name^".ml") (compute_loc dump);
     print_implem (terms_name^".ml")
-	 [(<:str_item< open $list: [nbe_name]$ >>, loc);
+	 [(<:str_item< open Nativelib >>, loc);
 	  (<:str_item< open $list: [env_name]$ >>, loc);
 	  (<:str_item< value c = $code$ >>, loc);
 	  (<:str_item< value _ = print_nf c >>, loc)]
@@ -50,7 +47,7 @@ let rec rebuild_constr n env t ty =
   match t with
     | Set -> mkSet
     | Prop -> mkProp
-    | Type u -> mkType u
+    (*| Type u -> mkType u*)
     | Lambda st ->
         let ty_whd = whd_betadeltaiota env ty in
         let (name,dom,codom as res) = destProd ty_whd in
@@ -60,10 +57,12 @@ let rec rebuild_constr n env t ty =
 
 let native_norm env c ty =
   let _ = compile (pre_env env) c in
-  let file_names = nbe_name^".ml "^env_name^".ml "^terms_name^".ml" in
+  let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Unix.system ("touch "^env_name^".ml") in
   print_endline "Compilation...";
-  let res = Unix.system ("time ocamlopt.opt "^file_names) in
+  let comp_cmd = "ocamlopt.opt -rectypes -I "
+                 ^Coq_config.coqlib^"/kernel kernel.cmxa "^file_names in
+  let res = Unix.system comp_cmd in
   let _ = Unix.system ("rm "^file_names) in
   match res with
     | Unix.WEXITED 0 ->
