@@ -9,9 +9,11 @@ open Inductive
 open Util
 open Nativelib
 open Nativecode
-open Nbegen
 open Nbeconv
 open Unix
+
+(* Required to make camlp5 happy. *)
+let loc = Ploc.dummy
 
 let compile env c =
   if Sys.file_exists (env_name^".ml") then
@@ -21,8 +23,8 @@ let compile env c =
   let code = translate env c in
     Pcaml.input_file := "/dev/null";
     let dump = dump_env [c] env in
-    print_implem (env_name^".ml") (compute_loc dump);
-    print_implem (terms_name^".ml")
+    Nbeconv.print_implem (env_name^".ml") (compute_loc dump);
+    Nbeconv.print_implem (terms_name^".ml")
 	 [(<:str_item< open Nativelib >>, loc);
 	  (<:str_item< open $list: [env_name]$ >>, loc);
 	  (<:str_item< value c = $code$ >>, loc);
@@ -70,6 +72,7 @@ and rebuild_constr n env ty t =
         let name,dom,codom  = decompose_prod env ty in
         mkLambda (name,dom,rebuild_constr (n+1) env codom st)
     | Rel i -> mkRel (i+1)
+    | Var id -> mkVar id
     | App (f::l) ->
         let ft = rebuild_constr n env mkSet f in
         let lt = List.map (rebuild_constr n env mkSet) l in
@@ -89,8 +92,9 @@ let native_norm env c ty =
   let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Unix.system ("touch "^env_name^".ml") in
   print_endline "Compilation...";
-  let comp_cmd = "ocamlopt.opt -rectypes -I "
-                 ^Coq_config.coqlib^"/kernel kernel.cmxa "^file_names in
+  let comp_cmd =
+    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
+  in
   let res = Unix.system comp_cmd in
   let _ = Unix.system ("rm "^file_names) in
   match res with

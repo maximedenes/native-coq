@@ -14,6 +14,14 @@ exception NotConvertible
 let env_name = "Coq_conv_env"
 let terms_name = "Coq_conv_terms"
 
+let include_dirs =
+  "-I "^Coq_config.camllib^"/camlp5 -I "^Coq_config.coqlib^"/config -I "
+  ^Coq_config.coqlib^"/lib -I "^Coq_config.coqlib^"/kernel "
+
+let include_libs =
+  "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
+
+
 (*  *)
 let ast_impl_magic_number = "Caml1999M012"
 let ast_intf_magic_number = "Caml1999N011"
@@ -167,8 +175,9 @@ let compare (v1, v2) cu =
   let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Unix.system ("touch "^env_name^".ml") in
   print_endline "Compilation...";
-  let comp_cmd = "ocamlopt.opt -rectypes -I "
-                 ^Coq_config.coqlib^"/kernel kernel.cmxa "^file_names in
+  let comp_cmd =
+    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
+  in
   let res = Unix.system comp_cmd in
   match res with
     | Unix.WEXITED 0 ->
@@ -176,7 +185,7 @@ let compare (v1, v2) cu =
       let _ = Unix.system ("rm "^file_names) in
       print_endline "Running conversion test...";
       let res = Unix.system "./a.out" in
-      Unix.system "rm a.out";
+      let _ = Unix.system "rm a.out" in
       match res with
         | Unix.WEXITED 0 -> cu
         | _ -> (print_endline "Conversion test failure"; raise NotConvertible)

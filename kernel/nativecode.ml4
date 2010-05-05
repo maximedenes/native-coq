@@ -44,6 +44,7 @@ let env_updated = ref false
 let descend_ast f t = match t with
   | <:expr< Con $_$ >> -> t
   | <:expr< Var $_$ >> -> t
+  | <:expr< Rel $_$ >> -> t
   | <:expr< Lam1 (fun $x$ -> $body$) >> -> <:expr< Lam1 (fun $x$ -> $f body$) >>
   | <:expr< Prod ($dom$,(fun $lid:x$ -> $cod$)) >> -> <:expr< Prod ($f dom$,(fun $lid:x$ -> $f cod$)) >>
   | <:expr< app $t1$ $t2$ >> -> <:expr< app $f t1$ $f t2$ >>
@@ -182,11 +183,11 @@ let rec gen_names start len =
     lid_of_index start :: gen_names (start + 1) (len - 1)
   else raise (Invalid_argument "gen_names")
 
-let rec gen_vars start len =
+let rec gen_rels start len =
   if len = 0 then []
   else if len > 0 then
-    <:expr< Var 0 >> :: gen_vars (start + 1) (len - 1)
-  else raise (Invalid_argument "gen_vars")
+    <:expr< Rel 0 >> :: gen_rels (start + 1) (len - 1)
+  else raise (Invalid_argument "gen_rels")
 
 let rec patch_fix l n =
   if n > 0 then function
@@ -198,7 +199,7 @@ let rec patch_fix l n =
     | <:expr< Lam1 (fun $lid:x$ -> $t$) >> ->
       let mk_patt x = <:patt< $lid:x$>> in
       let mk_expr x = <:expr< $lid:x$>> in
-      let mk_eta_expr x = <:expr< Lam1 (fun x -> App [Var 0;x])>> in
+      let mk_eta_expr x = <:expr< Lam1 (fun x -> App [Rel 0;x])>> in
       let const_branch =
         (<:patt< Const _ >>, None, <:expr< ($list:(List.map mk_expr l)$) >>)
       in
@@ -235,7 +236,7 @@ and translate env t =
 	  (let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
           let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	      match b with
-		| None -> <:expr< Con $str:string_of_id id$ >>
+		| None -> <:expr< Var (id_of_string $str:string_of_id id$) >>
 		| Some body -> push_value id body env; v)
       | Sort (Prop Null) -> <:expr< Prop >>
       | Sort (Prop Pos) -> <:expr< Set >>
@@ -265,7 +266,7 @@ and translate env t =
 	  let f i br (xs1,xs2,xs3) =
             let b = code_lid_of_index (i+1) in
 	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
-            let vars = gen_vars n  ci.ci_cstr_ndecls.(i) in
+            let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
     	    let caml_apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
     	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
             let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
@@ -274,7 +275,7 @@ and translate env t =
             let pat2 = <:patt< $lid:b$ >> in
             let body = abs args (apps (translate n br) args) in
 	      ((pat1, None, caml_apps <:expr< $lid:b$ >> args)::xs1,
-                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> vars :: xs3)
+                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> rels :: xs3)
           in
           let (vs,bodies,neutrals) = array_fold_right_i f branches ([],[],[]) in 
           let neutral_match = <:expr< Match [| $list:neutrals$ |]>> in

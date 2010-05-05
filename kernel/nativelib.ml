@@ -1,3 +1,5 @@
+open Names
+
 exception Bug of string
 
 type term =
@@ -16,7 +18,7 @@ type term =
   | Prop
   | Type of int
   | Const of (int * term array)
-  | Var of int
+  | Var of identifier
   | Lambda of term
   | Product of (term * term)
 
@@ -28,16 +30,17 @@ let array_iter2 f v1 v2 =
 let rec string_of_term n =
   function
   | Con c -> "Con " ^ c
-  | Var x -> "Var " ^ string_of_int x
+  | Var x -> "Var " ^ string_of_id x
+  | Rel i -> "Rel " ^ string_of_int i
   | Lam1 f ->
       (try
         "Lam " ^ string_of_int n ^ ". (" ^
-        string_of_term (n + 1) (f (Var n)) ^ ")"
+        string_of_term (n + 1) (f (Rel n)) ^ ")"
       with
       Bug _ -> "Lam " ^ string_of_int n ^ ". (...)")
   | Prod (ty, f) ->
       "Prod " ^ string_of_term n ty ^ " <" ^
-      string_of_term (n + 1) (f (Var n)) ^ ">"
+      string_of_term (n + 1) (f (Rel n)) ^ ">"
   | App xs ->
       "(" ^
       List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
@@ -168,11 +171,12 @@ let app = app1
 let rec compare n t1 t2 =
   match (t1, t2) with
   | (Con c, Con c') when c = c' -> ()
+  | (Rel i, Rel j) when i = j -> ()
   | (Var c, Var c') when c = c' -> ()
   | (Prod (t, f), Prod (t', f')) ->
     begin 
       compare n t t';
-      compare (n + 1) (f (Var n)) (f' (Var n))
+      compare (n + 1) (f (Rel n)) (f' (Rel n))
     end
   | (App xs, App xs') -> List.iter2 (compare n) xs xs'
   | (Match xs, Match xs') -> array_iter2 (compare n) xs xs'
@@ -181,25 +185,25 @@ let rec compare n t1 t2 =
   | (Type i, Type i') when i = i' -> ()
   | (Const (i, args), Const (i', args')) when i = i' ->
       Array.iteri (fun i _ -> compare n args.(i) args'.(i)) args
-  | (Lam1 f, Lam1 g) -> compare (n + 1) (f (Var n)) (g (Var n))
+  | (Lam1 f, Lam1 g) -> compare (n + 1) (f (Rel n)) (g (Rel n))
   | (Lam2 f, Lam2 g) ->
-      compare (n + 2) (f (Var n) (Var (n + 1))) (g (Var n) (Var (n + 1)))
+      compare (n + 2) (f (Rel n) (Rel (n + 1))) (g (Rel n) (Rel (n + 1)))
   | (Lam3 f, Lam3 g) ->
-      compare (n + 3) (f (Var n) (Var (n + 1)) (Var (n + 2)))
-        (g (Var n) (Var (n + 1)) (Var (n + 2)))
+      compare (n + 3) (f (Rel n) (Rel (n + 1)) (Rel (n + 2)))
+        (g (Rel n) (Rel (n + 1)) (Rel (n + 2)))
   | (Lam4 f, Lam4 g) ->
-      compare (n + 4) (f (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)))
-        (g (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)))
+      compare (n + 4) (f (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)))
+        (g (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)))
   | (Lam5 f, Lam5 g) ->
       compare (n + 5)
-        (f (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)) (Var (n + 4)))
-        (g (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)) (Var (n + 4)))
+        (f (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)) (Rel (n + 4)))
+        (g (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)) (Rel (n + 4)))
   | (Lam6 f, Lam6 g) ->
       compare (n + 6)
-        (f (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)) (Var (n + 4))
-           (Var (n + 5)))
-        (g (Var n) (Var (n + 1)) (Var (n + 2)) (Var (n + 3)) (Var (n + 4))
-           (Var (n + 5)))
+        (f (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)) (Rel (n + 4))
+           (Rel (n + 5)))
+        (g (Rel n) (Rel (n + 1)) (Rel (n + 2)) (Rel (n + 3)) (Rel (n + 4))
+           (Rel (n + 5)))
   | _ ->
     begin 
       print_endline (string_of_term n t1);

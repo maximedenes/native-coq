@@ -1,3 +1,5 @@
+open Names
+
 exception Bug of string
 type term =
     Rel of int
@@ -15,7 +17,7 @@ type term =
   | Prop
   | Type of int
   | Const of (int * term array)
-  | Var of int
+  | Var of identifier
   | Lambda of term
   | Product of (term * term)
 val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
