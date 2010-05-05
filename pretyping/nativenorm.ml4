@@ -2,31 +2,16 @@
 open Term
 open Environ
 open Reduction
+open Univ
+open Declarations
+open Names
+open Inductive
 open Util
+open Nativelib
 open Nativecode
 open Nbegen
 open Nbeconv
 open Unix
-
-type term = | Rel of int
-            | Con of string
-	    | Lam1 of (term -> term)
-            | Lam2 of (term -> term -> term)
-            | Lam3 of (term -> term -> term -> term)
-            | Lam4 of (term -> term -> term -> term -> term)
-            | Lam5 of (term -> term -> term -> term -> term -> term)
-            | Lam6 of (term -> term -> term -> term -> term -> term -> term)
-	    | Prod of (term * (term -> term))
-	    | App of term list
-            | Match of term array
-	    | Set
-	    | Prop
-	    | Type of int
-	    | Const of (int * (term array))
-            | Var of int
-            | Lambda of term
-            | Product of term
-
 
 let compile env c =
   if Sys.file_exists (env_name^".ml") then
@@ -43,16 +28,60 @@ let compile env c =
 	  (<:str_item< value c = $code$ >>, loc);
 	  (<:str_item< value _ = print_nf c >>, loc)]
 
-let rec rebuild_constr n env t ty =
+let decompose_prod env t =
+  let (name,dom,codom as res) = destProd (whd_betadeltaiota env t) in
+  if name = Anonymous then (Name (id_of_string "x"),dom,codom)
+  else res
+
+let find_rectype_args env c =
+  let (t, l) =
+    let t = whd_betadeltaiota env c in
+    try destApp t with _ -> (t,[||]) in
+  match kind_of_term t with
+  | Ind ind -> (ind, l)
+  | _ -> raise Not_found
+
+let type_constructor mind mib typ params =
+  let s = ind_subst mind mib in
+  let ctyp = substl s typ in
+  let nparams = Array.length params in
+  if nparams = 0 then ctyp
+  else
+    let _,ctyp = decompose_prod_n nparams ctyp in
+    substl (List.rev (Array.to_list params)) ctyp
+
+let rec app_construct_args n env t ty args =
+  let (_,xs) =
+    Array.fold_right
+        (fun arg (ty,args) ->
+           let _,dom,codom = try decompose_prod env ty with _ -> exit 124 in
+           let t = rebuild_constr (n+1) env dom arg in
+           (subst1 t codom, t::args))
+        args (ty,[])
+  in
+    mkApp (t,Array.of_list xs)
+
+and rebuild_constr n env ty t =
   match t with
     | Set -> mkSet
     | Prop -> mkProp
-    (*| Type u -> mkType u*)
+    | Type u -> mkType (type1_univ)
     | Lambda st ->
-        let ty_whd = whd_betadeltaiota env ty in
-        let (name,dom,codom as res) = destProd ty_whd in
-        mkLambda (name,dom,rebuild_constr (n+1) env st codom)
+        let name,dom,codom  = decompose_prod env ty in
+        mkLambda (name,dom,rebuild_constr (n+1) env codom st)
     | Rel i -> mkRel (i+1)
+    | App (f::l) ->
+        let ft = rebuild_constr n env mkSet f in
+        let lt = List.map (rebuild_constr n env mkSet) l in
+          mkApp (ft,Array.of_list lt)
+    | Const (i,args) ->
+      let (mind,_ as ind), allargs = find_rectype_args env ty in
+      let mib,mip = lookup_mind_specif env ind in
+      let nparams = mib.mind_nparams in
+      let params = Array.sub allargs 0 nparams in
+      let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
+      let t = mkApp(mkConstruct(ind,i), params) in
+        app_construct_args n env t ctyp args
     | _ -> assert false
 
 let native_norm env c ty =
@@ -69,5 +98,5 @@ let native_norm env c ty =
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
       let nf = Marshal.from_channel ch_in in
-        rebuild_constr 0 env nf ty
+        rebuild_constr 0 env ty nf
     | _ -> anomaly "Compilation failure" 
