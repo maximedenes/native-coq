@@ -15,7 +15,7 @@ val compare :
   values * values -> constraints -> constraints
 
 val dump_env :
-  constr list -> env -> (MLast.str_item * Ploc.t) list
+  constr list -> env -> (MLast.str_item * Ploc.t) list * Names.Cmap_env.key Util.Stringmap.t
 
 val print_implem :
   string -> (MLast.str_item * Ploc.t) list -> unit

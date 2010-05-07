@@ -77,7 +77,7 @@ let add_value env (id, value) xs =
 	  | Some body -> let res = assums body in
              (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
               res)
-        in Stringmap.add sid (ast, deps) xs
+        in Stringmap.add sid (None, ast, deps) xs
     | VKnone -> xs
 
 let add_constant c ck xs =
@@ -88,30 +88,39 @@ let add_constant c ck xs =
 	let deps = match (fst ck).const_body_deps with
 	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
 	  | None -> []
-	in Stringmap.add sc (ast, deps) xs
+	in Stringmap.add sc (Some c, ast, deps) xs
     | None ->
         ((*print_endline ("Const body AST not found: "^Nativecode.string_of_con c);*) xs)
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
-  let rec aux s result =
+  let rec aux s (result,kns) =
     if Stringset.mem s !visited
-    then result
+    then (result,kns)
     else begin
       try
-	let (x, deps) = Stringmap.find s xs in
+	let (c, x, deps) = Stringmap.find s xs in
 	  visited := Stringset.add s !visited;
-	  x :: List.fold_right aux deps result
-      with Not_found -> result
+          let (l,kns) = List.fold_right aux deps (result,kns) in
+          let kns = match c with
+            | None -> kns
+            | Some kn -> Stringmap.add s kn kns
+          in
+	  (x :: l, kns)
+      with Not_found -> (result,kns)
     end
-  in List.rev (List.fold_right aux init [])
+  in
+    let kns = Stringmap.empty in
+    let (res, kns) = List.fold_right aux init ([],kns) in
+      List.rev res, kns
 
 let dump_env terms env =
   let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
   let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
   let initial_set = List.fold_left (fun acc t -> assums t @ acc) [] terms in
   let header = (<:str_item< open Nativelib >>, loc) in
-    header :: topological_sort initial_set vars_and_cons
+  let (l,kns) = topological_sort initial_set vars_and_cons in
+    (header :: l,kns)
 
 let ocaml_version = "3.11.1"
 let ast_impl_magic_number = "Caml1999M012"
@@ -143,7 +152,7 @@ let compile env t1 t2 =
     Pcaml.input_file := "/dev/null";
     if true (* TODO : dump env for whole vo file *) then begin
         (*print_endline "Dumping env";*)
-        let dump = dump_env [t1;t2] env in
+        let (dump,_) = dump_env [t1;t2] env in
         (*print_endline "Dumped env.";
         Pcaml.output_file := Some "envpr.ml";
         !Pcaml.print_implem (dump);
