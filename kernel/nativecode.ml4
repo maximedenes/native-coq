@@ -326,8 +326,8 @@ and translate_app n c args =
 	   Array.fold_left f zero args
   in uncurrify (translate 0 t))
 
-let opaque_const =
-  <:expr< Con "xx">>
+let opaque_const kn =
+  <:expr< Con $str:string_of_con kn$ >>
 
 (** Collect all variables and constants in the term. *)
 let assums t =

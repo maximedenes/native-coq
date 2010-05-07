@@ -138,7 +138,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
         let t = Declarations.force b in
           (Some (values (translate env t)),
             Some (Nativecode.assums t))
-              | _ -> (Some (values Nativecode.opaque_const), Some [])
+      | _ -> (Some (values (Nativecode.opaque_const kn)), Some [])
   in
   let hyps = keep_hyps env ids in
     { const_hyps = hyps;
