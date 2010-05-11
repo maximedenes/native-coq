@@ -1,6 +1,7 @@
 (*i camlp4use: "q_MLast.cmo" i*)
 
 open Names
+open Nativelib
 open Term
 open Pre_env
 open Pcaml
@@ -221,37 +222,44 @@ let rec push_value id body env =
     match !kind with
       | VKvalue (v, _) -> ()
       | VKnone ->
-	 let v,d = (values (translate env body), Idset.empty) (* TODO : compute actual idset *)
+         let (tr, annots) = translate env (VarKey id) body in
+	 let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
 (** The side-effect of translate is to add the translated construction
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate env t =
-  (let rec translate n t =
+and translate env ik t =
+  (let rec translate annots n t =
     match kind_of_term t with
-      | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>
+      | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, annots
       | Var id ->
 	  (let v = <:expr< $lid:lid_of_string (string_of_id id)$ >> in
           let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	      match b with
-		| None -> <:expr< Var (id_of_string $str:string_of_id id$) >>
-		| Some body -> push_value id body env; v)
-      | Sort (Prop Null) -> <:expr< Prop >>
-      | Sort (Prop Pos) -> <:expr< Set >>
-      | Sort (Type _) -> <:expr< Type 0 >> (* xxx: check universe constraints *)
-      | Cast (c, _, ty) -> translate n c
+		| None ->
+                    <:expr< Var (id_of_string $str:string_of_id id$) >>, annots
+		| Some body -> push_value id body env; v, annots)
+      | Sort (Prop Null) -> <:expr< Prop >>, annots
+      | Sort (Prop Pos) -> <:expr< Set >>, annots
+      | Sort (Type _) -> <:expr< Type 0 >>, annots (* xxx: check universe constraints *)
+      | Cast (c, _, ty) -> translate annots n c
       | Prod (_, t, c) ->
-	  <:expr< Prod ($translate n t$,(fun $lid:lid_of_index n$ -> $translate (n + 1) c$)) >>
+          let vt,annots = translate annots n t in
+          let vc,annots = translate annots (n + 1) c in
+            <:expr< Prod ($vt$,(fun $lid:lid_of_index n$ -> $vc$)) >>, annots
       | Lambda (_, t, c) ->
-	  <:expr< Lam1 (fun $lid:lid_of_index n$ -> $translate (n + 1) c$) >>
+          let v,annots = translate annots (n + 1) c in
+	  <:expr< Lam1 (fun $lid:lid_of_index n$ -> $v$) >>, annots
       | LetIn (_, b, t, c) ->
-	  <:expr< let $lid:lid_of_index n$ = $translate n b$ in $translate (n + 1) c$ >>
+          let vb,annots = translate annots n b in
+          let vc,annots = translate annots (n + 1) c in
+	  <:expr< let $lid:lid_of_index n$ = $vb$ in $vc$ >>, annots
       | App (c, args) ->
-          translate_app n c args
-      | Const c -> <:expr< $lid:lid_of_string (string_of_con c)$ >> (* translate_constant env c *)
-      | Ind c -> <:expr< Con $str:string_of_inductive c$ >>	(* xxx *)
+          translate_app annots n c args
+      | Const c -> <:expr< $lid:lid_of_string (string_of_con c)$ >>, annots
+      | Ind c -> <:expr< Con $str:string_of_inductive c$ >>, annots (* xxx *)
       | Construct cstr ->
 	  let i = index_of_constructor cstr in
 	  let ind = inductive_of_constructor cstr in
@@ -260,10 +268,10 @@ and translate env t =
 	  let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-	    <:expr< Const ($int:string_of_int i$,[||]) >>
-          else translate_app n t [||]
+	    <:expr< Const ($int:string_of_int i$,[||]) >>, annots
+          else translate_app annots n t [||]
       | Case (ci, pi, c, branches) ->
-	  let f i br (xs1,xs2,xs3) =
+	  let f i br (xs1,xs2,xs3,annots) =
             let b = code_lid_of_index (i+1) in
 	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
             let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
@@ -273,38 +281,51 @@ and translate env t =
        	    let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in
 	    let pat1 = make_constructor_pattern (i + 1) args in
             let pat2 = <:patt< $lid:b$ >> in
-            let body = abs args (apps (translate n br) args) in
+            let (tr,annots) = translate annots n br in
+            let body = abs args (apps tr args) in
 	      ((pat1, None, caml_apps <:expr< $lid:b$ >> args)::xs1,
-                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> rels :: xs3)
+                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> rels :: xs3,
+                 annots)
           in
-          let (vs,bodies,neutrals) = array_fold_right_i f branches ([],[],[]) in 
-          let neutral_match = <:expr< Match [| $list:neutrals$ |]>> in
+          let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
+          let (vs,bodies,neutrals,annots) =
+            array_fold_right_i f branches ([],[],[],annots)
+          in
+          let annot_i_str = string_of_int annot_i in
+          let neutral_match =
+            <:expr< Match ($int:annot_i_str$, [| $list:neutrals$ |]) >> in
           let default = (<:patt< x >>, None, neutral_match) in
-          let match_body = <:expr< match $lid:code_lid_of_index 0$ with [$list:vs@[default]$] >> in
-          let letdefs = (<:patt< $lid:code_lid_of_index 0$ >>, translate n c)::bodies in
-          <:expr< let $list:letdefs$ in $match_body$ >>
+          let match_body =
+            <:expr< match $lid:code_lid_of_index 0$ with [$list:vs@[default]$] >>
+          in
+          let (tr,annots) = translate annots n c in
+          let letdefs = (<:patt< $lid:code_lid_of_index 0$ >>, tr)::bodies in
+          <:expr< let $list:letdefs$ in $match_body$ >>, annots
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
-	  let f i =
-              let trans = translate (n + m) bodies.(i) in
+	  let f i  =
+              let (trans,annots) = translate annots (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
               let lids = (gen_names n m) in
 	      (<:patt< $lid:fix_lid$ >>, patch_fix lids recargs.(i) trans)
 	  in let functions = Array.to_list (Array.init m f)
-	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>
-      | CoFix(ln, (_, tl, bl)) -> <:expr< Con $str:"cofix"$ >>(* invalid_arg "translate"*)
-      | _ -> <:expr< Con $str:"other"$ >>(* invalid_arg "translate"*)
-and translate_app n c args =
+	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>, annots
+      | CoFix(ln, (_, tl, bl)) -> <:expr< Con $str:"cofix"$ >>, annots(* invalid_arg "translate"*)
+      | _ -> <:expr< Con $str:"other"$ >>, annots(* invalid_arg "translate"*)
+and translate_app annots n c args =
   match kind_of_term c with
      | Construct cstr ->
-	 let f arg vs = translate n arg :: vs in
+	 let f arg (vs,annots) = 
+           let v,annots = translate annots n arg in (v :: vs),annots
+         in
 	 let i = index_of_constructor cstr in
 	 let ind = inductive_of_constructor cstr in
 	 let mb = lookup_mind (fst ind) env in
 	 let ob = mb.mind_packets.(snd ind) in
 	 let nparams = mb.mind_nparams in
 	 let nargs = Array.length args in
-	 let vs = list_skipn (min nparams nargs) (Array.fold_right f args []) in
+         let vs,annots = Array.fold_right f args ([],annots) in
+	 let vs = list_skipn (min nparams nargs) vs in
          let _,arity = ob.mind_reloc_tbl.(i-1) in
 	 let missing = arity + nparams - nargs in
 	 let underscores = max (nparams - nargs) 0 in
@@ -319,12 +340,17 @@ and translate_app n c args =
 		(List.fold_right (fun x e -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
 		 names <:expr< Const ($int:string_of_int i$,[| $list: vs @ pad$ |]) >>
 		 )
-	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix
+	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix, annots
      | _ ->
-	 let zero = translate n c in
-	 let f apps x = <:expr< app $apps$ $translate n x$ >> in
+	 let zero = translate annots n c in
+	 let f (apps,annots) x =
+           let tr,annots = translate annots n x in
+             <:expr< app $apps$ $tr$ >>, annots
+         in
 	   Array.fold_left f zero args
-  in uncurrify (translate 0 t))
+  in
+  let tr,annots = translate NbeAnnotTbl.empty 0 t in
+    uncurrify tr, annots)
 
 let opaque_const kn =
   <:expr< Con $str:string_of_con kn$ >>

@@ -225,3 +225,4 @@ val eq_id_key : id_key -> id_key -> bool
 val eq_con_chk : constant -> constant -> bool
 val eq_ind_chk : inductive -> inductive -> bool
 
+val string_of_id_key : id_key -> string

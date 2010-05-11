@@ -27,6 +27,7 @@ open Univ
 open Term
 open Sign
 open Mod_subst
+open Nativelib
 
 type engagement = ImpredicativeSet
 
@@ -62,6 +63,7 @@ type constant_body = {
    (* const_type_code : Cemitcodes.to_patch; *)
     const_body_ast : values option;
     const_body_deps : string list option;
+    const_body_annots : NbeAnnotTbl.t option;
     const_constraints : constraints;
     const_inline : bool;
     const_inline_code : bool}
@@ -235,6 +237,7 @@ let subst_const_body sub cb =
    const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
    const_body_ast = cb.const_body_ast;
    const_body_deps = cb.const_body_deps;
+   const_body_annots = cb.const_body_annots;
    const_constraints = cb.const_constraints;
    const_inline = cb.const_inline;
    const_inline_code = cb.const_inline_code

@@ -422,3 +422,9 @@ let eq_id_key ik1 ik2 =
 let eq_con_chk (kn1,_) (kn2,_) = kn1=kn2
 let eq_mind_chk (kn1,_) (kn2,_) = kn1=kn2
 let eq_ind_chk (kn1,i1) (kn2,i2) = i1=i2&&eq_mind_chk kn1 kn2
+
+let string_of_id_key ik =
+  match ik with
+    | ConstKey cn -> string_of_con cn
+    | VarKey id -> string_of_id id
+    | RelKey i -> string_of_int i

@@ -10,6 +10,7 @@ open Names
 open Term
 open Declarations
 open Sign
+open Nativelib
 
 (** Unsafe environments. We define here a datatype for environments.
    Since typing is not yet defined, it is not possible to check the
@@ -196,7 +197,7 @@ val compile_constant_body :
     env -> constr_substituted constant_def -> bool -> Cemitcodes.body_code
                                  (* boxed *)
 
-val translate : env -> Term.constr -> MLast.expr 
+val translate : env -> id_key -> Term.constr -> MLast.expr * NbeAnnotTbl.t
 
 exception Hyp_not_found
 
