@@ -12,6 +12,7 @@ open Term
 open Cemitcodes
 open Sign
 open Mod_subst
+open Nativelib
 
 (** This module defines the internal representation of global
    declarations. This includes global constants/axioms, mutual
@@ -49,6 +50,7 @@ type constant_body = {
    (*i const_type_code : to_patch;i*)
     const_body_ast : values option;
     const_body_deps : string list option;
+    const_body_annots : NbeAnnotTbl.t option;
     const_constraints : constraints;
     const_inline : bool;
     const_inline_code : bool}

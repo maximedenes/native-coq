@@ -1,4 +1,6 @@
 open Names
+open Term
+open Util
 
 exception Bug of string
 
@@ -13,7 +15,7 @@ type term =
   | Lam6 of (term -> term -> term -> term -> term -> term -> term)
   | Prod of (term * (term -> term))
   | App of term list
-  | Match of term array
+  | Match of (id_key * int * term array)
   | Set
   | Prop
   | Type of int
@@ -21,6 +23,20 @@ type term =
   | Var of identifier
   | Lambda of term
   | Product of (term * term)
+
+type nbe_annotation =
+  | CaseAnnot of case_info
+
+module NbeAnnotTbl =
+  struct
+   type t = {max_index : int; tbl : nbe_annotation Intmap.t}
+
+   let empty = {max_index = 0; tbl = Intmap.empty}
+   let add x t =
+     let i = t.max_index in
+     {max_index = i+1; tbl = Intmap.add i x t.tbl}, i+1
+
+  end
 
 let array_iter2 f v1 v2 =
   let n = Array.length v1 in
@@ -44,8 +60,8 @@ let rec string_of_term n =
   | App xs ->
       "(" ^
       List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
-  | Match xs ->
-      "(Match" ^
+  | Match (ik,i,xs) ->
+      "(Match {" ^ string_of_id_key ik ^ ":" ^ string_of_int i ^ "}" ^
       Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
   | Set -> "Set"
   | Prop -> "Prop"
@@ -179,7 +195,7 @@ let rec compare n t1 t2 =
       compare (n + 1) (f (Rel n)) (f' (Rel n))
     end
   | (App xs, App xs') -> List.iter2 (compare n) xs xs'
-  | (Match xs, Match xs') -> array_iter2 (compare n) xs xs'
+  | (Match (_,_,xs), Match (_,_,xs')) -> array_iter2 (compare n) xs xs'
   | (Set, Set) -> ()
   | (Prop, Prop) -> ()
   | (Type i, Type i') when i = i' -> ()
@@ -248,7 +264,7 @@ let rec normalize n c =
                              (Rel (n + 4)) (Rel (n + 5)))))))))
   | Prod (t, f) -> Product (normalize n t, normalize (n + 1) (f (Rel n)))
   | App l -> App (List.map (normalize n) l)
-  | Match xs -> Match (Array.map (normalize n) xs)
+  | Match (ik,i,xs) -> Match (ik,i, Array.map (normalize n) xs)
   | Const (i, xs) -> Const (i, Array.map (normalize n) xs)
   | _ -> c
 

@@ -20,7 +20,7 @@ let compile env c =
     anomaly (env_name ^".ml already exists");
   if Sys.file_exists (terms_name^".ml") then
     anomaly (terms_name ^".ml already exists");
-  let code = translate env c in
+  let code,annots = translate env c in
     Pcaml.input_file := "/dev/null";
     let (dump,kns) = dump_env [c] env in
     Nbeconv.print_implem (env_name^".ml") (compute_loc dump);
@@ -29,7 +29,7 @@ let compile env c =
 	  (<:str_item< open $list: [env_name]$ >>, loc);
 	  (<:str_item< value c = $code$ >>, loc);
 	  (<:str_item< value _ = print_nf c >>, loc)];
-  kns
+  kns, annots
 
 let decompose_prod env t =
   let (name,dom,codom as res) = destProd (whd_betadeltaiota env t) in
@@ -53,30 +53,30 @@ let type_constructor mind mib typ params =
     let _,ctyp = decompose_prod_n nparams ctyp in
     substl (List.rev (Array.to_list params)) ctyp
 
-let rec app_construct_args n kns env t ty args =
+let rec app_construct_args n kns annots env t ty args =
   let (_,xs) =
     Array.fold_right
         (fun arg (ty,args) ->
            let _,dom,codom = try decompose_prod env ty with _ -> exit 124 in
-           let t = rebuild_constr (n+1) kns env dom arg in
+           let t = rebuild_constr (n+1) kns annots env dom arg in
            (subst1 t codom, t::args))
         args (ty,[])
   in
     mkApp (t,Array.of_list xs)
 
-and rebuild_constr n kns env ty t =
+and rebuild_constr n kns annots env ty t =
   match t with
     | Set -> mkSet
     | Prop -> mkProp
     | Type u -> mkType (type1_univ)
     | Lambda st ->
         let name,dom,codom  = decompose_prod env ty in
-        mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
+        mkLambda (name,dom,rebuild_constr (n+1) kns annots env codom st)
     | Rel i -> mkRel (i+1)
     | Var id -> mkVar id
     | Con s -> let c = Stringmap.find s kns in mkConst c
     | App (f::l) ->
-        let ft = rebuild_constr n kns env mkSet f in
+        let ft = rebuild_constr n kns annots env mkSet f in
         let lt = List.map (rebuild_constr n kns env mkSet) l in
           mkApp (ft,Array.of_list lt)
     | Const (i,args) ->
@@ -90,7 +90,7 @@ and rebuild_constr n kns env ty t =
     | _ -> assert false
 
 let native_norm env c ty =
-  let kns = compile (pre_env env) c in
+  let kns,annots = compile (pre_env env) c in
   let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Unix.system ("touch "^env_name^".ml") in
   print_endline "Compilation...";
@@ -104,5 +104,5 @@ let native_norm env c ty =
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
       let nf = Marshal.from_channel ch_in in
-        rebuild_constr 0 kns env ty nf
+        rebuild_constr 0 kns annots env ty nf
     | _ -> anomaly "Compilation failure" 

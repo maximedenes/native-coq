@@ -1,6 +1,8 @@
 open Names
+open Term
 
 exception Bug of string
+
 type term =
     Rel of int
   | Con of string
@@ -12,7 +14,7 @@ type term =
   | Lam6 of (term -> term -> term -> term -> term -> term -> term)
   | Prod of (term * (term -> term))
   | App of term list
-  | Match of term array
+  | Match of (id_key * int * term array)
   | Set
   | Prop
   | Type of int
@@ -20,6 +22,20 @@ type term =
   | Var of identifier
   | Lambda of term
   | Product of (term * term)
+
+type nbe_annotation =
+  | CaseAnnot of case_info
+
+module NbeAnnotTbl :
+  sig
+   type t
+
+   val empty : t
+   val add : nbe_annotation -> t -> t * int
+
+  end
+
+
 val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
 val string_of_term : int -> term -> string
 val bug : term -> 'a

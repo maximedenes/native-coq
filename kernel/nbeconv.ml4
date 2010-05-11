@@ -146,9 +146,9 @@ let compile env t1 t2 =
   if Sys.file_exists (terms_name^".ml") then
     anomaly (terms_name ^".ml already exists");
   (*print_endline "Translating t1";*)
-  let code1 = translate env t1 in
+  let (code1,_) = translate env (RelKey (-1)) t1 in
   (*print_endline "Translating t2";*)
-  let code2 = translate env t2 in
+  let (code2,_) = translate env (RelKey (-1)) t2 in
     Pcaml.input_file := "/dev/null";
     if true (* TODO : dump env for whole vo file *) then begin
         (*print_endline "Dumping env";*)

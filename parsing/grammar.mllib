@@ -27,6 +27,7 @@ Sign
 Cbytecodes
 Copcodes
 Cemitcodes
+Nativelib
 Declarations
 Pre_env
 Clambda
@@ -35,7 +36,6 @@ Cbytegen
 Environ
 Conv_oracle
 Closure
-Nativelib
 Nbeconv
 Reduction
 Type_errors
