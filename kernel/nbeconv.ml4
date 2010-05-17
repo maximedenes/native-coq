@@ -4,6 +4,7 @@ open Names
 open Term
 open Pre_env
 open Pcaml
+open Nativelib
 open Declarations
 open Util
 open Nativecode
@@ -77,7 +78,7 @@ let add_value env (id, value) xs =
 	  | Some body -> let res = assums body in
              (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
               res)
-        in Stringmap.add sid (None, ast, deps) xs
+        in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
     | VKnone -> xs
 
 let add_constant c ck xs =
@@ -88,7 +89,12 @@ let add_constant c ck xs =
 	let deps = match (fst ck).const_body_deps with
 	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
 	  | None -> []
-	in Stringmap.add sc (Some c, ast, deps) xs
+        in
+	let annots = match (fst ck).const_body_annots with
+          | Some t -> t
+          | None -> NbeAnnotTbl.empty
+        in
+	Stringmap.add sc (ConstKey c, annots, ast, deps) xs
     | None ->
         ((*print_endline ("Const body AST not found: "^Nativecode.string_of_con c);*) xs)
 
@@ -99,13 +105,10 @@ let topological_sort init xs =
     then (result,kns)
     else begin
       try
-	let (c, x, deps) = Stringmap.find s xs in
+	let (c, annots, x, deps) = Stringmap.find s xs in
 	  visited := Stringset.add s !visited;
           let (l,kns) = List.fold_right aux deps (result,kns) in
-          let kns = match c with
-            | None -> kns
-            | Some kn -> Stringmap.add s kn kns
-          in
+          let kns = Stringmap.add s (c,annots) kns in
 	  (x :: l, kns)
       with Not_found -> (result,kns)
     end

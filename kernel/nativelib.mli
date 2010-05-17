@@ -14,7 +14,7 @@ type term =
   | Lam6 of (term -> term -> term -> term -> term -> term -> term)
   | Prod of (term * (term -> term))
   | App of term list
-  | Match of (id_key * int * term array)
+  | Match of (string * int * term * term * term array)
   | Set
   | Prop
   | Type of int
@@ -32,6 +32,8 @@ module NbeAnnotTbl :
 
    val empty : t
    val add : nbe_annotation -> t -> t * int
+
+   val find : int -> t -> nbe_annotation
 
   end
 
