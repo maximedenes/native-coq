@@ -134,10 +134,10 @@ and collapse_applications t =
    and replacing unary applications with n-ary applications where possible.
 
 *)
-and uncurrify t = match t with
+and uncurrify t = t (*match t with
   | <:expr< Lam1 $_$ >> -> collapse_abstractions t
   | <:expr< app $_$ $_$ >> -> collapse_applications t
-  | _ -> descend_ast uncurrify t
+  | _ -> descend_ast uncurrify t*)
 
 let lid_of_string s = "x" ^ s
 let uid_of_string s = "X" ^ s
@@ -192,15 +192,15 @@ let rec gen_rels start len =
 
 let rec patch_fix l n =
   if n > 0 then function
-    | <:expr< Lam1 (fun $x$ -> $t$) >> ->
-          <:expr< Lam1 (fun $x$ -> $patch_fix l (n-1) t$) >>
+    | <:expr< fun $x$ -> $t$ >> ->
+          <:expr< fun $x$ -> $patch_fix l (n-1) t$ >>
     | _ -> invalid_arg "translate.patch_fix"
   else
   function
-    | <:expr< Lam1 (fun $lid:x$ -> $t$) >> ->
+    | <:expr< fun $lid:x$ -> $t$ >> ->
       let mk_patt x = <:patt< $lid:x$>> in
       let mk_expr x = <:expr< $lid:x$>> in
-      let mk_eta_expr x = <:expr< Lam1 (fun x -> App [Rel 0;x])>> in
+      let mk_eta_expr x = <:expr< fun x -> App [Rel 0;x]>> in
       let const_branch =
         (<:patt< Const _ >>, None, <:expr< ($list:(List.map mk_expr l)$) >>)
       in
@@ -212,7 +212,7 @@ let rec patch_fix l n =
         let match_body = <:expr< match $lid:x$ with [$list:[const_branch;default]$] >> in
         <:expr< let ($list:List.map mk_patt l$) = $match_body$  in $t$ >>
       in
-        <:expr< Lam1 (fun $lid:x$ -> $capture$) >>
+        <:expr< fun $lid:x$ -> $capture$ >>
     | _ -> invalid_arg "translate.patch_fix.2"
 
 
@@ -251,7 +251,7 @@ and translate env ik t =
             <:expr< Prod ($vt$,(fun $lid:lid_of_index n$ -> $vc$)) >>, annots
       | Lambda (_, t, c) ->
           let v,annots = translate annots (n + 1) c in
-	  <:expr< Lam1 (fun $lid:lid_of_index n$ -> $v$) >>, annots
+	  <:expr< fun $lid:lid_of_index n$ -> $v$ >>, annots
       | LetIn (_, b, t, c) ->
           let vb,annots = translate annots n b in
           let vc,annots = translate annots (n + 1) c in
@@ -268,7 +268,7 @@ and translate env ik t =
 	  let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-	    <:expr< Const ($int:string_of_int i$,[||]) >>, annots
+	    <:expr< $uid:string_of_id ob.mind_consnames.(i-1)$ >>, annots
           else translate_app annots n t [||]
       | Case (ci, pi, c, branches) ->
 	  let f i br (xs1,xs2,xs3,annots) =
@@ -337,17 +337,20 @@ and translate_app annots n c args =
 	   let rec aux n z =
 	     if n = 0
 	     then z
-	     else aux (n - 1) <:expr< Lam1 (fun _ -> $z$) >>
-	   in aux underscores
-		(List.fold_right (fun x e -> <:expr< Lam1 (fun $lid:x$ -> $e$) >>)
-		 names <:expr< Const ($int:string_of_int i$,[| $list: vs @ pad$ |]) >>
-		 )
+	     else aux (n - 1) <:expr< fun _ -> $z$ >>
+	   in
+           let tr_constr = <:expr< $uid:string_of_id ob.mind_consnames.(i-1)$ >> in
+           let apps = List.fold_left (fun e x -> <:expr< $e$ $x$ >>) tr_constr (vs@pad)
+           in
+             aux underscores
+		(List.fold_right (fun x e -> <:expr< fun $lid:x$ -> $e$ >>)
+		 names apps)
 	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix, annots
      | _ ->
 	 let zero = translate annots n c in
 	 let f (apps,annots) x =
            let tr,annots = translate annots n x in
-             <:expr< app $apps$ $tr$ >>, annots
+             <:expr< $apps$ $tr$ >>, annots
          in
 	   Array.fold_left f zero args
   in
@@ -363,6 +366,14 @@ let assums t =
     match kind_of_term t with
       | Var id -> string_of_id id :: xs
       | Const c -> string_of_con c :: xs
+      | Construct cstr ->
+          let i = index_of_constructor cstr in
+	  let (mind,_) = inductive_of_constructor cstr in
+          string_of_mind mind :: xs
       | _ -> fold_constr aux xs t
   in aux [] t
 
+let translate_ind ob =
+  let aux x = (loc,string_of_id x,[]) in
+  let const_ids = Array.to_list (Array.map aux ob.mind_consnames) in
+  (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);
