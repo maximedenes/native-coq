@@ -4,25 +4,97 @@ open Util
 
 exception Bug of string
 
-type term =
-  | Rel of int
-  | Con of string
-  | Lam1 of (term -> term)
-  | Lam2 of (term -> term -> term)
-  | Lam3 of (term -> term -> term -> term)
-  | Lam4 of (term -> term -> term -> term -> term)
-  | Lam5 of (term -> term -> term -> term -> term -> term)
-  | Lam6 of (term -> term -> term -> term -> term -> term -> term)
-  | Prod of (term * (term -> term))
-  | App of term list
-  | Match of (string * int * term * term * term array)
-  | Set
-  | Prop
-  | Type of int
-  | Const of (int * term array)
-  | Var of identifier
-  | Lambda of term
-  | Product of (term * term)
+let mkApp f args = 
+  if Array.length args = 0 then f else App(f, args)
+
+type head_accu =
+  | Avar of int
+  | Aif of Obj.t * (Obj.t -> Obj.t)
+
+
+(* Normalization *)
+
+let rec accumulate a =
+  let o = Obj.repr accumulate in
+  let size = Obj.size (Obj.magic o) in
+  let r = Obj.new_block 0 (size + 1) in
+  for i = 0 to size - 1 do
+    Obj.set_field r i (Obj.field o i) 
+  done;
+  Obj.set_field r size (Obj.repr a);
+  (Obj.obj r)
+
+let taccu = ref (accumulate:int -> int)
+
+let new_accu a =
+ let r = Obj.new_block 0 2 in
+ Obj.set_field r 0 (Obj.field (Obj.magic !taccu) 0);
+ Obj.set_field r 1 (Obj.magic a);
+ r
+
+let rec norm o i =
+  if Obj.is_int o then (* constant constructor *)
+    match Obj.magic o with
+    | 0 -> mkSet
+    | 1 -> mkProp
+  else
+    if Obj.tag o = 0 then assert false
+      (*let accu = Obj.obj (Obj.field o 1) in
+      let size = Obj.size o - 2 in
+      let args = Array.init size (fun j -> norm (Obj.field o (j+2)) i) in
+      mkApp (norm_accu accu i) args*)
+    else 
+      if (Obj.tag o = Obj.closure_tag || Obj.tag o = Obj.infix_tag) then
+	(*Printf.printf "fun %i =>" i;*)
+         (*mkLa(i, norm (Obj.obj o (new_accu (Avar i))) (i+1)))*)
+         assert false
+      else 
+	(Printf.printf "%i" (Obj.tag o);
+	 assert false)
+  
+and norm_accu accu i =
+  assert false
+  (*match accu with
+  | Avar x -> *)
+     (*Printf.printf "Var %i " x; Var x*)
+  (*| Aif (k,bs) ->*)
+    (*  Printf.printf "If "; *)
+      (*let nk = norm k i in
+      let bf = norm (bs (Obj.magic 0)) i in
+      let bt = norm (bs (Obj.magic 1)) i in
+      If (nk, bt, bf)*)
+
+let norm v i = norm (Obj.repr v) i
+
+let print_nf c = Marshal.to_channel stdout (norm c 0) []
+
+(* Pretty printing *)
+
+(*let rec print_lam l = 
+ match l with 
+ | Lam (x, l) ->
+     Printf.printf "(fun %i =>" x;
+     print_lam l;
+     Printf.printf ")"
+ | Var x -> Printf.printf "%i" x
+ | App (f, args) ->
+     Printf.printf "(";
+     print_lam f;
+     for i = 0 to Array.length args - 1 do
+       Printf.printf " ";
+       print_lam args.(i)
+     done;
+     Printf.printf ")"
+ | If (b, l1, l2) ->
+     Printf.printf "If (";
+     print_lam b;
+     Printf.printf ") then (";
+     print_lam l1;
+     Printf.printf ") else (";
+     print_lam l2;
+     Printf.printf ")"
+ | Bool b -> 
+     Printf.printf "%s" (if b then "true" else "false")*)
 
 type nbe_annotation =
   | CaseAnnot of case_info
@@ -40,7 +112,7 @@ module NbeAnnotTbl =
 
   end
 
-let array_iter2 f v1 v2 =
+(*let array_iter2 f v1 v2 =
   let n = Array.length v1 in
   if Array.length v2 <> n then invalid_arg "array_iter2"
   else for i = 0 to n - 1 do f v1.(i) v2.(i) done
@@ -275,4 +347,4 @@ let rec normalize n c =
   | Const (i, xs) -> Const (i, Array.map (normalize n) xs)
   | _ -> c
 
-let print_nf c = Marshal.to_channel stdout (normalize 0 c) [];
+let print_nf c = Marshal.to_channel stdout (normalize 0 c) [];*)

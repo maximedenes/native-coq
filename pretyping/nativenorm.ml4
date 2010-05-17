@@ -71,7 +71,7 @@ let rec app_construct_args n kns env t ty args =
     mkApp (t,Array.of_list xs)
 
 and rebuild_constr n kns env ty t =
-  match t with
+(*  match t with
     | Set -> mkSet
     | Prop -> mkProp
     | Type u -> mkType (type1_univ)
@@ -107,7 +107,7 @@ and rebuild_constr n kns env ty t =
       let c_constr = rebuild_constr n kns env mkSet c in
       let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
         mkCase (ci,pi_constr,c_constr,ac_constr)
-    | _ -> assert false
+    | _ -> assert false*) mkSet
 
 let native_norm env c ty =
   let kns = compile (pre_env env) c in
