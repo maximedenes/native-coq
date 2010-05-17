@@ -15,7 +15,7 @@ type term =
   | Lam6 of (term -> term -> term -> term -> term -> term -> term)
   | Prod of (term * (term -> term))
   | App of term list
-  | Match of (id_key * int * term array)
+  | Match of (string * int * term * term * term array)
   | Set
   | Prop
   | Type of int
@@ -34,7 +34,9 @@ module NbeAnnotTbl =
    let empty = {max_index = 0; tbl = Intmap.empty}
    let add x t =
      let i = t.max_index in
-     {max_index = i+1; tbl = Intmap.add i x t.tbl}, i+1
+     {max_index = i+1; tbl = Intmap.add i x t.tbl}, i
+
+   let find x t = Intmap.find x t.tbl
 
   end
 
@@ -60,8 +62,9 @@ let rec string_of_term n =
   | App xs ->
       "(" ^
       List.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
-  | Match (ik,i,xs) ->
-      "(Match {" ^ string_of_id_key ik ^ ":" ^ string_of_int i ^ "}" ^
+  | Match (ik,i,p,t,xs) ->
+      "(Match {" ^ ik ^ ":" ^ string_of_int i ^ "}" ^
+      " <" ^ string_of_term n p ^ "> " ^ string_of_term n t ^ " with " ^
       Array.fold_left (fun xs x -> xs ^ ", " ^ string_of_term n x) "" xs ^ ")"
   | Set -> "Set"
   | Prop -> "Prop"
@@ -195,7 +198,10 @@ let rec compare n t1 t2 =
       compare (n + 1) (f (Rel n)) (f' (Rel n))
     end
   | (App xs, App xs') -> List.iter2 (compare n) xs xs'
-  | (Match (_,_,xs), Match (_,_,xs')) -> array_iter2 (compare n) xs xs'
+  | (Match (_,_,p,c,xs), Match (_,_,p',c',xs')) ->
+      compare n p p';
+      compare n c c';
+      array_iter2 (compare n) xs xs'
   | (Set, Set) -> ()
   | (Prop, Prop) -> ()
   | (Type i, Type i') when i = i' -> ()
@@ -264,7 +270,8 @@ let rec normalize n c =
                              (Rel (n + 4)) (Rel (n + 5)))))))))
   | Prod (t, f) -> Product (normalize n t, normalize (n + 1) (f (Rel n)))
   | App l -> App (List.map (normalize n) l)
-  | Match (ik,i,xs) -> Match (ik,i, Array.map (normalize n) xs)
+  | Match (ik,i,p,c,xs) ->
+      Match (ik,i, normalize n p, normalize n c, Array.map (normalize n) xs)
   | Const (i, xs) -> Const (i, Array.map (normalize n) xs)
   | _ -> c
 

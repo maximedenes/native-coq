@@ -239,7 +239,7 @@ and translate env ik t =
           let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	      match b with
 		| None ->
-                    <:expr< Var (id_of_string $str:string_of_id id$) >>, annots
+                    <:expr< Var (Names.id_of_string $str:string_of_id id$) >>, annots
 		| Some body -> push_value id body env; v, annots)
       | Sort (Prop Null) -> <:expr< Prop >>, annots
       | Sort (Prop Pos) -> <:expr< Set >>, annots
@@ -292,8 +292,10 @@ and translate env ik t =
             array_fold_right_i f branches ([],[],[],annots)
           in
           let annot_i_str = string_of_int annot_i in
+          let annot_ik = string_of_id_key ik in
+          let (pi_tr, annots) = translate annots n pi in
           let neutral_match =
-            <:expr< Match ($int:annot_i_str$, [| $list:neutrals$ |]) >> in
+            <:expr< Match ($str:annot_ik$, $int:annot_i_str$, $pi_tr$, $lid:code_lid_of_index 0$, [| $list:neutrals$ |]) >> in
           let default = (<:patt< x >>, None, neutral_match) in
           let match_body =
             <:expr< match $lid:code_lid_of_index 0$ with [$list:vs@[default]$] >>
