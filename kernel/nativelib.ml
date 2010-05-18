@@ -35,8 +35,8 @@ let new_accu a =
 let rec norm o i =
   if Obj.is_int o then (* constant constructor *)
     match Obj.magic o with
-    | 0 -> mkSet
-    | 1 -> mkProp
+    | 0 -> mkProp
+    | 1 -> mkSet
   else
     if Obj.tag o = 0 then assert false
       (*let accu = Obj.obj (Obj.field o 1) in
