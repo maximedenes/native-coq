@@ -30,4 +30,4 @@ val app6 : term -> term -> term -> term -> term -> term -> term -> term
 val app : term -> term -> term
 val compare : int -> term -> term -> unit
 val normalize : int -> term -> term*)
-val print_nf : constr -> unit
+val print_nf : 'a -> unit

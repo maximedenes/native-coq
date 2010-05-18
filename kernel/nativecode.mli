@@ -12,4 +12,7 @@ val opaque_const : constant -> MLast.expr
 
 val assums : constr -> string list
 
-val translate_ind : Declarations.one_inductive_body -> MLast.str_item * Ploc.t
+val translate_ind : env ->
+           Names.inductive ->
+           Declarations.mutual_inductive_body *
+           Declarations.one_inductive_body -> MLast.str_item * Ploc.t
