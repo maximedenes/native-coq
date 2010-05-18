@@ -271,6 +271,8 @@ and translate env ik t =
 	    <:expr< $uid:string_of_id ob.mind_consnames.(i-1)$ >>, annots
           else translate_app annots n t [||]
       | Case (ci, pi, c, branches) ->
+	  let mb = lookup_mind (fst ci.ci_ind) env in
+	  let ob = mb.mind_packets.(snd ci.ci_ind) in
 	  let f i br (xs1,xs2,xs3,annots) =
             let b = code_lid_of_index (i+1) in
 	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
@@ -279,8 +281,6 @@ and translate env ik t =
     	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
             let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
        	    let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in
-	    let mb = lookup_mind (fst ci.ci_ind) env in
-	    let ob = mb.mind_packets.(snd ci.ci_ind) in
 	    let pat1 = make_constructor_pattern ob i args in
             let pat2 = <:patt< $lid:b$ >> in
             let (tr,annots) = translate annots n br in
@@ -297,7 +297,8 @@ and translate env ik t =
           let annot_ik = string_of_id_key ik in
           let (pi_tr, annots) = translate annots n pi in
           let neutral_match = <:expr< raise (Bug "match") >> in
-          let default = (<:patt< Accu _ >>, None, neutral_match) in
+          let accu_str = "Accu"^string_of_id ob.mind_typename in
+          let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
           let match_body =
             <:expr< match $lid:code_lid_of_index 0$ with [$list:default::vs$] >>
           in
@@ -391,11 +392,12 @@ let assums t =
   (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);*)
 
 let translate_ind env ind (mb,ob) =
+  let type_str = string_of_id ob.mind_typename in
   let aux x n =
     if n = 0 then (loc,string_of_id x,[])
-    else (loc,string_of_id x, [<:ctyp< $lid:string_of_id ob.mind_typename$ >>])
+    else (loc,string_of_id x, [<:ctyp< $lid:type_str$ >>])
   in
   let const_ids = Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls) in
-  (*let const_ids = (loc,"Accu",[<:ctyp< Obj.t >>])::const_ids in*)
-  (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc)
+  let const_ids = (loc,"Accu"^type_str,[<:ctyp< Obj.t >>])::const_ids in
+  (<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>,loc)
 

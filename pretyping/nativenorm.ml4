@@ -123,6 +123,6 @@ let native_norm env c ty =
     | Unix.WEXITED 0 ->
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
-      let nf = Marshal.from_channel ch_in in
-        rebuild_constr 0 kns env ty nf
+      (*let nf =*) Marshal.from_channel ch_in (*in
+        rebuild_constr 0 kns env ty nf*)
     | _ -> anomaly "Compilation failure" 
