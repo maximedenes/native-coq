@@ -348,3 +348,20 @@ let rec normalize n c =
   | _ -> c
 
 let print_nf c = Marshal.to_channel stdout (normalize 0 c) [];*)
+
+exception Find_at of int
+
+(* rend le numero du constructeur correspondant au tag [tag],
+   [cst] = true si c'est un constructeur constant *)
+
+let invert_tag cst tag reloc_tbl =
+  try
+    for j = 0 to Array.length reloc_tbl - 1 do
+      let tagj,arity = reloc_tbl.(j) in
+      if tag = tagj && (cst && arity = 0 || not(cst || arity = 0)) then
+	raise (Find_at j)
+      else ()
+    done;raise Not_found
+  with Find_at j -> (j+1)
+
+

@@ -171,9 +171,9 @@ let string_of_constructor (ind, i) =
   string_of_inductive ind ^ "c" ^ string_of_int i
 
 (* First argument the index of the constructor *)
-let make_constructor_pattern i args =
-  let f arg = <:patt< $lid:arg$ >> in
-    <:patt< Const ($int:string_of_int i$,[| $list:List.map f args$ |]) >>
+let make_constructor_pattern ob i args =
+  let f = <:patt< $uid:string_of_id ob.mind_consnames.(i)$ >> in 
+  List.fold_left (fun e arg -> <:patt< $e$ $lid:arg$ >>) f args
 
 let lid_of_index n = "x" ^ string_of_int n
 let code_lid_of_index p = "b" ^ string_of_int p
@@ -277,9 +277,11 @@ and translate env ik t =
             let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
     	    let caml_apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
     	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
-            let apps = List.fold_left (fun e arg -> <:expr< app $e$ $lid:arg$ >>) in
+            let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
        	    let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in
-	    let pat1 = make_constructor_pattern (i + 1) args in
+	    let mb = lookup_mind (fst ci.ci_ind) env in
+	    let ob = mb.mind_packets.(snd ci.ci_ind) in
+	    let pat1 = make_constructor_pattern ob i args in
             let pat2 = <:patt< $lid:b$ >> in
             let (tr,annots) = translate annots n br in
             let body = abs args (apps tr args) in
@@ -294,11 +296,10 @@ and translate env ik t =
           let annot_i_str = string_of_int annot_i in
           let annot_ik = string_of_id_key ik in
           let (pi_tr, annots) = translate annots n pi in
-          let neutral_match =
-            <:expr< Match ($str:annot_ik$, $int:annot_i_str$, $pi_tr$, $lid:code_lid_of_index 0$, [| $list:neutrals$ |]) >> in
-          let default = (<:patt< x >>, None, neutral_match) in
+          let neutral_match = <:expr< raise (Bug "match") >> in
+          let default = (<:patt< Accu _ >>, None, neutral_match) in
           let match_body =
-            <:expr< match $lid:code_lid_of_index 0$ with [$list:vs@[default]$] >>
+            <:expr< match $lid:code_lid_of_index 0$ with [$list:default::vs$] >>
           in
           let (tr,annots) = translate annots n c in
           let letdefs = (<:patt< $lid:code_lid_of_index 0$ >>, tr)::bodies in
@@ -309,7 +310,7 @@ and translate env ik t =
               let (trans,annots) = translate annots (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
               let lids = (gen_names n m) in
-	      (<:patt< $lid:fix_lid$ >>, patch_fix lids recargs.(i) trans)
+	      (<:patt< $lid:fix_lid$ >>, trans)
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>, annots
       | CoFix(ln, (_, tl, bl)) -> <:expr< Con $str:"cofix"$ >>, annots(* invalid_arg "translate"*)
@@ -373,7 +374,28 @@ let assums t =
       | _ -> fold_constr aux xs t
   in aux [] t
 
-let translate_ind ob =
-  let aux x = (loc,string_of_id x,[]) in
-  let const_ids = Array.to_list (Array.map aux ob.mind_consnames) in
-  (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);
+(*let translate_ind env ind (mb,ob) =
+  let tr_aux t =
+    let l,_ = decompose_prod t in
+    List.map (fun (_,t) -> 
+      match kind_of_term t with
+      | Ind ind ->
+	let mb = lookup_mind (fst ind) env in
+	let ob = mb.mind_packets.(snd ind) in
+          <:ctyp< $lid:string_of_id ob.mind_typename$ >>
+      | _ -> assert false) l
+  in
+  let constr_ty = type_of_constructors ind (mb,ob) in 
+  let aux x t = (loc,string_of_id x,tr_aux t) in
+  let const_ids = Array.to_list (array_map2 aux ob.mind_consnames constr_ty) in
+  (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);*)
+
+let translate_ind env ind (mb,ob) =
+  let aux x n =
+    if n = 0 then (loc,string_of_id x,[])
+    else (loc,string_of_id x, [<:ctyp< $lid:string_of_id ob.mind_typename$ >>])
+  in
+  let const_ids = Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls) in
+  (*let const_ids = (loc,"Accu",[<:ctyp< Obj.t >>])::const_ids in*)
+  (<:str_item< type $lid:string_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc)
+

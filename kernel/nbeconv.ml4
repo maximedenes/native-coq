@@ -98,11 +98,11 @@ let add_constant c ck xs =
     | None ->
         ((*print_endline ("Const body AST not found: "^Nativecode.string_of_con c);*) xs)
 
-let add_ind c ind xs =
-  (*let mb = lookup_mind (fst ind) env in*)
+let add_ind env c ind xs =
+  let mb = lookup_mind c env in
   (*let ob = ind.mind_packets.(snd ind) in*)
   let ob = ind.mind_packets.(0) in
-  let ast = translate_ind ob in
+  let ast = translate_ind env (c,0) (mb,ob) in
   Stringmap.add (string_of_mind c) (RelKey (-1), NbeAnnotTbl.empty, ast, []) xs
 
 let topological_sort init xs =
@@ -127,7 +127,7 @@ let topological_sort init xs =
 let dump_env terms env =
   let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
   let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
-  let vars_cons_ind = Mindmap_env.fold add_ind env.env_globals.env_inductives vars_and_cons
+  let vars_cons_ind = Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
   in
   let initial_set = List.fold_left (fun acc t -> assums t @ acc) [] terms in
   print_endline (String.concat "," initial_set);
