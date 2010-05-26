@@ -71,6 +71,15 @@ let invert_tag cst tag reloc_tbl =
     done;raise Not_found
   with Find_at j -> (j+1)
 
+let construct_of_constr const env tag typ =
+  let (mind,_ as ind), allargs = find_rectype_a env typ in
+    let mib,mip = lookup_mind_specif env ind in
+    let nparams = mib.mind_nparams in
+    let i = invert_tag const tag mip.mind_reloc_tbl in
+    let params = Array.sub allargs 0 nparams in
+    let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
+      (Term.mkApp(mkConstruct(ind,i), params), ctyp)
+
 let rec app_construct_args n kns env t ty args =
   let (_,xs) =
     Array.fold_right
@@ -90,16 +99,13 @@ and rebuild_constr n kns env ty t =
   (*| Var of int
   | App of lam * lam array*)
   | Const_int tag ->
-  let (mind,_ as ind), allargs = find_rectype_a env ty in
-    let mib,mip = lookup_mind_specif env ind in
-    let nparams = mib.mind_nparams in
-    let i = invert_tag true tag mip.mind_reloc_tbl in
-    let params = Array.sub allargs 0 nparams in
-    let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
-      Term.mkApp(mkConstruct(ind,i), params)(*, ctyp)*)
+    fst (construct_of_constr true env tag ty)
+  | Const_block (tag,args) ->
+      let capp,ctyp = construct_of_constr false env tag ty in
+      app_construct_args n kns env capp ctyp args
+      
 
-  (*| Const_block of int * lam array
-  | Case of lam * (tag * int array * lam) array
+  (*| Case of lam * (tag * int array * lam) array
   | Fix of int * lam *)
 
 (*    | Set -> mkSet
