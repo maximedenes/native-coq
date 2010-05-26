@@ -17,6 +17,16 @@ module NbeAnnotTbl :
 
   end
 
+type tag
+
+type lam = 
+    Lam of lam
+  | Var of int
+  | App of lam * lam array
+  | Const_int of int
+  | Const_block of int * lam array
+  | Case of lam * (tag * int array * lam) array
+  | Fix of int * lam 
 
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
 val string_of_term : int -> term -> string
@@ -30,4 +40,4 @@ val app6 : term -> term -> term -> term -> term -> term -> term -> term
 val app : term -> term -> term
 val compare : int -> term -> term -> unit
 val normalize : int -> term -> term*)
-val print_nf : 'a -> unit
+val print_nf : Nativevalues.t Lazy.t -> unit
