@@ -1,3 +1,4 @@
+open Names
 
 type t = t -> t
     
@@ -17,8 +18,10 @@ type rec_pos = int
 
 type atom = 
   | Arel of int
+  | Aid of string
+  | Avar of identifier
   | Acase of accumulator * (t -> t) * case_tbl
-  | Afix of t * (t -> t) * rec_pos 
+  | Afix of t * (t -> t) * rec_pos
 
 let accumulate_tag = 0
 
@@ -47,6 +50,12 @@ let mk_accu (a:atom) = mk_accu_gen raccumulate a
 
 let mk_rel_accu i = 
   mk_accu (Arel i)
+
+let mk_id_accu s = 
+  mk_accu (Aid s)
+
+let mk_var_accu id = 
+  mk_accu (Avar id)
 
 let mk_sw_accu k f tbl = 
   mk_accu (Acase(k,f,tbl))

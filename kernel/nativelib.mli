@@ -20,8 +20,10 @@ module NbeAnnotTbl :
 type tag
 
 type lam = 
-    Lam of lam
-  | Var of int
+  | Lam of lam
+  | Rel of int
+  | Id of string
+  | Var of identifier
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array

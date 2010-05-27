@@ -25,8 +25,10 @@ module NbeAnnotTbl =
 type tag = int
 
 type lam = 
-    Lam of lam
-  | Var of int
+  | Lam of lam
+  | Rel of int
+  | Id of string
+  | Var of identifier
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
@@ -109,7 +111,12 @@ and norm_accu lvl k =
 
 and norm_atom lvl a =
   match a with
-  | Arel i -> Var i
+  | Arel i ->
+      Rel i
+  | Aid s ->
+      Id s
+  | Avar id ->
+      Var id
   | Acase (k,f,tbl) ->
       let lk = norm_accu lvl k in
       let lb = Array.map (norm_branch lvl f) tbl in

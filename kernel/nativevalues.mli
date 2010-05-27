@@ -1,3 +1,4 @@
+open Names
 
 type t = t -> t
 
@@ -13,7 +14,9 @@ type case_tbl = kind_of_constructor array
 type rec_pos = int
 
 type atom =
-    Arel of int
+  | Arel of int
+  | Aid of string
+  | Avar of identifier
   | Acase of accumulator * (t -> t) * case_tbl
   | Afix of t * (t -> t) * rec_pos
 
@@ -21,6 +24,8 @@ type atom =
 
 val mk_accu : atom -> t
 val mk_rel_accu : int -> t
+val mk_id_accu : string -> t
+val mk_var_accu : identifier -> t
 val mk_sw_accu : accumulator -> (t -> t) -> case_tbl -> t
 val mk_fix_accu : atom -> t
 

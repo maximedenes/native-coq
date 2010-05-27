@@ -34,6 +34,7 @@ let compile env c =
     Nbeconv.print_implem (env_name^".ml") (compute_loc dump);
     Nbeconv.print_implem (terms_name^".ml")
 	 [(<:str_item< open Nativelib >>, loc);
+	  (<:str_item< open Nativevalues >>, loc);
 	  (<:str_item< open $list: [env_name]$ >>, loc);
 	  (<:str_item< value c = Obj.magic $code$ >>, loc);
 	  (<:str_item< value _ = print_nf (lazy c) >>, loc)];
@@ -94,21 +95,29 @@ let rec app_construct_args n kns env t ty args =
 and rebuild_constr n kns env ty t =
   match t with
   |  Lam st ->
-        let name,dom,codom  = decompose_prod env ty in
-        mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
-  (*| Var of int
-  | App of lam * lam array*)
+      let name,dom,codom  = decompose_prod env ty in
+      mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
+  | Rel i ->
+      mkRel (i+1)
+  (*| App of lam * lam array*)
   | Const_int tag ->
     fst (construct_of_constr true env tag ty)
   | Const_block (tag,args) ->
       let capp,ctyp = construct_of_constr false env tag ty in
       app_construct_args n kns env capp ctyp args
-      
+  | Id s ->
+       let (ik,_) = Stringmap.find s kns in
+      (match ik with
+        | ConstKey c -> mkConst c
+        (*| VarKey id -> mkVar id*)
+        | _ -> assert false)
+  | Var id ->
+      mkVar id
 
   (*| Case of lam * (tag * int array * lam) array
-  | Fix of int * lam *)
+  | Fix of int * lam
 
-(*    | Set -> mkSet
+    | Set -> mkSet
     | Prop -> mkProp
     | Type u -> mkType (type1_univ)
     | Lambda st ->
