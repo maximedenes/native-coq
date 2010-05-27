@@ -239,7 +239,7 @@ and translate env ik t =
           let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	      match b with
 		| None ->
-                    <:expr< Var (Names.id_of_string $str:string_of_id id$) >>, annots
+                    <:expr< mk_var_accu (Names.id_of_string $str:string_of_id id$) >>, annots
 		| Some body -> push_value id body env; v, annots)
       | Sort (Prop Null) -> <:expr< Prop >>, annots
       | Sort (Prop Pos) -> <:expr< Set >>, annots
@@ -259,7 +259,7 @@ and translate env ik t =
       | App (c, args) ->
           translate_app annots n c args
       | Const c -> <:expr< $lid:lid_of_string (string_of_con c)$ >>, annots
-      | Ind c -> <:expr< Con $str:string_of_inductive c$ >>, annots (* xxx *)
+      | Ind c -> <:expr< mk_id_accu $str:string_of_inductive c$ >>, annots (* xxx *)
       | Construct cstr ->
 	  let i = index_of_constructor cstr in
 	  let ind = inductive_of_constructor cstr in
@@ -314,8 +314,8 @@ and translate env ik t =
 	      (<:patt< $lid:fix_lid$ >>, trans)
 	  in let functions = Array.to_list (Array.init m f)
 	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>, annots
-      | CoFix(ln, (_, tl, bl)) -> <:expr< Con $str:"cofix"$ >>, annots(* invalid_arg "translate"*)
-      | _ -> <:expr< Con $str:"other"$ >>, annots(* invalid_arg "translate"*)
+      | CoFix(ln, (_, tl, bl)) -> <:expr< mk_id_accu $str:"cofix"$ >>, annots(* invalid_arg "translate"*)
+      | _ -> <:expr< mk_id_accu $str:"other"$ >>, annots(* invalid_arg "translate"*)
 and translate_app annots n c args =
   match kind_of_term c with
      | Construct cstr ->
@@ -360,7 +360,7 @@ and translate_app annots n c args =
     uncurrify tr, annots)
 
 let opaque_const kn =
-  <:expr< Con $str:string_of_con kn$ >>
+  <:expr< mk_id_accu $str:string_of_con kn$ >>
 
 (** Collect all variables and constants in the term. *)
 let assums t =

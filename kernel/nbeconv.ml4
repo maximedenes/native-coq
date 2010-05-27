@@ -131,9 +131,12 @@ let dump_env terms env =
   in
   let initial_set = List.fold_left (fun acc t -> assums t @ acc) [] terms in
   print_endline (String.concat "," initial_set);
-  let header = (<:str_item< open Nativelib >>, loc) in
+  let header =
+    [(<:str_item< open Nativelib >>, loc);
+     (<:str_item< open Nativevalues >>, loc)]
+  in
   let (l,kns) = topological_sort initial_set vars_cons_ind in
-    (header :: l,kns)
+    (header @ l,kns)
 
 let ocaml_version = "3.11.1"
 let ast_impl_magic_number = "Caml1999M012"
