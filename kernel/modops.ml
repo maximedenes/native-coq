@@ -262,7 +262,7 @@ let strengthen_const env mp_from l cb resolver =
       let body = Declarations.force const_subs in
       let tr,annots = (translate env (ConstKey con) body) in
       let ast = values tr in
-      let deps = Nativecode.assums body in
+      let deps = Nativecode.assums (pre_env env) body in
       { cb with 
 	const_body = (Def const_subs);
 	const_body_code = Cemitcodes.from_val

@@ -363,7 +363,7 @@ let opaque_const kn =
   <:expr< mk_id_accu $str:string_of_con kn$ >>
 
 (** Collect all variables and constants in the term. *)
-let assums t =
+let assums env t =
   let rec aux xs t =
     match kind_of_term t with
       | Var id -> string_of_id id :: xs
@@ -372,6 +372,11 @@ let assums t =
           let i = index_of_constructor cstr in
 	  let (mind,_) = inductive_of_constructor cstr in
           string_of_mind mind :: xs
+      | Case (ci, pi, c, branches) ->
+	  let mb = lookup_mind (fst ci.ci_ind) env in
+	  let ob = mb.mind_packets.(snd ci.ci_ind) in
+          let type_str = string_of_id ob.mind_typename in
+          fold_constr aux (type_str::xs) t
       | _ -> fold_constr aux xs t
   in aux [] t
 
@@ -401,3 +406,5 @@ let translate_ind env ind (mb,ob) =
   let const_ids = (loc,"Accu"^type_str,[<:ctyp< Obj.t >>])::const_ids in
   (<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>,loc)
 
+(*let translate_ind_tbl env ind (mb,ob) =*)
+  
