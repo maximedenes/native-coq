@@ -273,7 +273,7 @@ and translate env ik t =
       | Case (ci, pi, c, branches) ->
 	  let mb = lookup_mind (fst ci.ci_ind) env in
 	  let ob = mb.mind_packets.(snd ci.ci_ind) in
-	  let f i br (xs1,xs2,xs3,annots) =
+	  let f i br (xs1,annots) =
             let b = code_lid_of_index (i+1) in
 	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
             let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
@@ -285,13 +285,12 @@ and translate env ik t =
             let pat2 = <:patt< $lid:b$ >> in
             let (tr,annots) = translate annots n br in
             let body = abs args (apps tr args) in
-	      ((pat1, None, caml_apps <:expr< $lid:b$ >> args)::xs1,
-                (pat2,body)::xs2, caml_apps_var <:expr< $lid:b$ >> rels :: xs3,
+                ((pat2, None, caml_apps body args)::xs1,
                  annots)
           in
           let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
-          let (vs,bodies,neutrals,annots) =
-            array_fold_right_i f branches ([],[],[],annots)
+          let (bodies,annots) =
+            array_fold_right_i f branches ([],annots)
           in
           let annot_i_str = string_of_int annot_i in
           let annot_ik = string_of_id_key ik in
@@ -299,12 +298,11 @@ and translate env ik t =
           let neutral_match = <:expr< raise (Bug "match") >> in
           let accu_str = "Accu"^string_of_id ob.mind_typename in
           let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
-          let match_body =
-            <:expr< match $lid:code_lid_of_index 0$ with [$list:default::vs$] >>
-          in
           let (tr,annots) = translate annots n c in
-          let letdefs = (<:patt< $lid:code_lid_of_index 0$ >>, tr)::bodies in
-          <:expr< let $list:letdefs$ in $match_body$ >>, annots
+          let match_body =
+            <:expr< match $tr$ with [$list:default::bodies$] >>
+          in
+          match_body, annots
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
 	  let f i  =
