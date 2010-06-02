@@ -75,7 +75,7 @@ let add_value env (id, value) xs =
         let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	let deps = (match b with
           | None -> [] 
-	  | Some body -> let res = assums body in
+	  | Some body -> let res = assums env body in
              (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
               res)
         in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
@@ -87,7 +87,7 @@ let add_constant c ck xs =
 	let sc = Nativecode.string_of_con c in
 	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
 	let deps = match (fst ck).const_body_deps with
-	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
+	  | Some l -> print_endline (sc^" assums "^String.concat "," l); l 
 	  | None -> []
         in
 	let annots = match (fst ck).const_body_annots with
@@ -129,7 +129,7 @@ let dump_env terms env =
   let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
   let vars_cons_ind = Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
   in
-  let initial_set = List.fold_left (fun acc t -> assums t @ acc) [] terms in
+  let initial_set = List.fold_left (fun acc t -> assums env t @ acc) [] terms in
   print_endline (String.concat "," initial_set);
   let header =
     [(<:str_item< open Nativelib >>, loc);

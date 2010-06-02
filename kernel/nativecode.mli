@@ -10,7 +10,7 @@ val translate : env -> id_key -> constr -> MLast.expr * NbeAnnotTbl.t
 
 val opaque_const : constant -> MLast.expr
 
-val assums : constr -> string list
+val assums : env -> constr -> string list
 
 val translate_ind : env ->
            Names.inductive ->
