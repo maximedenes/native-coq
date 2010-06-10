@@ -7,9 +7,9 @@ type accumulator
 type tag = int
 type arity = int
 
-type kind_of_constructor = KOCconst of tag | KOCblock of tag * arity
+type reloc_table = (tag * arity) array
 
-type case_tbl = kind_of_constructor array
+type case_annot = string * int *reloc_table 
       
 type rec_pos = int
 
@@ -17,7 +17,7 @@ type atom =
   | Arel of int
   | Aid of string
   | Avar of identifier
-  | Acase of accumulator * (t -> t) * case_tbl
+  | Acase of accumulator * t * (t -> t) * case_annot
   | Afix of t * (t -> t) * rec_pos
 
 (* Constructors *)
@@ -26,7 +26,7 @@ val mk_accu : atom -> t
 val mk_rel_accu : int -> t
 val mk_id_accu : string -> t
 val mk_var_accu : identifier -> t
-val mk_sw_accu : accumulator -> (t -> t) -> case_tbl -> t
+val mk_sw_accu : accumulator -> t -> (t -> t) -> case_annot -> t
 val mk_fix_accu : atom -> t
 
 val mk_const : tag -> t

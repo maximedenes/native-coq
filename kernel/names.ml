@@ -405,6 +405,7 @@ type 'a tableKey =
   | ConstKey of constant
   | VarKey of identifier
   | RelKey of 'a
+  | IndKey of inductive
 
 
 type inv_rel_key = int (* index in the [rel_context] part of environment

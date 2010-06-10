@@ -7,6 +7,7 @@ open Pre_env
 open Pcaml
 open Declarations
 open Util
+open Nativevalues
 
 exception NotConvertible
 
@@ -164,12 +165,6 @@ let rec string_of_mp = function
 let string_of_con con =
   string_of_kn (canonical_con con)
 
-let string_of_inductive (mind, i) =
-  string_of_mind mind ^ string_of_int i
-
-let string_of_constructor (ind, i) =
-  string_of_inductive ind ^ "c" ^ string_of_int i
-
 (* First argument the index of the constructor *)
 let make_constructor_pattern ob i args =
   let f = <:patt< $uid:string_of_id ob.mind_consnames.(i)$ >> in 
@@ -215,6 +210,11 @@ let rec patch_fix l n =
         <:expr< fun $lid:x$ -> $capture$ >>
     | _ -> invalid_arg "translate.patch_fix.2"
 
+let dump_reloc_tbl tbl =
+  let f (tag,arity) =
+    <:expr< ($int:string_of_int tag$,$int:string_of_int arity$) >>
+  in
+  <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
 let rec push_value id body env =
   env_updated := true;
@@ -259,7 +259,7 @@ and translate env ik t =
       | App (c, args) ->
           translate_app annots n c args
       | Const c -> <:expr< $lid:lid_of_string (string_of_con c)$ >>, annots
-      | Ind c -> <:expr< mk_id_accu $str:string_of_inductive c$ >>, annots (* xxx *)
+      | Ind c -> <:expr< mk_id_accu $str:string_of_mind (fst c)$ >>, annots (* xxx *)
       | Construct cstr ->
 	  let i = index_of_constructor cstr in
 	  let ind = inductive_of_constructor cstr in
@@ -268,24 +268,20 @@ and translate env ik t =
 	  let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-	    <:expr< $uid:string_of_id ob.mind_consnames.(i-1)$ >>, annots
+	    <:expr< (Obj.magic $uid:string_of_id ob.mind_consnames.(i-1)$ : Nativevalues.t) >>, annots
           else translate_app annots n t [||]
-      | Case (ci, pi, c, branches) ->
+      | Case (ci, p, c, branches) ->
 	  let mb = lookup_mind (fst ci.ci_ind) env in
 	  let ob = mb.mind_packets.(snd ci.ci_ind) in
 	  let f i br (xs1,annots) =
-            let b = code_lid_of_index (i+1) in
 	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
             let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
-    	    let caml_apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
-    	    let caml_apps_var = List.fold_left (fun e var -> <:expr< $e$ $var$ >>) in
             let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
-       	    let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in
+       	    (*let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in*)
 	    let pat1 = make_constructor_pattern ob i args in
-            let pat2 = <:patt< $lid:b$ >> in
             let (tr,annots) = translate annots n br in
-            let body = abs args (apps tr args) in
-                ((pat2, None, caml_apps body args)::xs1,
+            let body = apps tr args in
+                ((pat1, None, body)::xs1,
                  annots)
           in
           let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
@@ -294,15 +290,18 @@ and translate env ik t =
           in
           let annot_i_str = string_of_int annot_i in
           let annot_ik = string_of_id_key ik in
-          let (pi_tr, annots) = translate annots n pi in
-          let neutral_match = <:expr< raise (Bug "match") >> in
-          let accu_str = "Accu"^string_of_id ob.mind_typename in
+          let (p_tr, annots) = translate annots n p in
+          let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
+          let neutral_match = <:expr< mk_sw_accu (cast_accu match_c) $p_tr$ match_rec ($str:annot_ik$,$int:annot_i_str$,$tbl$) >> in
+          let ind_str = string_of_id ob.mind_typename in
+          let accu_str = "Accu"^ind_str in
           let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
           let (tr,annots) = translate annots n c in
           let match_body =
-            <:expr< match $tr$ with [$list:default::bodies$] >>
+            <:expr< match (Obj.magic match_c : $lid:ind_str$) with [$list:default::bodies$] >>
           in
-          match_body, annots
+          let def = (<:patt< match_rec >>, <:expr< fun match_c -> $match_body$ >>) in
+          <:expr< let rec $list:[def]$ in match_rec $tr$ >>, annots
       | Fix ((recargs, i), (_, _, bodies)) ->
 	  let m = Array.length bodies in
 	  let f i  =
@@ -345,7 +344,8 @@ and translate_app annots n c args =
              aux underscores
 		(List.fold_right (fun x e -> <:expr< fun $lid:x$ -> $e$ >>)
 		 names apps)
-	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1)); prefix, annots
+	 in assert (List.length vs + List.length pad = ob.mind_consnrealdecls.(i-1));
+            <:expr< (Obj.magic $prefix$ : Nativevalues.t) >>, annots
      | _ ->
 	 let zero = translate annots n c in
 	 let f (apps,annots) x =
@@ -371,9 +371,7 @@ let assums env t =
 	  let (mind,_) = inductive_of_constructor cstr in
           string_of_mind mind :: xs
       | Case (ci, pi, c, branches) ->
-	  let mb = lookup_mind (fst ci.ci_ind) env in
-	  let ob = mb.mind_packets.(snd ci.ci_ind) in
-          let type_str = string_of_id ob.mind_typename in
+          let type_str = string_of_mind (fst ci.ci_ind) in
           fold_constr aux (type_str::xs) t
       | _ -> fold_constr aux xs t
   in aux [] t
@@ -398,11 +396,10 @@ let translate_ind env ind (mb,ob) =
   let type_str = string_of_id ob.mind_typename in
   let aux x n =
     if n = 0 then (loc,string_of_id x,[])
-    else (loc,string_of_id x, [<:ctyp< $lid:type_str$ >>])
+    else (loc,string_of_id x, [<:ctyp< Nativevalues.t >>])
   in
   let const_ids = Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls) in
-  let const_ids = (loc,"Accu"^type_str,[<:ctyp< Obj.t >>])::const_ids in
+  let const_ids = (loc,"Accu"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
   (<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>,loc)
 
 (*let translate_ind_tbl env ind (mb,ob) =*)
-  

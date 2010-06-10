@@ -183,6 +183,7 @@ type one_inductive_body = {
     mind_nb_args : int;
 
     mind_reloc_tbl :  Cbytecodes.reloc_table;
+
   }
 
 type mutual_inductive_body = {

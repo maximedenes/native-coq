@@ -11,6 +11,7 @@ open Nativelib
 open Nativecode
 open Nbeconv
 open Unix
+open Inductiveops
 
 exception Find_at of int
 
@@ -106,16 +107,35 @@ and rebuild_constr n kns env ty t =
       let capp,ctyp = construct_of_constr false env tag ty in
       app_construct_args n kns env capp ctyp args
   | Id s ->
+       print_endline ("Rebuilding id: "^s);
        let (ik,_) = Stringmap.find s kns in
+       print_endline "ok";
       (match ik with
         | ConstKey c -> mkConst c
+        | IndKey ind -> mkInd ind
         (*| VarKey id -> mkVar id*)
         | _ -> assert false)
   | Var id ->
       mkVar id
-
-  (*| Case of lam * (tag * int array * lam) array
-  | Fix of int * lam
+  
+  | Case (s,i,p,c,ac) ->
+      let (_,annots) = Stringmap.find s kns in
+      let ci = match NbeAnnotTbl.find i annots with
+        | CaseAnnot ci -> ci
+        | _ -> assert false
+      in
+      let (mind,_ as ind),allargs = find_rectype_a env ty in
+      let (mib,mip) = Inductive.lookup_mind_specif env ind in
+      let nparams = mib.mind_nparams in
+      let params,realargs = Util.array_chop nparams allargs in
+      let ind_family = make_ind_family (ind,Array.to_list params) in
+      let pT = arity_of_case_predicate env ind_family true set_sort in 
+      let p_constr = rebuild_constr n kns env pT p in
+      let c_constr = rebuild_constr n kns env mkSet c in
+      let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
+        mkCase (ci,p_constr,c_constr,ac_constr)
+   
+ (* | Fix of int * lam
 
     | Set -> mkSet
     | Prop -> mkProp
