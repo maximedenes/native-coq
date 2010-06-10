@@ -8,11 +8,13 @@ type tag = int
  
 type arity = int
 
-type kind_of_constructor =
+type reloc_table = (tag * arity) array
+
+(*type kind_of_constructor =
   | KOCconst of tag
-  | KOCblock of tag * arity
+  | KOCblock of tag * arity*)
     
-type case_tbl = kind_of_constructor array
+type case_annot = string * int * reloc_table
 
 type rec_pos = int
 
@@ -20,7 +22,7 @@ type atom =
   | Arel of int
   | Aid of string
   | Avar of identifier
-  | Acase of accumulator * (t -> t) * case_tbl
+  | Acase of accumulator * t * (t -> t) * case_annot
   | Afix of t * (t -> t) * rec_pos
 
 let accumulate_tag = 0
@@ -57,8 +59,8 @@ let mk_id_accu s =
 let mk_var_accu id = 
   mk_accu (Avar id)
 
-let mk_sw_accu k f tbl = 
-  mk_accu (Acase(k,f,tbl))
+let mk_sw_accu c p ac annot = 
+  mk_accu (Acase(c,p,ac,annot))
 
 let atom_of_accu (k:accumulator) =
   (Obj.magic (Obj.field (Obj.magic k) 1) : atom)

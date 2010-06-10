@@ -87,7 +87,7 @@ let add_constant c ck xs =
 	let sc = Nativecode.string_of_con c in
 	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
 	let deps = match (fst ck).const_body_deps with
-	  | Some l -> print_endline (sc^" assums "^String.concat "," l); l 
+	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
 	  | None -> []
         in
 	let annots = match (fst ck).const_body_annots with
@@ -99,11 +99,12 @@ let add_constant c ck xs =
         ((*print_endline ("Const body AST not found: "^Nativecode.string_of_con c);*) xs)
 
 let add_ind env c ind xs =
+  (* TODO : dump all inductives from current mutual_inductive *)
   let mb = lookup_mind c env in
   (*let ob = ind.mind_packets.(snd ind) in*)
   let ob = ind.mind_packets.(0) in
   let ast = translate_ind env (c,0) (mb,ob) in
-  Stringmap.add (string_of_mind c) (RelKey (-1), NbeAnnotTbl.empty, ast, []) xs
+  Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in

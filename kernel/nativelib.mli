@@ -27,7 +27,7 @@ type lam =
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of lam * (tag * int array * lam) array
+  | Case of string * int * lam * lam * lam array
   | Fix of int * lam 
 
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit

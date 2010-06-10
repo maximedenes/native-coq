@@ -32,7 +32,7 @@ type lam =
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of lam * (tag * int array * lam) array
+  | Case of string * int * lam * lam * lam array
   | Fix of int * lam 
 
 let pp_var fmt x =
@@ -117,21 +117,22 @@ and norm_atom lvl a =
       Id s
   | Avar id ->
       Var id
-  | Acase (k,f,tbl) ->
-      let lk = norm_accu lvl k in
-      let lb = Array.map (norm_branch lvl f) tbl in
-      Case(lk,lb)
+  | Acase (c,p,ac,(s,i,tbl)) ->
+      let lc = norm_accu lvl c in
+      let lp = norm_val lvl p in
+      let lac = Array.map (norm_branch lvl ac) tbl in
+      Case(s,i,lp,lc,lac)
   | Afix(_,f,_) ->
       let fr = mk_rel_accu lvl in
       Fix(lvl, norm_val (lvl+1) (f fr))
 
-and norm_branch lvl f koc =
-  match koc with
-  | KOCconst t ->
-      (t, [||], norm_val lvl (f (Nativevalues.mk_const t)))
-  | KOCblock (t,arity) ->
-      let ids, v = mk_block lvl t arity in
-      (t, ids, norm_val (lvl + arity) (f v))
+and norm_branch lvl f (tag,arity) =
+  match arity with
+  | 0 ->
+      norm_val lvl (f (Nativevalues.mk_const tag))
+  | _ ->
+      let _, v = mk_block lvl tag arity in
+      norm_val (lvl + arity) (f v)
 
 let lazy_norm lv =
   let v = Lazy.force lv in
