@@ -1,0 +1,65 @@
+
+## tags for binaries
+
+<scripts/coqmktop.{native,byte}> : use_str, use_unix, use_dynlink, use_camlp4
+<scripts/coqc.{native,byte}> : use_unix, use_dynlink, use_camlp4
+<tools/coqdep_boot.{native,byte}> : use_unix
+<tools/coqdep.{native,byte}> : use_unix, use_dynlink, use_camlp4
+<tools/coq_tex.{native,byte}> : use_str
+<tools/coq_makefile.{native,byte}> : use_str
+<tools/coqdoc/main.{native,byte}> : use_str
+<checker/main.{native,byte}> : use_str, use_unix, use_dynlink, use_camlp4
+<plugins/micromega/csdpcert.{native,byte}> : use_nums, use_unix
+
+## tags for ide
+
+<ide/**/*.{ml,mli}>: thread, ide
+
+## tags for grammar.cm*
+
+<parsing/grammar.{cma,cmxa}> : use_unix
+
+## tags for camlp4 files 
+
+"toplevel/mltop.ml4": is_mltop
+
+"toplevel/whelp.ml4": use_grammar
+"parsing/g_vernac.ml4": use_grammar
+"parsing/g_decl_mode.ml4": use_grammar
+"tactics/extraargs.ml4": use_grammar
+"tactics/extratactics.ml4": use_grammar
+"tactics/class_tactics.ml4": use_grammar
+"tactics/eauto.ml4": use_grammar
+"tactics/tauto.ml4": use_grammar
+"tactics/eqdecide.ml4": use_grammar
+"tactics/hipattern.ml4": use_grammar, use_constr
+"tactics/rewrite.ml4": use_grammar
+
+<plugins/**/*.ml4>: use_grammar
+
+## sub-directory inclusion
+
+# Note: "checker" is deliberately not included
+# Note: same for "config" (we create a special coq_config.ml)
+
+"parsing": include
+"ide": include
+"ide/utils": include
+"interp": include
+"kernel": include
+"kernel/byterun": include
+"lib": include
+"library": include
+"parsing": include
+"plugins": include
+"pretyping": include
+"proofs": include
+"scripts": include
+"states": include
+"tactics": include
+"theories": include
+"tools": include
+"tools/coqdoc": include
+"toplevel": include
+
+<plugins/**>: include

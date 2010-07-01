@@ -1,0 +1,355 @@
+
+#######################################################################
+#  v      #   The Coq Proof Assistant  /  The Coq Development Team    #
+# <O___,, #        INRIA-Rocquencourt  &  LRI-CNRS-Orsay              #
+#   \VV/  #############################################################
+#    //   #      This file is distributed under the terms of the      #
+#         #       GNU Lesser General Public License Version 2.1       #
+#######################################################################
+
+-include config/Makefile
+
+###########################################################################
+# Executables
+###########################################################################
+
+COQMKTOPBYTE:=bin/coqmktop.byte$(EXE)
+COQMKTOPOPT:=bin/coqmktop.opt$(EXE)
+BESTCOQMKTOP:=bin/coqmktop.$(BEST)$(EXE)
+COQMKTOP:=bin/coqmktop$(EXE) 
+COQCBYTE:=bin/coqc.byte$(EXE)
+COQCOPT:=bin/coqc.opt$(EXE)
+BESTCOQC:=bin/coqc.$(BEST)$(EXE)
+COQC:=bin/coqc$(EXE)
+COQTOPBYTE:=bin/coqtop.byte$(EXE)
+COQTOPOPT:=bin/coqtop.opt$(EXE)
+BESTCOQTOP:=bin/coqtop.$(BEST)$(EXE)
+COQTOPEXE:=bin/coqtop$(EXE)
+CHICKENBYTE:=bin/coqchk.byte$(EXE)
+CHICKENOPT:=bin/coqchk.opt$(EXE)
+BESTCHICKEN:=bin/coqchk.$(BEST)$(EXE)
+CHICKEN:=bin/coqchk$(EXE)
+
+ifneq ($(HASNATDYNLINK),false)
+  DYNLINKCMXA:=dynlink.cmxa
+  NATDYNLINKDEF:=-DHasDynlink
+  DEPNATDYN:=
+else
+  DYNLINKCMXA:=
+  NATDYNLINKDEF:=
+  DEPNATDYN:=-natdynlink no
+endif
+
+INSTALLBIN:=install
+INSTALLLIB:=install -m 644 
+INSTALLSH:=./install.sh
+MKDIR:=install -d
+
+COQIDEBYTE:=bin/coqide.byte$(EXE)
+COQIDEOPT:=bin/coqide.opt$(EXE)
+COQIDE:=bin/coqide$(EXE)
+
+ifeq ($(BEST),opt)
+OPT:=opt
+else
+OPT:=
+endif
+
+BESTOBJ:=$(if $(OPT),.cmx,.cmo)
+
+COQBINARIES:= $(COQMKTOP) $(COQC) \
+  $(COQTOPBYTE) $(if $(OPT),$(COQTOPOPT)) $(COQTOPEXE) \
+  $(CHICKENBYTE) $(if $(OPT),$(CHICKENOPT)) $(CHICKEN)
+OTHERBINARIES:=$(COQMKTOPBYTE) $(COQCBYTE)
+
+CSDPCERT:=plugins/micromega/csdpcert$(EXE)
+
+SRCDIRS:=\
+  config 	tools 		tools/coqdoc 	scripts		lib \
+  kernel	kernel/byterun	library 	proofs 		tactics \
+  pretyping	interp		toplevel 	parsing 	ide/utils \
+  ide		\
+  $(addprefix plugins/, \
+    omega	romega 		micromega 	quote		ring	dp \
+    setoid_ring xml 		extraction 	fourier \
+    cc 		funind 		firstorder 	field 		subtac \
+    rtauto 	nsatz           syntax          decl_mode)
+
+# Order is relevent here because kernel and checker contain files
+# with the same name
+CHKSRCDIRS:= checker lib config kernel
+
+###########################################################################
+# tools
+###########################################################################
+
+COQDEP:=bin/coqdep$(EXE)
+COQDEPBOOT:=bin/coqdep_boot$(EXE)
+COQMAKEFILE:=bin/coq_makefile$(EXE)
+GALLINA:=bin/gallina$(EXE)
+COQTEX:=bin/coq-tex$(EXE)
+COQWC:=bin/coqwc$(EXE)
+COQDOC:=bin/coqdoc$(EXE)
+
+TOOLS:=$(COQDEP) $(COQMAKEFILE) $(GALLINA) $(COQTEX) $(COQWC) $(COQDOC)
+
+###########################################################################
+# Documentation
+###########################################################################
+
+LATEX:=latex
+BIBTEX:=BIBINPUTS=.: bibtex -min-crossrefs=10
+MAKEINDEX:=makeindex
+PDFLATEX:=pdflatex
+HEVEA:=hevea
+HEVEAOPTS:=-fix -exec xxdate.exe
+HEVEALIB:=/usr/local/lib/hevea:/usr/lib/hevea
+HTMLSTYLE:=simple
+export TEXINPUTS:=$(COQSRC)/doc:$(HEVEALIB):
+COQTEXOPTS:=-n 72 -image "$(COQSRC)/$(COQTOPEXE) -boot" -sl -small
+
+DOCCOMMON:=doc/common/version.tex doc/common/title.tex doc/common/macros.tex 
+
+REFMANCOQTEXFILES:=$(addprefix doc/refman/, \
+  RefMan-gal.v.tex RefMan-ext.v.tex \
+  RefMan-mod.v.tex RefMan-tac.v.tex \
+  RefMan-cic.v.tex RefMan-lib.v.tex \
+  RefMan-tacex.v.tex RefMan-syn.v.tex \
+  RefMan-oth.v.tex RefMan-ltac.v.tex \
+  RefMan-decl.v.tex \
+  Cases.v.tex Coercion.v.tex Extraction.v.tex \
+  Program.v.tex Omega.v.tex Micromega.v.tex Polynom.v.tex Nsatz.v.tex \
+  Setoid.v.tex Helm.tex Classes.v.tex )
+
+REFMANTEXFILES:=$(addprefix doc/refman/, \
+  headers.sty Reference-Manual.tex \
+  RefMan-pre.tex RefMan-int.tex RefMan-pro.tex RefMan-com.tex \
+  RefMan-uti.tex RefMan-ide.tex RefMan-add.tex RefMan-modr.tex ) \
+  $(REFMANCOQTEXFILES) \
+
+REFMANEPSFILES:=doc/refman/coqide.eps doc/refman/coqide-queries.eps
+
+REFMANFILES:=$(REFMANTEXFILES) $(DOCCOMMON) $(REFMANEPSFILES) doc/refman/biblio.bib
+
+REFMANPNGFILES:=$(REFMANEPSFILES:.eps=.png)
+
+
+
+###########################################################################
+# Object and Source files 
+###########################################################################
+
+COQRUN := coqrun
+LIBCOQRUN:=kernel/byterun/lib$(COQRUN).a
+DLLCOQRUN:=$(dir $(LIBCOQRUN))dll$(COQRUN)$(DLLEXT)
+
+CONFIG:=config/coq_config.cmo
+
+BYTERUN:=$(addprefix kernel/byterun/, \
+  coq_fix_code.o coq_memory.o coq_values.o coq_interp.o )
+
+# LINK ORDER:
+# Beware that highparsing.cma should appear before hightactics.cma
+# respecting this order is useful for developers that want to load or link
+# the libraries directly
+
+CORECMA:=lib/lib.cma kernel/kernel.cma library/library.cma \
+        pretyping/pretyping.cma interp/interp.cma proofs/proofs.cma \
+        parsing/parsing.cma tactics/tactics.cma toplevel/toplevel.cma \
+        parsing/highparsing.cma tactics/hightactics.cma 
+
+GRAMMARCMA:=parsing/grammar.cma
+
+OMEGACMA:=plugins/omega/omega_plugin.cma
+ROMEGACMA:=plugins/romega/romega_plugin.cma
+MICROMEGACMA:=plugins/micromega/micromega_plugin.cma
+QUOTECMA:=plugins/quote/quote_plugin.cma
+RINGCMA:=plugins/ring/ring_plugin.cma
+NEWRINGCMA:=plugins/setoid_ring/newring_plugin.cma
+NSATZCMA:=plugins/nsatz/nsatz_plugin.cma
+DPCMA:=plugins/dp/dp_plugin.cma
+FIELDCMA:=plugins/field/field_plugin.cma
+XMLCMA:=plugins/xml/xml_plugin.cma
+FOURIERCMA:=plugins/fourier/fourier_plugin.cma
+EXTRACTIONCMA:=plugins/extraction/extraction_plugin.cma
+FUNINDCMA:=plugins/funind/recdef_plugin.cma
+FOCMA:=plugins/firstorder/ground_plugin.cma
+CCCMA:=plugins/cc/cc_plugin.cma
+SUBTACCMA:=plugins/subtac/subtac_plugin.cma
+RTAUTOCMA:=plugins/rtauto/rtauto_plugin.cma
+NATSYNTAXCMA:=plugins/syntax/nat_syntax_plugin.cma
+OTHERSYNTAXCMA:=$(addprefix plugins/syntax/, \
+        z_syntax_plugin.cma \
+        numbers_syntax_plugin.cma \
+        r_syntax_plugin.cma \
+	ascii_syntax_plugin.cma \
+        string_syntax_plugin.cma )
+DECLMODECMA:=plugins/decl_mode/decl_mode_plugin.cma
+
+PLUGINSCMA:=$(OMEGACMA) $(ROMEGACMA) $(MICROMEGACMA) \
+        $(QUOTECMA) $(RINGCMA) $(NEWRINGCMA) $(DPCMA) $(FIELDCMA) \
+        $(FOURIERCMA) $(EXTRACTIONCMA) $(XMLCMA) \
+	$(DECLMODECMA) \
+        $(CCCMA)  $(FOCMA) $(SUBTACCMA) $(RTAUTOCMA) \
+        $(FUNINDCMA) $(NSATZCMA) $(NATSYNTAXCMA) $(OTHERSYNTAXCMA)
+
+ifneq ($(HASNATDYNLINK),false)
+ STATICPLUGINS:=
+ INITPLUGINS:=$(EXTRACTIONCMA) $(FOCMA) $(CCCMA) $(DPCMA) \
+	$(XMLCMA) $(FUNINDCMA) $(SUBTACCMA) $(NATSYNTAXCMA)
+ INITPLUGINSOPT:=$(INITPLUGINS:.cma=.cmxs)
+ PLUGINS:=$(PLUGINSCMA)
+ PLUGINSOPT:=$(PLUGINSCMA:.cma=.cmxs)
+else
+ STATICPLUGINS:=$(PLUGINSCMA)
+ INITPLUGINS:=
+ INITPLUGINSOPT:=
+ PLUGINS:=
+ PLUGINSOPT:=
+endif
+
+INITPLUGINSBEST:=$(if $(OPT),$(INITPLUGINSOPT),$(INITPLUGINS))
+
+LINKCMO:=$(CONFIG) $(CORECMA) $(STATICPLUGINS)
+LINKCMX:=$(CONFIG:.cmo=.cmx) $(CORECMA:.cma=.cmxa) $(STATICPLUGINS:.cma=.cmxa)
+
+IDECMA:=ide/ide.cma
+
+# modules known by the toplevel of Coq
+
+OBJSMOD:=Coq_config \
+ $(foreach lib,$(CORECMA),$(shell cat $(lib:.cma=.mllib)))
+
+IDEMOD:=$(shell cat ide/ide.mllib)
+
+# coqmktop, coqc
+
+COQENVCMO:=$(CONFIG) \
+  lib/pp_control.cmo lib/pp.cmo  lib/compat.cmo lib/flags.cmo \
+  lib/segmenttree.cmo lib/unicodetable.cmo lib/util.cmo lib/system.cmo \
+  lib/envars.cmo
+
+COQMKTOPCMO:=$(COQENVCMO) scripts/tolink.cmo scripts/coqmktop.cmo 
+
+COQCCMO:=$(COQENVCMO) toplevel/usage.cmo scripts/coqc.cmo
+
+## Misc
+
+CSDPCERTCMO:=$(addprefix plugins/micromega/, \
+  mutils.cmo 	micromega.cmo 	mfourier.cmo 	certificate.cmo \
+  sos_types.cmo sos_lib.cmo sos.cmo 	csdpcert.cmo )
+
+DEBUGPRINTERS:=dev/top_printers.cmo dev/vm_printers.cmo dev/printers.cma
+
+COQDEPCMO:=$(COQENVCMO) tools/coqdep_lexer.cmo tools/coqdep_common.cmo tools/coqdep.cmo
+
+COQDOCCMO:=$(CONFIG) $(addprefix tools/coqdoc/, \
+  cdglobals.cmo alpha.cmo index.cmo tokens.cmo output.cmo cpretty.cmo main.cmo )
+
+###########################################################################
+# vo files
+###########################################################################
+
+## we now retrieve the names of .vo file to compile in */vo.itarget files
+
+cat_vo_itarget = $(addprefix $(1)/,$(shell cat $(1)/vo.itarget))
+
+## Theories
+
+INITVO:=$(call cat_vo_itarget, theories/Init)
+LOGICVO:=$(call cat_vo_itarget, theories/Logic)
+STRUCTURESVO:=$(call cat_vo_itarget, theories/Structures)
+ARITHVO:=$(call cat_vo_itarget, theories/Arith)
+SORTINGVO:=$(call cat_vo_itarget, theories/Sorting)
+BOOLVO:=$(call cat_vo_itarget, theories/Bool)
+NARITHVO:=$(call cat_vo_itarget, theories/NArith)
+ZARITHVO:=$(call cat_vo_itarget, theories/ZArith)
+QARITHVO:=$(call cat_vo_itarget, theories/QArith)
+LISTSVO:=$(call cat_vo_itarget, theories/Lists)
+STRINGSVO:=$(call cat_vo_itarget, theories/Strings)
+SETSVO:=$(call cat_vo_itarget, theories/Sets)
+FSETSVO:=$(call cat_vo_itarget, theories/FSets)
+MSETSVO:=$(call cat_vo_itarget, theories/MSets)
+RELATIONSVO:=$(call cat_vo_itarget, theories/Relations)
+WELLFOUNDEDVO:=$(call cat_vo_itarget, theories/Wellfounded)
+REALSVO:=$(call cat_vo_itarget, theories/Reals)
+NUMBERSVO:=$(call cat_vo_itarget, theories/Numbers)
+ARRAYVO:=$(call cat_vo_itarget, theories/Array)
+SETOIDSVO:=$(call cat_vo_itarget, theories/Setoids)
+UNICODEVO:=$(call cat_vo_itarget, theories/Unicode)
+CLASSESVO:=$(call cat_vo_itarget, theories/Classes)
+PROGRAMVO:=$(call cat_vo_itarget, theories/Program)
+
+THEORIESVO:=\
+  $(INITVO) $(LOGICVO) $(ARITHVO) $(BOOLVO) $(NARITHVO) $(ZARITHVO) \
+  $(SETOIDSVO) $(LISTSVO) $(STRINGSVO) $(SETSVO) $(FSETSVO) $(MSETSVO) \
+  $(RELATIONSVO) $(WELLFOUNDEDVO) $(REALSVO)  $(SORTINGVO) $(QARITHVO) \
+  $(NUMBERSVO) $(ARRAYVO) $(UNICODEVO) $(CLASSESVO) $(PROGRAMVO) $(STRUCTURESVO)
+
+THEORIESLIGHTVO:= $(INITVO) $(LOGICVO) $(ARITHVO)
+
+## Plugins
+
+OMEGAVO:=$(call cat_vo_itarget, plugins/omega)
+ROMEGAVO:=$(call cat_vo_itarget, plugins/romega)
+MICROMEGAVO:=$(call cat_vo_itarget, plugins/micromega)
+QUOTEVO:=$(call cat_vo_itarget, plugins/quote)
+RINGVO:=$(call cat_vo_itarget, plugins/ring)
+FIELDVO:=$(call cat_vo_itarget, plugins/field)
+NEWRINGVO:=$(call cat_vo_itarget, plugins/setoid_ring)
+NSATZVO:=$(call cat_vo_itarget, plugins/nsatz)
+FOURIERVO:=$(call cat_vo_itarget, plugins/fourier)
+FUNINDVO:=$(call cat_vo_itarget, plugins/funind)
+DPVO:=$(call cat_vo_itarget, plugins/dp)
+RTAUTOVO:=$(call cat_vo_itarget, plugins/rtauto)
+EXTRACTIONVO:=$(call cat_vo_itarget, plugins/extraction)
+XMLVO:=
+CCVO:=
+
+PLUGINSVO:= $(OMEGAVO) $(ROMEGAVO) $(MICROMEGAVO) $(RINGVO) $(FIELDVO) \
+	    $(XMLVO) $(FOURIERVO) $(CCVO) $(FUNINDVO) \
+	    $(RTAUTOVO) $(NEWRINGVO) $(DPVO) $(QUOTEVO) \
+            $(NSATZVO) $(EXTRACTIONVO)
+
+ALLVO:= $(THEORIESVO) $(PLUGINSVO)
+VFILES:= $(ALLVO:.vo=.v)
+
+# convert a (stdlib) filename into a module name:
+# remove .vo, replace theories and plugins by Coq, and replace slashes by dots
+vo_to_mod = $(subst /,.,$(patsubst theories/%,Coq.%,$(patsubst plugins/%,Coq.%,$(1:.vo=))))
+
+ALLMODS:=$(call vo_to_mod,$(ALLVO))
+
+LIBFILES:=$(THEORIESVO) $(PLUGINSVO)
+LIBFILESLIGHT:=$(THEORIESLIGHTVO)
+
+###########################################################################
+# Miscellaneous
+###########################################################################
+
+MANPAGES:=man/coq-tex.1 man/coqdep.1 man/gallina.1 \
+	man/coqc.1 man/coqtop.1 man/coqtop.byte.1 man/coqtop.opt.1 \
+	man/coqwc.1 man/coqdoc.1 man/coqide.1 \
+	man/coq_makefile.1 man/coqmktop.1 man/coqchk.1
+
+DATE=$(shell LANG=C date +"%B %Y")
+
+###########################################################################
+# Source documentation
+###########################################################################
+
+OCAMLDOCDIR=dev/ocamldoc
+
+DOCMLIS=$(wildcard ./lib/*.mli ./kernel/*.mli ./library/*.mli \
+	./pretyping/*.mli ./interp/*.mli \
+	./parsing/*.mli ./proofs/*.mli \
+	./tactics/*.mli ./toplevel/*.mli)
+
+# Defining options to generate dependencies graphs
+DOT=dot
+ODOCDOTOPTS=-dot -dot-reduce
+
+# For emacs: 
+# Local Variables: 
+# mode: makefile 
+# End:

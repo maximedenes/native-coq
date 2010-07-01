@@ -1,0 +1,41 @@
+Potential sources of incompatibilities between Coq V8.2 and V8.3
+----------------------------------------------------------------
+
+(see also file CHANGES)
+
+Most sources of incompatibilities can be avoided by calling coqtop or
+coqc with option "-compat 8.2". The sources of incompatibilities
+listed below must however be treated manually.
+
+Syntax
+
+- The word "by" is now a keyword and can no longer be used as an identifier.
+  [Semantics, IEEE754]
+
+Type inference
+
+- Many changes in using classes. [ATBR]
+
+Library
+
+- New identifiers of the library can hide identifiers. This can be
+  solved by changing the order of Require or by qualifying the
+  identifier with the name of its module.  [Stalmarck]
+
+- Reorganisation of library (esp. FSets, Sorting, Numbers) may have
+  moved or removed names around. [FundamentalArithmetics, CoLoR,
+  Icharate, AMM11262, FSets, FingerTree]
+
+- Infix notation "++" has now to be set at level 60. [LinAlg]
+
+Tactics
+
+- The synchronization of introduction names and quantified hypotheses
+  names may exceptionally lead to different names in "induction"
+  (usually a name with lower index is required). [Automata]
+
+- More checks in some commands (e.g. in Hint) may lead to forbid some
+  meaningless part of them. [CoLoR]
+
+- When rewriting using setoid equality, the default equality found
+  might be different. [CoRN]

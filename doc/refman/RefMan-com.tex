@@ -1,0 +1,384 @@
+\chapter[The \Coq~commands]{The \Coq~commands\label{Addoc-coqc}
+\ttindex{coqtop}
+\ttindex{coqc}}
+
+There are three \Coq~commands: 
+\begin{itemize}
+\item {\tt coqtop}: The \Coq\ toplevel (interactive mode) ; 
+\item {\tt coqc} : The \Coq\ compiler (batch compilation).
+\item {\tt coqchk} : The \Coq\ checker (validation of compiled libraries)
+\end{itemize}
+The options are (basically) the same for the first two commands, and
+roughly described below. You can also look at the \verb!man! pages of
+\verb!coqtop! and \verb!coqc! for more details.
+
+
+\section{Interactive use ({\tt coqtop})}
+
+In the interactive mode, also known as the \Coq~toplevel, the user can
+develop his theories and proofs step by step.  The \Coq~toplevel is
+run by the command {\tt coqtop}. 
+
+\index{byte-code}
+\index{native code}
+\label{binary-images}
+They are two different binary images of \Coq: the byte-code one and
+the native-code one (if Objective Caml provides a native-code compiler
+for your platform, which is supposed in the following).  When invoking
+\verb!coqtop! or \verb!coqc!, the native-code version of the system is
+used.  The command-line options \verb!-byte! and \verb!-opt! explicitly
+select the byte-code and the native-code versions, respectively.
+
+The byte-code toplevel is based on a Caml
+toplevel (to allow the dynamic link of tactics).  You can switch to
+the Caml toplevel with the command \verb!Drop.!, and come back to the
+\Coq~toplevel with the command \verb!Toplevel.loop();;!.
+
+% The command \verb!coqtop -searchisos! runs the search tool {\sf
+%   Coq\_SearchIsos} (see Section~\ref{coqsearchisos},
+% page~\pageref{coqsearchisos}) and, as the \Coq~system, can be combined
+% with the option \verb!-opt!.
+
+\section{Batch compilation ({\tt coqc})}
+The {\tt coqc} command takes a name {\em file} as argument.  Then it
+looks for a vernacular file named {\em file}{\tt .v}, and tries to
+compile it into a {\em file}{\tt .vo} file (See ~\ref{compiled}).
+
+\Warning The name {\em file} must be a regular {\Coq} identifier, as
+defined in the Section~\ref{lexical}. It
+must only contain letters, digits or underscores
+(\_). Thus it can be \verb+/bar/foo/toto.v+ but cannot be
+\verb+/bar/foo/to-to.v+ . 
+
+Notice that the \verb!-byte! and \verb!-opt! options are still
+available with \verb!coqc!  and allow you to select the byte-code or
+native-code versions of the system.
+
+
+\section[Resource file]{Resource file\index{Resource file}}
+
+When \Coq\ is launched, with either {\tt coqtop} or {\tt coqc}, the
+resource file \verb:$HOME/.coqrc.xxx: is loaded, where \verb:$HOME: is
+the home directory of the user and \verb:xxx: is the version number
+(e.g. 8.3).  If this file is not found, then the file
+\verb:$HOME/.coqrc: is searched. You can also specify an arbitrary
+name for the resource file (see option \verb:-init-file: below), or
+the name of another user to load the resource file of someone else
+(see option \verb:-user:).
+
+
+This file may contain, for instance, \verb:Add LoadPath: commands to add
+directories to the load path of \Coq.
+It is possible to skip the loading of the resource file with the
+option \verb:-q:.
+
+\section[Environment variables]{Environment variables\label{EnvVariables}
+\index{Environment variables}}
+
+There are three environment variables used by the \Coq\ system.
+\verb:$COQBIN: for the directory where the binaries are,
+\verb:$COQLIB: for the directory where the standard library is, and 
+\verb:$COQTOP: for the directory of the sources. The latter is useful
+only for developers that are writing their own tactics and are using
+\texttt{coq\_makefile} (see \ref{Makefile}). If \verb:$COQBIN: or
+\verb:$COQLIB: are not defined, \Coq\ will use the default values
+(defined at installation time). So these variables are useful only if
+you move the \Coq\ binaries and library after installation.
+
+\section[Options]{Options\index{Options of the command line}
+\label{vmoption}
+\label{coqoptions}}
+
+The following command-line options are recognized by the commands {\tt
+  coqc} and {\tt coqtop}, unless stated otherwise:
+
+\begin{description}
+\item[{\tt -byte}]\ 
+
+  Run the byte-code version of \Coq{}.
+
+\item[{\tt -opt}]\ 
+
+  Run the native-code version of \Coq{}.
+
+\item[{\tt -I} {\em directory}, {\tt -include} {\em directory}]\ 
+
+  Add physical path {\em directory} to the list of directories where to
+  look for a file and bind it to the empty logical directory. The
+  subdirectory structure of {\em directory} is recursively available
+  from {\Coq} using absolute names (see Section~\ref{LongNames}).
+
+\item[{\tt -I} {\em directory} {\tt -as} {\em dirpath}]\ 
+
+  Add physical path {\em directory} to the list of directories where to
+  look for a file and bind it to the logical directory {\dirpath}.  The
+  subdirectory structure of {\em directory} is recursively available
+  from {\Coq} using absolute names extending the {\dirpath} prefix.
+
+  \SeeAlso {\tt Add LoadPath} in Section~\ref{AddLoadPath} and logical
+  paths in Section~\ref{Libraries}.
+
+\item[{\tt -R} {\em directory} {\dirpath}, {\tt -R} {\em directory} {\tt -as} {\dirpath}]\
+
+  Do as {\tt -I} {\em directory} {\tt -as} {\dirpath} but make the
+  subdirectory structure of {\em directory} recursively visible so
+  that the recursive contents of physical {\em directory} is available
+  from {\Coq} using short or partially qualified names.
+  
+  \SeeAlso {\tt Add Rec LoadPath} in Section~\ref{AddRecLoadPath} and logical
+  paths in Section~\ref{Libraries}.
+
+\item[{\tt -top} {\dirpath}]\ 
+
+  This sets the toplevel module name to {\dirpath} instead of {\tt
+  Top}. Not valid for {\tt coqc}.
+
+\item[{\tt -notop} {\dirpath}]\ 
+
+  This sets the toplevel module name to the empty logical dirpath. Not
+  valid for {\tt coqc}.
+
+\item[{\tt -exclude-dir} {\em subdirectory}]\ 
+
+  This tells to exclude any subdirectory named {\em subdirectory}
+  while processing option {\tt -R}. Without this option only the
+  conventional version control management subdirectories named {\tt
+  CVS} and {\tt \_darcs} are excluded.
+
+\item[{\tt -is} {\em file}, {\tt -inputstate} {\em file}]\ 
+
+  Cause \Coq~to use the state put in the file {\em file} as its input
+  state. The default state is {\em initial.coq}.
+  Mainly useful to build the standard input state.
+
+\item[{\tt -outputstate} {\em file}]\ 
+
+  Cause \Coq~to dump its state to file {\em file}.coq just after finishing
+  parsing and evaluating all the arguments from the command line.
+
+\item[{\tt -nois}]\ 
+
+  Cause \Coq~to begin with an empty state. Mainly useful to build the
+  standard input state.
+
+%Obsolete?
+%
+%\item[{\tt -notactics}]\ 
+%
+%  Forbid the dynamic loading of tactics in the bytecode version of {\Coq}.
+
+\item[{\tt -init-file} {\em file}]\ 
+
+  Take {\em file} as the resource file.
+
+\item[{\tt -q}]\ 
+
+  Cause \Coq~not to load the resource file.
+
+\item[{\tt -user} {\em username}]\ 
+
+  Take resource file of user {\em username} (that is 
+  \verb+~+{\em username}{\tt /.coqrc.7.0}) instead of yours.
+
+\item[{\tt -load-ml-source} {\em file}]\ 
+
+  Load the Caml source file {\em file}.
+
+\item[{\tt -load-ml-object} {\em file}]\ 
+
+  Load the Caml object file {\em file}.
+
+\item[{\tt -l} {\em file}, {\tt -load-vernac-source} {\em file}]\ 
+
+  Load \Coq~file {\em file}{\tt .v}
+
+\item[{\tt -lv} {\em file}, {\tt -load-vernac-source-verbose} {\em file}]\ 
+
+  Load \Coq~file {\em file}{\tt .v} with 
+  a copy of the contents of the file on standard input.
+
+\item[{\tt -load-vernac-object} {\em file}]\ 
+
+  Load \Coq~compiled file {\em file}{\tt .vo}
+
+%\item[{\tt -preload} {\em file}]\ \\
+%Add {\em file}{\tt .vo} to the files to be loaded and opened
+%before making the initial state.
+%
+\item[{\tt -require} {\em file}]\ 
+
+  Load \Coq~compiled file {\em file}{\tt .vo} and import it ({\tt
+    Require} {\em file}).
+
+\item[{\tt -compile} {\em file}]\ 
+
+  This compiles file {\em file}{\tt .v} into {\em file}{\tt .vo}.
+  This option implies options {\tt -batch} and {\tt -silent}. It is
+  only available for {\tt coqtop}.
+
+\item[{\tt -compile-verbose} {\em file}]\ 
+
+  This compiles file {\em file}{\tt .v} into {\em file}{\tt .vo} with
+  a copy of the contents of the file on standard input.
+  This option implies options {\tt -batch} and {\tt -silent}. It is
+  only available for {\tt coqtop}.
+
+\item[{\tt -verbose}]\ 
+
+  This option is only for {\tt coqc}. It tells to compile the file with
+  a copy of its contents on standard input.
+
+\item[{\tt -batch}]\ 
+
+  Batch mode : exit just after arguments parsing. This option is only
+  used by {\tt coqc}.
+
+%Mostly unused in the code
+%\item[{\tt -debug}]\ 
+%
+%  Switch on the debug flag.
+
+\item[{\tt -xml}]\ 
+
+  This option is for use with {\tt coqc}. It tells \Coq\ to export on
+  the standard output the content of the compiled file into XML format.
+
+\item[{\tt -quality}]
+
+  Improve the legibility of the proof terms produced by some tactics.
+
+\item[{\tt -emacs}]\ 
+
+  Tells \Coq\ it is executed under Emacs.
+
+\item[{\tt -impredicative-set}]\ 
+
+  Change the logical theory of {\Coq} by declaring the sort {\tt Set}
+  impredicative; warning: this is known to be inconsistent with
+  some standard axioms of classical mathematics such as the functional
+  axiom of choice or the principle of description
+
+\item[{\tt -dump-glob} {\em file}]\
+
+  This dumps references for global names in file {\em file}
+  (to be used by coqdoc, see~\ref{coqdoc})
+ 
+\item[{\tt -dont-load-proofs}]\ 
+
+  This avoids loading in memory the proofs of opaque theorems
+  resulting in a smaller memory requirement and faster compilation;
+  warning: this invalidates some features such as the extraction tool.
+
+\item[{\tt -vm}]\ 
+
+  This activates the use of the bytecode-based conversion algorithm
+  for the current session (see Section~\ref{SetVirtualMachine}).
+
+\item[{\tt -image} {\em file}]\ 
+
+  This option sets the binary image to be used to be {\em file}
+  instead of the standard one. Not of general use.
+
+\item[{\tt -bindir} {\em directory}]\ 
+
+  Set for {\tt coqc} the directory containing \Coq\ binaries.
+  It is equivalent to do \texttt{export COQBIN=}{\em directory}
+  before lauching {\tt coqc}.
+
+\item[{\tt -where}]\ 
+
+  Print the \Coq's standard library location and exit.
+
+\item[{\tt -v}]\ 
+
+  Print the \Coq's version and exit.
+
+\item[{\tt -h}, {\tt --help}]\ 
+
+  Print a short usage and exit.
+
+\end{description}
+
+
+\section{Compiled libraries checker ({\tt coqchk})}
+
+The {\tt coqchk} command takes a list of library paths as argument.
+The corresponding compiled libraries (.vo files) are searched in the
+path, recursively processing the libraries they depend on. The content
+of all these libraries is then type-checked. The effect of {\tt
+  coqchk} is only to return with normal exit code in case of success,
+and with positive exit code if an error has been found. Error messages
+are not deemed to help the user understand what is wrong. In the
+current version, it does not modify the compiled libraries to mark
+them as successfully checked.
+
+Note that non-logical information is not checked. By logical
+information, we mean the type and optional body associated to names.
+It excludes for instance anything related to the concrete syntax of
+objects (customized syntax rules, association between short and long
+names), implicit arguments, etc.
+
+This tool can be used for several purposes. One is to check that a
+compiled library provided by a third-party has not been forged and
+that loading it cannot introduce inconsistencies.\footnote{Ill-formed
+  non-logical information might for instance bind {\tt
+    Coq.Init.Logic.True} to short name {\tt False}, so apparently {\tt
+    False} is inhabited, but using fully qualified names, {\tt
+    Coq.Init.Logic.False} will always refer to the absurd proposition,
+  what we guarantee is that there is no proof of this latter
+  constant.}
+Another point is to get an even higher level of security. Since {\tt
+  coqtop} can be extended with custom tactics, possibly ill-typed
+code, it cannot be guaranteed that the produced compiled libraries are
+correct. {\tt coqchk} is a standalone verifier, and thus it cannot be
+tainted by such malicious code.
+
+Command-line options {\tt -I}, {\tt -R}, {\tt -where} and
+{\tt -impredicative-set} are supported by {\tt coqchk} and have the
+same meaning as for {\tt coqtop}. Extra options are:
+\begin{description}
+\item[{\tt -norec} $module$]\ 
+
+  Check $module$ but do not force check of its dependencies.
+\item[{\tt -admit} $module$] \
+
+  Do not check $module$ and any of its dependencies, unless
+  explicitly required.
+\item[{\tt -o}]\ 
+
+  At exit, print a summary about the context. List the names of all
+  assumptions and variables (constants without body).
+\item[{\tt -silent}]\ 
+
+  Do not write progress information in standard output.
+\end{description}
+
+Environment variable \verb:$COQLIB: can be set to override the
+location of the standard library.
+
+The algorithm for deciding which modules are checked or admitted is
+the following: assuming that {\tt coqchk} is called with argument $M$,
+option {\tt -norec} $N$, and {\tt -admit} $A$. Let us write
+$\overline{S}$ the set of reflexive transitive dependencies of set
+$S$. Then:
+\begin{itemize}
+\item Modules $C=\overline{M}\backslash\overline{A}\cup M\cup N$ are
+  loaded and type-checked before being added to the context.
+\item And $\overline{M}\cup\overline{N}\backslash C$ is the set of
+  modules that are loaded and added to the context without
+  type-checking. Basic integrity checks (checksums) are nonetheless
+  performed.
+\end{itemize}
+
+As a rule of thumb, the {\tt -admit} can be used to tell that some
+libraries have already been checked. So {\tt coqchk A B} can be split
+in {\tt coqchk A \&\& coqchk B -admit A} without type-checking any
+definition twice. Of course, the latter is slightly slower since it
+makes more disk access. It is also less secure since an attacker might
+have replaced the compiled library $A$ after it has been read by the
+first command, but before it has been read by the second command.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "Reference-Manual"
+%%% End: 

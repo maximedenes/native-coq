@@ -1,0 +1,1749 @@
+\chapter[Extensions of \Gallina{}]{Extensions of \Gallina{}\label{Gallina-extension}\index{Gallina}}
+
+{\gallina} is the kernel language of {\Coq}. We describe here extensions of
+the Gallina's syntax.
+
+\section{Record types
+\comindex{Record}
+\label{Record}}
+
+The \verb+Record+ construction is a macro allowing the definition of
+records as is done in many programming languages.  Its syntax is
+described on Figure~\ref{record-syntax}.  In fact, the \verb+Record+
+macro is more general than the usual record types, since it allows
+also for ``manifest'' expressions. In this sense, the \verb+Record+
+construction allows to define ``signatures''.
+
+\begin{figure}[h]
+\begin{centerframe}
+\begin{tabular}{lcl}
+{\sentence} & ++= & {\record}\\
+  & & \\
+{\record} & ::= &
+   {\tt Record} {\ident} \zeroone{\binders} \zeroone{{\tt :} {\sort}} \verb.:=. \\
+&& ~~~~\zeroone{\ident}
+       \verb!{! \zeroone{\nelist{\field}{;}} \verb!}! \verb:.:\\
+  & & \\
+{\field} & ::= & {\name} : {\type} [ {\tt where} {\it notation} ] \\
+ & $|$ & {\name} {\typecstr} := {\term}
+\end{tabular}
+\end{centerframe}
+\caption{Syntax for the definition of {\tt Record}}
+\label{record-syntax}
+\end{figure}
+
+\noindent In the expression
+
+\smallskip
+{\tt Record} {\ident} {\params} \texttt{:} 
+   {\sort} := {\ident$_0$} \verb+{+
+ {\ident$_1$} \texttt{:} {\term$_1$}; 
+              \dots
+  {\ident$_n$} \texttt{:} {\term$_n$} \verb+}+.
+\smallskip
+ 
+\noindent the identifier {\ident} is the name of the defined record
+and {\sort} is its type. The identifier {\ident$_0$} is the name of
+its constructor. If {\ident$_0$} is omitted, the default name {\tt
+Build\_{\ident}} is used. If {\sort} is omitted, the default sort is ``{\Type}''.
+The identifiers {\ident$_1$}, ..,
+{\ident$_n$} are the names of fields and {\term$_1$}, .., {\term$_n$}
+their respective types. Remark that the type of {\ident$_i$} may
+depend on the previous {\ident$_j$} (for $j<i$). Thus the order of the
+fields is important. Finally, {\params} are the parameters of the
+record.
+
+More generally, a record may have explicitly defined (a.k.a.
+manifest) fields. For instance, {\tt Record} {\ident} {\tt [}
+{\params} {\tt ]} \texttt{:} {\sort} := \verb+{+ {\ident$_1$}
+\texttt{:} {\type$_1$} \verb+;+ {\ident$_2$} \texttt{:=} {\term$_2$}
+\verb+;+ {\ident$_3$} \texttt{:} {\type$_3$} \verb+}+ in which case
+the correctness of {\type$_3$} may rely on the instance {\term$_2$} of
+{\ident$_2$} and {\term$_2$} in turn may depend on {\ident$_1$}.
+
+
+\Example
+The set of rational numbers may be defined as:
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+\begin{coq_example}
+Record Rat : Set := mkRat
+  {sign : bool;
+   top : nat;
+   bottom : nat;
+   Rat_bottom_cond : 0 <> bottom;
+   Rat_irred_cond :
+    forall x y z:nat, (x * y) = top /\ (x * z) = bottom -> x = 1}.
+\end{coq_example}
+
+Remark here that the field
+\verb+Rat_cond+ depends on the field \verb+bottom+. 
+
+%Let us now see the work done by the {\tt Record} macro.
+%First the macro generates an inductive definition
+%with just one constructor:
+%
+%\medskip
+%\noindent
+%{\tt Inductive {\ident} \zeroone{\binders} : {\sort} := \\
+%\mbox{}\hspace{0.4cm} {\ident$_0$} : forall ({\ident$_1$}:{\term$_1$}) .. 
+%({\ident$_n$}:{\term$_n$}), {\ident} {\rm\sl params}.}
+%\medskip
+
+Let us now see the work done by the {\tt Record} macro.  First the
+macro generates an inductive definition with just one constructor:
+\begin{quote}
+{\tt Inductive {\ident} {\params} :{\sort} :=} \\
+\qquad {\tt
+  {\ident$_0$} ({\ident$_1$}:{\term$_1$}) .. ({\ident$_n$}:{\term$_n$}).}
+\end{quote}
+To build an object of type {\ident}, one should provide the
+constructor {\ident$_0$} with $n$ terms filling the fields of
+the record.
+
+As an example, let us define the rational $1/2$:
+\begin{coq_example*}
+Require Import Arith.
+Theorem one_two_irred :
+ forall x y z:nat, x * y = 1 /\ x * z = 2 -> x = 1.
+\end{coq_example*}
+\begin{coq_eval}
+Lemma mult_m_n_eq_m_1 : forall m n:nat, m * n = 1 -> m = 1.
+destruct m; trivial.
+intros; apply f_equal with (f := S).
+destruct m; trivial.
+destruct n; simpl in H.
+ rewrite <- mult_n_O in H.
+   discriminate.
+ rewrite <- plus_n_Sm in H.
+   discriminate.
+Qed.
+
+intros x y z [H1 H2].
+ apply mult_m_n_eq_m_1 with (n := y); trivial.
+\end{coq_eval}
+\ldots
+\begin{coq_example*}
+Qed.
+\end{coq_example*}
+\begin{coq_example}
+Definition half := mkRat true 1 2 (O_S 1) one_two_irred.
+\end{coq_example}
+\begin{coq_example}
+Check half.
+\end{coq_example}
+
+The macro generates also, when it is possible, the projection
+functions for destructuring an object of type {\ident}.  These
+projection functions have the same name that the corresponding
+fields. If a field is named ``\verb=_='' then no projection is built
+for it.  In our example:
+
+\begin{coq_example}
+Eval compute in half.(top).
+Eval compute in half.(bottom).
+Eval compute in half.(Rat_bottom_cond).
+\end{coq_example}
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+
+\begin{Warnings}
+\item {\tt Warning: {\ident$_i$} cannot be defined.}
+
+  It can happen that the definition of a projection is impossible.
+  This message is followed by an explanation of this impossibility.
+  There may be three reasons:
+   \begin{enumerate}
+   \item The name {\ident$_i$} already exists in the environment (see
+     Section~\ref{Axiom}).
+   \item The body of {\ident$_i$} uses an incorrect elimination for
+     {\ident} (see Sections~\ref{Fixpoint} and~\ref{Caseexpr}).
+   \item The type of the projections {\ident$_i$} depends on previous
+   projections which themselves could not be defined.
+   \end{enumerate}  
+\end{Warnings}     
+
+\begin{ErrMsgs}
+
+\item \errindex{A record cannot be recursive}
+
+  The record name {\ident} appears in the type of its fields.
+  
+\item During the definition of the one-constructor inductive
+  definition, all the errors of inductive definitions, as described in
+  Section~\ref{gal_Inductive_Definitions}, may also occur.
+
+\end{ErrMsgs}
+
+\SeeAlso Coercions and records in Section~\ref{Coercions-and-records}
+of the chapter devoted to coercions.
+
+\Rem {\tt Structure} is a synonym of the keyword {\tt Record}.
+
+\Rem Creation of an object of record type can be done by calling {\ident$_0$}
+and passing arguments in the correct order.
+
+\begin{coq_example}
+Record point := { x : nat; y : nat }.
+Definition a := Build_point 5 3.
+\end{coq_example}
+
+The following syntax allows to create objects by using named fields. The
+fields do not have to be in any particular order, nor do they have to be all
+present if the missing ones can be inferred or prompted for (see
+Section~\ref{Program}).
+
+\begin{coq_example}
+Definition b := {| x := 5; y := 3 |}.
+Definition c := {| y := 3; x := 5 |}.
+\end{coq_example}
+
+This syntax can also be used for pattern matching.
+
+\begin{coq_example}
+Eval compute in (
+  match b with
+  | {| y := S n |} => n
+  | _ => 0
+  end).
+\end{coq_example}
+
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+
+\Rem An experimental syntax for projections based on a dot notation is
+available. The command to activate it is
+\begin{quote}
+{\tt Set Printing Projections.}
+\end{quote}
+
+\begin{figure}[t]
+\begin{centerframe}
+\begin{tabular}{lcl}
+{\term} & ++= & {\term} {\tt .(} {\qualid} {\tt )}\\
+ & $|$ & {\term} {\tt .(} {\qualid} \nelist{\termarg}{} {\tt )}\\
+ & $|$ & {\term} {\tt .(} {@}{\qualid} \nelist{\term}{} {\tt )}
+\end{tabular}
+\end{centerframe}
+\caption{Syntax of \texttt{Record} projections}
+\label{fig:projsyntax}
+\end{figure}
+
+The corresponding grammar rules are given Figure~\ref{fig:projsyntax}.
+When {\qualid} denotes a projection, the syntax {\tt
+  {\term}.({\qualid})} is equivalent to {\qualid~\term}, the syntax
+{\tt {\term}.({\qualid}~{\termarg}$_1$~ \ldots~ {\termarg}$_n$)} to
+{\qualid~{\termarg}$_1$ \ldots {\termarg}$_n$~\term}, and the syntax
+{\tt {\term}.(@{\qualid}~{\term}$_1$~\ldots~{\term}$_n$)} to
+{@\qualid~{\term}$_1$ \ldots {\term}$_n$~\term}. In each case, {\term}
+is the object projected and the other arguments are the parameters of
+the inductive type.
+
+To deactivate the printing of projections, use 
+{\tt Unset Printing Projections}.
+
+
+\section{Variants and extensions of {\mbox{\tt match}}
+\label{Extensions-of-match}
+\index{match@{\tt match\ldots with\ldots end}}}
+
+\subsection{Multiple and nested pattern-matching
+\index{ML-like patterns}
+\label{Mult-match}}
+
+The basic version of \verb+match+ allows pattern-matching on simple
+patterns. As an extension, multiple nested patterns or disjunction of
+patterns are allowed, as in ML-like languages.
+
+The extension just acts as a macro that is expanded during parsing
+into a sequence of {\tt match} on simple patterns. Especially, a
+construction defined using the extended {\tt match} is generally
+printed under its expanded form (see~\texttt{Set Printing Matching} in
+section~\ref{SetPrintingMatching}).
+
+\SeeAlso Chapter~\ref{Mult-match-full}.
+
+\subsection{Pattern-matching on boolean values: the {\tt if} expression
+\label{if-then-else}
+\index{if@{\tt if ... then ... else}}}
+
+For inductive types with exactly two constructors and for
+pattern-matchings expressions which do not depend on the arguments of
+the constructors, it is possible to use a {\tt if ... then ... else}
+notation. For instance, the definition
+
+\begin{coq_example}
+Definition not (b:bool) :=
+  match b with
+  | true => false
+  | false => true
+  end.
+\end{coq_example}
+
+\noindent can be alternatively written
+
+\begin{coq_eval}
+Reset not.
+\end{coq_eval}
+\begin{coq_example}
+Definition not (b:bool) := if b then false else true.
+\end{coq_example}
+
+More generally, for an inductive type with constructors {\tt C$_1$}
+and {\tt C$_2$}, we have the following equivalence
+
+\smallskip
+
+{\tt if {\term} \zeroone{\ifitem} then {\term}$_1$ else {\term}$_2$} $\equiv$
+\begin{tabular}[c]{l}
+{\tt match {\term} \zeroone{\ifitem} with}\\
+{\tt \verb!|! C$_1$ \_ {\ldots} \_ \verb!=>! {\term}$_1$} \\
+{\tt \verb!|! C$_2$ \_ {\ldots} \_ \verb!=>! {\term}$_2$} \\
+{\tt end}
+\end{tabular}
+
+Here is an example.
+
+\begin{coq_example}
+Check (fun x (H:{x=0}+{x<>0}) =>
+  match H with
+  | left _ => true
+  | right _ => false
+  end).
+\end{coq_example}
+
+Notice that the printing uses the {\tt if} syntax because {\tt sumbool} is
+declared as such (see Section~\ref{printing-options}).
+
+\subsection{Irrefutable patterns: the destructuring {\tt let} variants 
+\index{let in@{\tt let ... in}}
+\label{Letin}}
+
+Pattern-matching on terms inhabiting inductive type having only one
+constructor can be alternatively written using {\tt let ... in ...}
+constructions. There are two variants of them.
+
+\subsubsection{First destructuring {\tt let} syntax}
+The expression {\tt let
+(}~{\ident$_1$},\ldots,{\ident$_n$}~{\tt ) :=}~{\term$_0$}~{\tt
+in}~{\term$_1$} performs case analysis on a {\term$_0$} which must be in
+an inductive type with one constructor having itself $n$ arguments. Variables
+{\ident$_1$}\ldots{\ident$_n$} are bound to the $n$ arguments of the
+constructor in expression {\term$_1$}. For instance, the definition
+
+\begin{coq_example}
+Definition fst (A B:Set) (H:A * B) := match H with
+                                      | pair x y => x
+                                      end.
+\end{coq_example}
+
+can be alternatively written 
+
+\begin{coq_eval}
+Reset fst.
+\end{coq_eval}
+\begin{coq_example}
+Definition fst (A B:Set) (p:A * B) := let (x, _) := p in x.
+\end{coq_example}
+Notice that reduction is different from regular {\tt let ... in ...}
+construction since it happens only if {\term$_0$} is in constructor
+form. Otherwise, the reduction is blocked.
+
+The pretty-printing of a definition by matching on a
+irrefutable pattern can either be done using {\tt match} or the {\tt
+let} construction (see Section~\ref{printing-options}).
+
+If {\term} inhabits an inductive type with one constructor {\tt C},
+we have an equivalence between
+
+{\tt let ({\ident}$_1$,\ldots,{\ident}$_n$) \zeroone{\ifitem} := {\term} in {\term}'}
+
+\noindent and
+
+{\tt match {\term} \zeroone{\ifitem} with C {\ident}$_1$ {\ldots} {\ident}$_n$ \verb!=>! {\term}' end}
+
+
+\subsubsection{Second destructuring {\tt let} syntax\index{let '... in}}
+
+Another destructuring {\tt let} syntax is available for inductive types with
+one constructor by giving an arbitrary pattern instead of just a tuple
+for all the arguments. For example, the preceding example can be written:
+\begin{coq_eval}
+Reset fst.
+\end{coq_eval}
+\begin{coq_example}
+Definition fst (A B:Set) (p:A*B) := let 'pair x _ := p in x.
+\end{coq_example}
+
+This is useful to match deeper inside tuples and also to use notations
+for the pattern, as the syntax {\tt let 'p := t in b} allows arbitrary
+patterns to do the deconstruction. For example:
+
+\begin{coq_example}
+Definition deep_tuple (A:Set) (x:(A*A)*(A*A)) : A*A*A*A :=
+  let '((a,b), (c, d)) := x in (a,b,c,d).
+Notation " x 'with' p " := (exist _ x p) (at level 20).
+Definition proj1_sig' (A:Set) (P:A->Prop) (t:{ x:A | P x }) : A :=
+  let 'x with p := t in x.
+\end{coq_example}
+
+When printing definitions which are written using this construct it
+takes precedence over {\tt let} printing directives for the datatype
+under consideration (see Section~\ref{printing-options}).
+
+\subsection{Controlling pretty-printing of {\tt match} expressions
+\label{printing-options}}
+
+The following commands give some control over the pretty-printing of
+{\tt match} expressions.
+
+\subsubsection{Printing nested patterns
+\label{SetPrintingMatching}
+\comindex{Set Printing Matching}
+\comindex{Unset Printing Matching}
+\comindex{Test Printing Matching}}
+
+The Calculus of Inductive Constructions knows pattern-matching only
+over simple patterns. It is however convenient to re-factorize nested
+pattern-matching into a single pattern-matching over a nested pattern.
+{\Coq}'s printer try to do such limited re-factorization.
+
+\begin{quote}
+{\tt Set Printing Matching.}
+\end{quote}
+This tells {\Coq} to try to use nested patterns. This is the default
+behavior.
+
+\begin{quote}
+{\tt Unset Printing Matching.}
+\end{quote}
+This tells {\Coq} to print only simple pattern-matching problems in
+the same way as the {\Coq} kernel handles them.
+
+\begin{quote}
+{\tt Test Printing Matching.}
+\end{quote}
+This tells if the printing matching mode is on or off. The default is
+on.
+
+\subsubsection{Printing of wildcard pattern
+\comindex{Set Printing Wildcard}
+\comindex{Unset Printing Wildcard}
+\comindex{Test Printing Wildcard}}
+
+Some variables in a pattern may not occur in the right-hand side of
+the pattern-matching clause.  There are options to control the
+display of these variables.
+
+\begin{quote}
+{\tt Set Printing Wildcard.}
+\end{quote}
+The variables having no occurrences in the right-hand side of the
+pattern-matching clause are just printed using the wildcard symbol
+``{\tt \_}''.
+
+\begin{quote}
+{\tt Unset Printing Wildcard.}
+\end{quote}
+The variables, even useless, are printed using their usual name. But some
+non dependent variables have no name. These ones are still printed
+using a ``{\tt \_}''.
+
+\begin{quote}
+{\tt Test Printing Wildcard.}
+\end{quote}
+This tells if the wildcard printing mode is on or off. The default is
+to print wildcard for useless variables.
+
+\subsubsection{Printing of the elimination predicate
+\comindex{Set Printing Synth}
+\comindex{Unset Printing Synth}
+\comindex{Test Printing Synth}}
+
+In most of the cases, the type of the result of a matched term is
+mechanically synthesizable. Especially, if the result type does not
+depend of the matched term.
+
+\begin{quote}
+{\tt Set Printing Synth.}
+\end{quote}
+The result type is not printed when {\Coq} knows that it can
+re-synthesize it.
+
+\begin{quote}
+{\tt Unset Printing Synth.}
+\end{quote}
+This forces the result type to be always printed.
+
+\begin{quote}
+{\tt Test Printing Synth.}
+\end{quote}
+This tells if the non-printing of synthesizable types is on or off.
+The default is to not print synthesizable types.
+
+\subsubsection{Printing matching on irrefutable pattern
+\comindex{Add Printing Let {\ident}}
+\comindex{Remove Printing Let {\ident}}
+\comindex{Test Printing Let for {\ident}}
+\comindex{Print Table Printing Let}}
+
+If an inductive type has just one constructor,
+pattern-matching can be written using {\tt let} ... {\tt :=}
+... {\tt in}~...
+
+\begin{quote}
+{\tt Add Printing Let {\ident}.}
+\end{quote}
+This adds {\ident} to the list of inductive types for which
+pattern-matching is written using a {\tt let} expression.
+
+\begin{quote}
+{\tt Remove Printing Let {\ident}.}
+\end{quote}
+This removes {\ident} from this list.
+
+\begin{quote}
+{\tt Test Printing Let for {\ident}.}
+\end{quote}
+This tells if {\ident} belongs to the list.
+
+\begin{quote}
+{\tt Print Table Printing Let.}
+\end{quote}
+This prints the list of inductive types for which pattern-matching is
+written using a {\tt let} expression.
+
+The list of inductive types for which pattern-matching is written
+using a {\tt let} expression is managed synchronously. This means that
+it is sensible to the command {\tt Reset}.
+
+\subsubsection{Printing matching on booleans
+\comindex{Add Printing If {\ident}}
+\comindex{Remove Printing If {\ident}}
+\comindex{Test Printing If for {\ident}}
+\comindex{Print Table Printing If}}
+
+If an inductive type is isomorphic to the boolean type,
+pattern-matching can be written using {\tt if} ... {\tt then} ... {\tt
+  else} ...
+
+\begin{quote}
+{\tt Add Printing If {\ident}.}
+\end{quote}
+This adds {\ident} to the list of inductive types for which
+pattern-matching is written using an {\tt if} expression.
+
+\begin{quote}
+{\tt Remove Printing If {\ident}.}
+\end{quote}
+This removes {\ident} from this list.
+
+\begin{quote}
+{\tt Test Printing If for {\ident}.}
+\end{quote}
+This tells if {\ident} belongs to the list.
+
+\begin{quote}
+{\tt Print Table Printing If.}
+\end{quote}
+This prints the list of inductive types for which pattern-matching is
+written using an {\tt if} expression.
+
+The list of inductive types for which pattern-matching is written
+using an {\tt if} expression is managed synchronously. This means that
+it is sensible to the command {\tt Reset}.
+
+\subsubsection{Example}
+
+This example emphasizes what the printing options offer.
+
+\begin{coq_example}
+Test Printing Let for prod.
+Print fst.
+Remove Printing Let prod.
+Unset Printing Synth.
+Unset Printing Wildcard.
+Print fst.
+\end{coq_example}
+
+% \subsection{Still not dead old notations}
+
+% The following variant of {\tt match} is inherited from older version
+% of {\Coq}. 
+
+% \medskip
+% \begin{tabular}{lcl}
+% {\term} & ::= & {\annotation} {\tt Match} {\term} {\tt with} {\terms} {\tt end}\\
+% \end{tabular}
+% \medskip
+
+% This syntax is a macro generating a combination of {\tt match} with {\tt
+% Fix} implementing a combinator for primitive recursion equivalent to
+% the {\tt Match} construction of \Coq\ V5.8. It is provided only for
+% sake of compatibility with \Coq\ V5.8. It is recommended to avoid it.
+% (see Section~\ref{Matchexpr}).
+
+% There is also a notation \texttt{Case} that is the
+% ancestor of \texttt{match}. Again, it is still in the code for
+% compatibility with old versions but the user should not use it.
+
+% Explained in RefMan-gal.tex
+%% \section{Forced type}
+
+%% In some cases, one may wish to assign a particular type to a term. The
+%% syntax to force the type of a term is the following:
+
+%% \medskip
+%% \begin{tabular}{lcl}
+%% {\term} & ++= & {\term} {\tt :} {\term}\\
+%% \end{tabular}
+%% \medskip
+
+%% It forces the first term to be of type the second term. The
+%% type must be compatible with
+%% the term. More precisely it must be either a type convertible to
+%% the automatically inferred type (see Chapter~\ref{Cic}) or a type
+%% coercible to it, (see \ref{Coercions}). When the type of a
+%% whole expression is forced, it is usually not necessary to give the types of
+%% the variables involved in the term.
+
+%% Example:
+
+%% \begin{coq_example}
+%% Definition ID := forall X:Set, X -> X.
+%% Definition id := (fun X x => x):ID.
+%% Check id.
+%% \end{coq_example}
+
+\section{Advanced recursive functions}
+
+The \emph{experimental} command 
+\begin{center}
+   \texttt{Function {\ident} {\binder$_1$}\ldots{\binder$_n$}
+     \{decrease\_annot\} : type$_0$ := \term$_0$}
+   \comindex{Function}
+   \label{Function}
+\end{center}
+can be seen as a generalization of {\tt Fixpoint}.  It is actually a
+wrapper for several ways of defining a function \emph{and other useful
+  related objects}, namely: an induction principle that reflects the
+recursive structure of the function (see \ref{FunInduction}), and its
+fixpoint equality.  The meaning of this
+declaration is to define a function {\it ident}, similarly to {\tt
+  Fixpoint}. Like in {\tt Fixpoint}, the decreasing argument must be
+given (unless the function is not recursive), but it must not
+necessary be \emph{structurally} decreasing. The point of the {\tt
+  \{\}} annotation is to name the decreasing argument \emph{and} to
+describe which kind of decreasing criteria must be used to ensure
+termination of recursive calls.
+
+The {\tt Function} construction enjoys also the {\tt with} extension
+to define mutually recursive definitions. However, this feature does
+not work for non structural recursive functions. % VRAI??
+
+See the documentation of {\tt functional induction}
+(see Section~\ref{FunInduction}) and {\tt Functional Scheme}
+(see Section~\ref{FunScheme} and \ref{FunScheme-examples}) for how to use the
+induction principle to easily reason about the function.
+
+\noindent {\bf Remark: } To obtain the right principle, it is better
+to put rigid parameters of the function as first arguments. For
+example it is better to define plus like this:
+
+\begin{coq_example*}
+Function plus (m n : nat) {struct n} : nat :=
+  match n with
+  | 0 => m
+  | S p => S (plus m p)
+  end.
+\end{coq_example*}
+\noindent than like this:
+\begin{coq_eval}
+Reset plus.
+\end{coq_eval}
+\begin{coq_example*}
+Function plus (n m : nat) {struct n} : nat :=
+  match n with
+  | 0 => m
+  | S p => S (plus p m)
+  end.
+\end{coq_example*}
+
+\paragraph[Limitations]{Limitations\label{sec:Function-limitations}}
+\term$_0$ must be build as a \emph{pure pattern-matching tree}
+(\texttt{match...with}) with applications only \emph{at the end} of
+each branch.  
+
+Function does not support partial application of the function being defined. Thus, the following example cannot be accepted due to the presence of partial application of \ident{wrong} into the body of \ident{wrong}~:
+\begin{coq_example*}
+  Function wrong (C:nat) {\ldots} : nat := 
+    List.hd(List.map wrong (C::nil)).
+\end{coq_example*}
+
+For now dependent cases are not treated for non structurally terminating functions.
+
+
+
+\begin{ErrMsgs}
+\item \errindex{The recursive argument must be specified}
+\item \errindex{No argument name \ident}
+\item \errindex{Cannot use mutual definition with well-founded
+    recursion or measure}
+
+\item \errindex{Cannot define graph for \ident\dots} (warning)
+
+  The generation of the graph relation \texttt{(R\_\ident)} used to
+  compute the induction scheme of \ident\ raised a typing error. Only
+  the ident is defined, the induction scheme will not be generated.
+
+  This error happens generally when:
+
+  \begin{itemize}
+  \item the definition uses pattern matching on dependent types, which
+    \texttt{Function} cannot deal with yet.
+  \item the definition is not a \emph{pattern-matching tree} as
+    explained above.
+  \end{itemize}
+
+\item \errindex{Cannot define principle(s) for \ident\dots} (warning)
+
+  The generation of the graph relation \texttt{(R\_\ident)} succeeded
+  but the induction principle could not be built. Only the ident is
+  defined. Please report.
+
+\item \errindex{Cannot build functional inversion principle} (warning)
+
+  \texttt{functional inversion} will not be available for the
+  function.
+\end{ErrMsgs}
+
+
+\SeeAlso{\ref{FunScheme}, \ref{FunScheme-examples}, \ref{FunInduction}}
+
+Depending on the {\tt \{$\ldots$\}} annotation, different definition
+mechanisms are used by {\tt Function}. More precise description
+given below.
+
+\begin{Variants}
+\item \texttt{ Function {\ident} {\binder$_1$}\ldots{\binder$_n$}
+    : type$_0$ := \term$_0$}
+
+  Defines the not recursive function \ident\ as if declared with
+  \texttt{Definition}.  Moreover the following are defined:
+
+  \begin{itemize}
+  \item {\tt\ident\_rect}, {\tt\ident\_rec} and {\tt\ident\_ind},
+    which reflect the pattern matching structure of \term$_0$ (see the
+    documentation of {\tt Inductive} \ref{Inductive});
+  \item The inductive \texttt{R\_\ident} corresponding to the graph of
+    \ident\ (silently);
+  \item \texttt{\ident\_complete} and \texttt{\ident\_correct} which are
+    inversion information linking the function and its graph.
+  \end{itemize}
+\item \texttt{Function {\ident} {\binder$_1$}\ldots{\binder$_n$}
+    {\tt \{}{\tt struct} \ident$_0${\tt\}} : type$_0$ := \term$_0$}
+  
+  Defines the structural recursive function \ident\ as if declared
+  with \texttt{Fixpoint}.  Moreover the following are defined:
+
+  \begin{itemize}
+  \item The same objects as above;
+  \item The fixpoint equation of \ident: \texttt{\ident\_equation}.
+  \end{itemize}
+  
+\item \texttt{Function {\ident} {\binder$_1$}\ldots{\binder$_n$} {\tt
+      \{}{\tt measure \term$_1$} \ident$_0${\tt\}} : type$_0$ :=
+    \term$_0$}
+\item \texttt{Function {\ident} {\binder$_1$}\ldots{\binder$_n$}
+ {\tt \{}{\tt wf \term$_1$} \ident$_0${\tt\}} : type$_0$ := \term$_0$}
+
+Defines a recursive function by well founded recursion. \textbf{The
+module \texttt{Recdef} of the standard library must be loaded for this
+feature}. The {\tt \{\}} annotation is mandatory and must be one of
+the following:
+\begin{itemize}
+\item {\tt \{measure} \term$_1$ \ident$_0${\tt\}} with \ident$_0$
+      being the decreasing argument and \term$_1$ being a function
+      from type of \ident$_0$ to \texttt{nat} for which value on the
+      decreasing argument decreases (for the {\tt lt} order on {\tt
+      nat}) at each recursive call of \term$_0$, parameters of the
+      function are bound in  \term$_0$;
+\item {\tt \{wf} \term$_1$ \ident$_0${\tt\}} with \ident$_0$ being
+      the decreasing argument and \term$_1$ an ordering relation on
+      the type of \ident$_0$ (i.e. of type T$_{\ident_0}$
+      $\to$ T$_{\ident_0}$ $\to$ {\tt Prop}) for which
+      the decreasing argument decreases at each recursive call of
+      \term$_0$. The order must be well founded. parameters of the
+      function are bound in  \term$_0$.
+\end{itemize} 
+
+Depending on the annotation, the user is left with some proof
+obligations that will be used to define the function. These proofs
+are: proofs that each recursive call is actually decreasing with
+respect to the given criteria, and (if the criteria is \texttt{wf}) a
+proof that the ordering relation is well founded.
+
+%Completer sur measure et wf
+
+Once proof obligations are discharged, the following objects are
+defined:
+
+\begin{itemize}
+\item The same objects as with the \texttt{struct};
+\item The lemma \texttt{\ident\_tcc} which collects all proof
+  obligations in one property;
+\item The lemmas \texttt{\ident\_terminate} and \texttt{\ident\_F}
+  which is needed to be inlined during extraction of \ident.
+\end{itemize}
+
+
+
+%Complete!!
+The way this recursive function is defined is the subject of several
+papers by Yves Bertot and Antonia Balaa on the one hand, and Gilles Barthe,
+Julien Forest, David Pichardie, and Vlad Rusu on the other hand.
+
+%Exemples ok ici
+
+\bigskip
+
+\noindent {\bf Remark: } Proof obligations are presented as several
+subgoals belonging to a Lemma {\ident}{\tt\_tcc}. % These subgoals are independent which means that in order to
+% abort them you will have to abort each separately.
+
+
+
+%The decreasing argument cannot be dependent of another??
+
+%Exemples faux ici
+\end{Variants}
+
+
+\section{Section mechanism
+\index{Sections}
+\label{Section}}
+
+The sectioning mechanism allows to organize a proof in structured
+sections. Then local declarations become available (see
+Section~\ref{Basic-definitions}).
+
+\subsection{\tt Section {\ident}\comindex{Section}}
+
+This command is used to open a section named {\ident}.
+
+%% Discontinued ?
+%% \begin{Variants}
+%% \comindex{Chapter}
+%% \item{\tt Chapter {\ident}}\\
+%%         Same as {\tt Section {\ident}}
+%% \end{Variants}
+
+\subsection{\tt End {\ident}
+\comindex{End}}
+
+This command closes the section named {\ident}. After closing of the
+section, the local declarations (variables and local definitions) get
+{\em discharged}, meaning that they stop being visible and that all
+global objects defined in the section are generalized with respect to
+the variables and local definitions they each depended on in the
+section.
+
+
+Here is an example :
+\begin{coq_example}
+Section s1.
+Variables x y : nat.
+Let y' := y.
+Definition x' := S x.
+Definition x'' := x' + y'.
+Print x'.
+End s1.
+Print x'.
+Print x''.
+\end{coq_example}
+Notice the difference between the value of {\tt x'} and {\tt x''}
+inside section {\tt s1} and outside.
+
+\begin{ErrMsgs}
+\item \errindex{This is not the last opened section}
+\end{ErrMsgs}
+
+\begin{Remarks}
+\item Most commands, like {\tt Hint}, {\tt Notation}, option management, ...
+which appear inside a section are canceled when the
+section is closed.
+% see Section~\ref{LongNames}
+%\item Usually all identifiers must be distinct. 
+%However, a name already used in a closed section (see \ref{Section})
+%can be reused. In this case, the old name is no longer accessible.
+
+% Obsolète
+%\item A module implicitly open a section. Be careful not to name a
+%module with an identifier already used in the module (see \ref{compiled}).
+\end{Remarks}
+
+\input{RefMan-mod.v}
+
+\section{Libraries and qualified names}
+
+\subsection{Names of libraries and files
+\label{Libraries}
+\index{Libraries}
+\index{Physical paths}
+\index{Logical paths}}
+
+\paragraph{Libraries}
+
+The theories developed in {\Coq} are stored in {\em library files}
+which are hierarchically classified into {\em libraries} and {\em
+sublibraries}. To express this hierarchy, library names are
+represented by qualified identifiers {\qualid}, i.e. as list of
+identifiers separated by dots (see Section~\ref{qualid}). For
+instance, the library file {\tt Mult} of the standard {\Coq} library
+{\tt Arith} has name {\tt Coq.Arith.Mult}. The identifier
+that starts the name of a library is called a {\em library root}.
+All library files of the standard library of {\Coq} have reserved root
+{\tt Coq} but library file names based on other roots can be obtained
+by using {\tt coqc} options {\tt -I} or {\tt -R} (see
+Section~\ref{coqoptions}). Also, when an interactive {\Coq} session
+starts, a library of root {\tt Top} is started, unless option {\tt
+-top} or {\tt -notop} is set (see Section~\ref{coqoptions}).
+
+As library files are stored on the file system of the underlying
+operating system, a translation from file-system names to {\Coq} names
+is needed. In this translation, names in the file system are called
+{\em physical} paths while {\Coq} names are contrastingly called {\em
+logical} names. Logical names are mapped to physical paths using the
+commands {\tt Add LoadPath} or {\tt Add Rec LoadPath} (see
+Sections~\ref{AddLoadPath} and~\ref{AddRecLoadPath}).
+
+\subsection{Qualified names
+\label{LongNames}
+\index{Qualified identifiers}
+\index{Absolute names}}
+
+Library files are modules which possibly contain submodules which
+eventually contain constructions (axioms, parameters, definitions,
+lemmas, theorems, remarks or facts). The {\em absolute name}, or {\em
+full name}, of a construction in some library file is a qualified
+identifier starting with the logical name of the library file,
+followed by the sequence of submodules names encapsulating the
+construction and ended by the proper name of the construction.
+Typically, the absolute name {\tt Coq.Init.Logic.eq} denotes Leibniz'
+equality defined in the module {\tt Logic} in the sublibrary {\tt
+Init} of the standard library of \Coq.
+
+The proper name that ends the name of a construction is the {\it short
+name} (or sometimes {\it base name}) of the construction (for
+instance, the short name of {\tt Coq.Init.Logic.eq} is {\tt eq}). Any
+partial suffix of the absolute name is a {\em partially qualified name}
+(e.g. {\tt Logic.eq} is a partially qualified name for {\tt
+Coq.Init.Logic.eq}).  Especially, the short name of a construction is
+its shortest partially qualified name.
+
+{\Coq} does not accept two constructions (definition, theorem, ...)
+with the same absolute name but different constructions can have the
+same short name (or even same partially qualified names as soon as the
+full names are different).
+
+Notice that the notion of absolute, partially qualified and
+short names also applies to library file names.
+
+\paragraph{Visibility}
+
+{\Coq} maintains a table called {\it name table} which maps partially
+qualified names of constructions to absolute names. This table is
+updated by the commands {\tt Require} (see \ref{Require}), {\tt
+Import} and {\tt Export} (see \ref{Import}) and also each time a new
+declaration is added to the context. An absolute name is called {\it
+visible} from a given short or partially qualified name when this
+latter name is enough to denote it. This means that the short or
+partially qualified name is mapped to the absolute name in {\Coq} name
+table.
+
+A similar table exists for library file names. It is updated by the
+vernacular commands {\tt Add LoadPath} and {\tt Add Rec LoadPath} (or
+their equivalent as options of the {\Coq} executables, {\tt -I} and
+{\tt -R}).
+
+It may happen that a visible name is hidden by the short name or a
+qualified name of another construction. In this case, the name that
+has been hidden must be referred to using one more level of
+qualification. To ensure that a construction always remains
+accessible, absolute names can never be hidden.
+
+Examples:
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+\begin{coq_example}
+Check 0.
+Definition nat := bool.
+Check 0.
+Check Datatypes.nat.
+Locate nat.
+\end{coq_example}
+
+\SeeAlso Command {\tt Locate} in Section~\ref{Locate} and {\tt Locate
+Library} in Section~\ref{Locate Library}.
+
+%% \paragraph{The special case of remarks and facts}
+%% 
+%% In contrast with definitions, lemmas, theorems, axioms and parameters,
+%% the absolute name of remarks includes the segment of sections in which
+%% it is defined. Concretely, if a remark {\tt R} is defined in
+%% subsection {\tt S2} of section {\tt S1} in module {\tt M}, then its
+%% absolute name is {\tt M.S1.S2.R}. The same for facts, except that the
+%% name of the innermost section is dropped from the full name. Then, if
+%% a fact {\tt F} is defined in subsection {\tt S2} of section {\tt S1}
+%% in module {\tt M}, then its absolute name is {\tt M.S1.F}.
+
+\section{Implicit arguments
+\index{Implicit arguments}
+\label{Implicit Arguments}}
+
+An implicit argument of a function is an argument which can be
+inferred from contextual knowledge. There are different kinds of
+implicit arguments that can be considered implicit in different
+ways. There are also various commands to control the setting or the
+inference of implicit arguments.
+
+\subsection{The different kinds of implicit arguments}
+
+\subsubsection{Implicit arguments inferable from the knowledge of other 
+arguments of a function}
+
+The first kind of implicit arguments covers the arguments that are
+inferable from the knowledge of the type of other arguments of the
+function, or of the type of the surrounding context of the
+application.  Especially, such implicit arguments correspond to 
+parameters dependent in the type of the function. Typical implicit
+arguments are the type arguments in polymorphic functions.  
+There are several kinds of such implicit arguments.
+
+\paragraph{Strict Implicit Arguments.} 
+An implicit argument can be either strict or non strict. An implicit
+argument is said {\em strict} if, whatever the other arguments of the
+function are, it is still inferable from the type of some other
+argument. Technically, an implicit argument is strict if it
+corresponds to a parameter which is not applied to a variable which
+itself is another parameter of the function (since this parameter
+may erase its arguments), not in the body of a {\tt match}, and not
+itself applied or matched against patterns (since the original
+form of the argument can be lost by reduction).
+
+For instance, the first argument of
+\begin{quote}
+\verb|cons: forall A:Set, A -> list A -> list A|
+\end{quote}
+in module {\tt List.v} is strict because {\tt list} is an inductive
+type and {\tt A} will always be inferable from the type {\tt
+list A} of the third argument of {\tt cons}.
+On the contrary, the second argument of a term of type 
+\begin{quote}
+\verb|forall P:nat->Prop, forall n:nat, P n -> ex nat P|
+\end{quote}
+is implicit but not strict, since it can only be inferred from the
+type {\tt P n} of the third argument and if {\tt P} is, e.g., {\tt
+fun \_ => True}, it reduces to an expression where {\tt n} does not
+occur any longer. The first argument {\tt P} is implicit but not
+strict either because it can only be inferred from {\tt P n} and {\tt
+P} is not canonically inferable from an arbitrary {\tt n} and the
+normal form of {\tt P n} (consider e.g. that {\tt n} is {\tt 0} and
+the third argument has type {\tt True}, then any {\tt P} of the form
+{\tt fun n => match n with 0 => True | \_ => \mbox{\em anything} end} would
+be a solution of the inference problem).
+
+\paragraph{Contextual Implicit Arguments.} 
+An implicit argument can be {\em contextual} or not. An implicit
+argument is said {\em contextual} if it can be inferred only from the
+knowledge of the type of the context of the current expression. For
+instance, the only argument of
+\begin{quote}
+\verb|nil : forall A:Set, list A|
+\end{quote}
+is contextual. Similarly, both arguments of a term of type
+\begin{quote}
+\verb|forall P:nat->Prop, forall n:nat, P n \/ n = 0|
+\end{quote}
+are contextual (moreover, {\tt n} is strict and {\tt P} is not).
+
+\paragraph{Reversible-Pattern Implicit Arguments.}
+There is another class of implicit arguments that can be reinferred
+unambiguously if all the types of the remaining arguments are
+known. This is the class of implicit arguments occurring in the type
+of another argument in position of reversible pattern, which means it
+is at the head of an application but applied only to uninstantiated
+distinct variables. Such an implicit argument is called {\em
+reversible-pattern implicit argument}. A typical example is the
+argument {\tt P} of {\tt nat\_rec} in
+\begin{quote}
+{\tt nat\_rec : forall P : nat -> Set,
+       P 0 -> (forall n : nat, P n -> P (S n)) -> forall x : nat, P x}.
+\end{quote}
+({\tt P} is reinferable by abstracting over {\tt n} in the type {\tt P n}).
+
+See Section~\ref{SetReversiblePatternImplicit} for the automatic declaration
+of reversible-pattern implicit arguments.
+
+\subsubsection{Implicit arguments inferable by resolution}
+
+This corresponds to a class of non dependent implicit arguments that
+are solved based on the structure of their type only.
+
+\subsection{Maximal or non maximal insertion of implicit arguments}
+
+In case a function is partially applied, and the next argument to be
+applied is an implicit argument, two disciplines are applicable. In the
+first case, the function is considered to have no arguments furtherly:
+one says that the implicit argument is not maximally inserted. In
+the second case, the function is considered to be implicitly applied
+to the implicit arguments it is waiting for: one says that the
+implicit argument is maximally inserted.
+
+Each implicit argument can be declared to have to be inserted
+maximally or non maximally. This can be governed argument per argument
+by the command {\tt Implicit Arguments} (see~\ref{ImplicitArguments})
+or globally by the command {\tt Set Maximal Implicit Insertion}
+(see~\ref{SetMaximalImplicitInsertion}). See also
+Section~\ref{PrintImplicit}.
+
+\subsection{Casual use of implicit arguments}
+
+In a given expression, if it is clear that some argument of a function
+can be inferred from the type of the other arguments, the user can
+force the given argument to be guessed by replacing it by ``{\tt \_}''. If
+possible, the correct argument will be automatically generated.
+
+\begin{ErrMsgs}
+
+\item \errindex{Cannot infer a term for this placeholder}
+
+  {\Coq} was not able to deduce an instantiation of a ``{\tt \_}''.
+
+\end{ErrMsgs}
+
+\subsection{Declaration of implicit arguments for a constant
+\comindex{Implicit Arguments}}
+\label{ImplicitArguments}
+
+In case one wants that some arguments of a given object (constant,
+inductive types, constructors, assumptions, local or not) are always
+inferred by Coq, one may declare once and for all which are the expected
+implicit arguments of this object. There are two ways to do this,
+a-priori and a-posteriori. 
+
+\subsubsection{Implicit Argument Binders}
+
+In the first setting, one wants to explicitly give the implicit
+arguments of a constant as part of its definition. To do this, one has
+to surround the bindings of implicit arguments by curly braces:
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+\begin{coq_example}
+Definition id {A : Type} (x : A) : A := x.
+\end{coq_example}
+
+This automatically declares the argument {\tt A} of {\tt id} as a
+maximally inserted implicit argument. One can then do as-if the argument
+was absent in every situation but still be able to specify it if needed:
+\begin{coq_example}
+Definition compose {A B C} (g : B -> C) (f : A -> B) := 
+  fun x => g (f x).
+Goal forall A, compose id id = id (A:=A).
+\end{coq_example}
+
+The syntax is supported in all top-level definitions: {\tt Definition},
+{\tt Fixpoint}, {\tt Lemma} and so on. For (co-)inductive datatype
+declarations, the semantics are the following: an inductive parameter
+declared as an implicit argument need not be repeated in the inductive
+definition but will become implicit for the constructors of the
+inductive only, not the inductive type itself. For example:
+
+\begin{coq_example}
+Inductive list {A : Type} : Type :=
+| nil : list
+| cons : A -> list -> list.
+Print list.
+\end{coq_example}
+
+One can always specify the parameter if it is not uniform using the
+usual implicit arguments disambiguation syntax.
+
+\subsubsection{The Implicit Arguments Vernacular Command}
+
+To set implicit arguments for a constant a-posteriori, one can use the
+command:
+\begin{quote}
+\tt Implicit Arguments {\qualid} [ \nelist{\possiblybracketedident}{} ]
+\end{quote}
+where the list of {\possiblybracketedident} is the list of parameters
+to be declared implicit, each of the identifier of the list being
+optionally surrounded by square brackets, then meaning that this
+parameter has to be maximally inserted.
+
+After the above declaration is issued, implicit arguments can just (and
+have to) be skipped in any expression involving an application of
+{\qualid}.
+
+\begin{Variants}
+\item {\tt Global Implicit Arguments {\qualid} [ \nelist{\possiblybracketedident}{} ]
+\comindex{Global Implicit Arguments}}
+
+Tells to recompute the implicit arguments of {\qualid} after ending of
+the current section if any, enforcing the implicit arguments known
+from inside the section to be the ones declared by the command.
+
+\item {\tt Local Implicit Arguments {\qualid} [ \nelist{\possiblybracketedident}{} ]
+\comindex{Local Implicit Arguments}}
+
+When in a module, tells not to activate the implicit arguments of
+{\qualid} declared by this commands to contexts that requires the
+module.
+
+\end{Variants}
+
+\Example
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+\begin{coq_example*}
+Inductive list (A:Type) : Type :=
+ | nil : list A 
+ | cons : A -> list A -> list A.
+\end{coq_example*}
+\begin{coq_example}
+Check (cons nat 3 (nil nat)).
+Implicit Arguments cons [A].
+Implicit Arguments nil [A].
+Check (cons 3 nil).
+Fixpoint map (A B:Type) (f:A->B) (l:list A) : list B :=
+  match l with nil => nil | cons a t => cons (f a) (map A B f t) end.
+Fixpoint length (A:Type) (l:list A) : nat :=
+  match l with nil => 0 | cons _ m => S (length A m) end.
+Implicit Arguments map [A B].
+Implicit Arguments length [[A]]. (* A has to be maximally inserted *)
+Check (fun l:list (list nat) => map length l).
+\end{coq_example}
+
+\Rem To know which are the implicit arguments of an object, use the command
+{\tt Print Implicit} (see \ref{PrintImplicit}).
+
+\Rem If the list of arguments is empty, the command removes the
+implicit arguments of {\qualid}.
+
+\subsection{Automatic declaration of implicit arguments for a constant}
+
+{\Coq} can also automatically detect what are the implicit arguments
+of a defined object. The command is just
+\begin{quote}
+{\tt Implicit Arguments {\qualid}
+\comindex{Implicit Arguments}}
+\end{quote}
+The auto-detection is governed by options telling if strict,
+contextual, or reversible-pattern implicit arguments must be
+considered or not (see
+Sections~\ref{SetStrictImplicit},~\ref{SetContextualImplicit},~\ref{SetReversiblePatternImplicit}
+and also~\ref{SetMaximalImplicitInsertion}).
+
+\begin{Variants}
+\item {\tt Global Implicit Arguments {\qualid}
+\comindex{Global Implicit Arguments}}
+
+Tells to recompute the implicit arguments of {\qualid} after ending of
+the current section if any.
+
+\item {\tt Local Implicit Arguments {\qualid}
+\comindex{Local Implicit Arguments}}
+
+When in a module, tells not to activate the implicit arguments of
+{\qualid} computed by this declaration to contexts that requires the
+module.
+
+\end{Variants}
+
+\Example
+\begin{coq_eval}
+Reset Initial.
+\end{coq_eval}
+\begin{coq_example*}
+Inductive list (A:Set) : Set := 
+  | nil : list A 
+  | cons : A -> list A -> list A.
+\end{coq_example*}
+\begin{coq_example}
+Implicit Arguments cons.
+Print Implicit cons.
+Implicit Arguments nil.
+Print Implicit nil.
+Set Contextual Implicit.
+Implicit Arguments nil.
+Print Implicit nil.
+\end{coq_example}
+
+The computation of implicit arguments takes account of the
+unfolding of constants.  For instance, the variable {\tt p} below has
+type {\tt (Transitivity R)} which is reducible to {\tt forall x,y:U, R x
+y -> forall z:U, R y z -> R x z}. As the variables {\tt x}, {\tt y} and
+{\tt z} appear strictly in body of the type, they are implicit.
+
+\begin{coq_example*}
+Variable X : Type.
+Definition Relation := X -> X -> Prop.
+Definition Transitivity (R:Relation) :=
+  forall x y:X, R x y -> forall z:X, R y z -> R x z.
+Variables (R : Relation) (p : Transitivity R).
+Implicit Arguments p.
+\end{coq_example*}
+\begin{coq_example}
+Print p.
+Print Implicit p.
+\end{coq_example}
+\begin{coq_example*}
+Variables (a b c : X) (r1 : R a b) (r2 : R b c).
+\end{coq_example*}
+\begin{coq_example}
+Check (p r1 r2).
+\end{coq_example}
+
+\subsection{Mode for automatic declaration of implicit arguments
+\label{Auto-implicit}
+\comindex{Set Implicit Arguments}
+\comindex{Unset Implicit Arguments}}
+
+In case one wants to systematically declare implicit the arguments
+detectable as such, one may switch to the automatic declaration of
+implicit arguments mode by using the command
+\begin{quote}
+\tt Set Implicit Arguments.
+\end{quote}
+Conversely, one may unset the mode by using {\tt Unset Implicit
+Arguments}.  The mode is off by default. Auto-detection of implicit
+arguments is governed by options controlling whether strict and
+contextual implicit arguments have to be considered or not.
+
+\subsection{Controlling strict implicit arguments
+\comindex{Set Strict Implicit}
+\comindex{Unset Strict Implicit}
+\label{SetStrictImplicit}}
+
+When the mode for automatic declaration of implicit arguments is on,
+the default is to automatically set implicit only the strict implicit
+arguments plus, for historical reasons, a small subset of the non
+strict implicit arguments. To relax this constraint and to
+set implicit all non strict implicit arguments by default, use the command
+\begin{quote}
+\tt Unset Strict Implicit.
+\end{quote}
+Conversely, use the command {\tt Set Strict Implicit} to
+restore the original mode that declares implicit only the strict implicit arguments plus a small subset of the non strict implicit arguments.
+
+In the other way round, to capture exactly the strict implicit arguments and no more than the strict implicit arguments, use the command:
+\comindex{Set Strongly Strict Implicit}
+\comindex{Unset Strongly Strict Implicit}
+\begin{quote}
+\tt Set Strongly Strict Implicit.
+\end{quote}
+Conversely, use the command {\tt Unset Strongly Strict Implicit} to
+let the option ``{\tt Strict Implicit}'' decide what to do.
+
+\Rem In versions of {\Coq} prior to version 8.0, the default was to
+declare the strict implicit arguments as implicit.
+
+\subsection{Controlling contextual implicit arguments
+\comindex{Set Contextual Implicit}
+\comindex{Unset Contextual Implicit}
+\label{SetContextualImplicit}}
+
+By default, {\Coq} does not automatically set implicit the contextual
+implicit arguments. To tell {\Coq} to infer also contextual implicit
+argument, use command  
+\begin{quote}
+\tt Set Contextual Implicit. 
+\end{quote}
+Conversely, use command {\tt Unset Contextual Implicit} to
+unset the contextual implicit mode.
+
+\subsection{Controlling reversible-pattern implicit arguments
+\comindex{Set Reversible Pattern Implicit}
+\comindex{Unset Reversible Pattern Implicit}
+\label{SetReversiblePatternImplicit}}
+
+By default, {\Coq} does not automatically set implicit the reversible-pattern
+implicit arguments. To tell {\Coq} to infer also reversible-pattern implicit
+argument, use command  
+\begin{quote}
+\tt Set Reversible Pattern Implicit. 
+\end{quote}
+Conversely, use command {\tt Unset Reversible Pattern Implicit} to
+unset the reversible-pattern implicit mode.
+
+\subsection{Controlling the insertion of implicit arguments not followed by explicit arguments
+\comindex{Set Maximal Implicit Insertion}
+\comindex{Unset Maximal Implicit Insertion}
+\label{SetMaximalImplicitInsertion}}
+
+Implicit arguments can be declared to be automatically inserted when a
+function is partially applied and the next argument of the function is
+an implicit one. In case the implicit arguments are automatically
+declared (with the command {\tt Set Implicit Arguments}), the command
+\begin{quote}
+\tt Set Maximal Implicit Insertion. 
+\end{quote}
+is used to tell to declare the implicit arguments with a maximal
+insertion status. By default, automatically declared implicit
+arguments are not declared to be insertable maximally.  To restore the
+default mode for maximal insertion, use command {\tt Unset Maximal
+Implicit Insertion}.
+
+\subsection{Explicit applications
+\index{Explicitly given implicit arguments}
+\label{Implicits-explicitation}
+\index{qualid@{\qualid}}}
+
+In presence of non strict or contextual argument, or in presence of
+partial applications, the synthesis of implicit arguments may fail, so
+one may have to give explicitly certain implicit arguments of an
+application. The syntax for this is {\tt (\ident:=\term)} where {\ident}
+is the name of the implicit argument and {\term} is its corresponding
+explicit term. Alternatively, one can locally deactivate the hiding of
+implicit arguments of a function by using the notation
+{\tt @{\qualid}~{\term}$_1$..{\term}$_n$}. This syntax extension is
+given Figure~\ref{fig:explicitations}.
+\begin{figure}
+\begin{centerframe}
+\begin{tabular}{lcl}
+{\term} & ++= & @ {\qualid} \nelist{\term}{}\\
+& $|$ & @ {\qualid}\\
+& $|$ & {\qualid} \nelist{\textrm{\textsl{argument}}}{}\\
+\\
+{\textrm{\textsl{argument}}} & ::= & {\term} \\
+& $|$ & {\tt ({\ident}:={\term})}\\
+\end{tabular}
+\end{centerframe}
+\caption{Syntax for explicitly giving implicit arguments}
+\label{fig:explicitations}
+\end{figure}
+
+\noindent {\bf Example (continued): }
+\begin{coq_example}
+Check (p r1 (z:=c)).
+Check (p (x:=a) (y:=b) r1 (z:=c) r2).
+\end{coq_example}
+
+\subsection{Displaying what the implicit arguments are
+\comindex{Print Implicit}
+\label{PrintImplicit}}
+
+To display the implicit arguments associated to an object, and to know
+if each of them is to be used maximally or not, use the command
+\begin{quote}
+\tt Print Implicit {\qualid}.
+\end{quote}
+
+\subsection{Explicit displaying of implicit arguments for pretty-printing
+\comindex{Set Printing Implicit}
+\comindex{Unset Printing Implicit}
+\comindex{Set Printing Implicit Defensive}
+\comindex{Unset Printing Implicit Defensive}}
+
+By default the basic pretty-printing rules hide the inferable implicit
+arguments of an application. To force printing all implicit arguments,
+use command
+\begin{quote}
+{\tt Set Printing Implicit.}
+\end{quote}
+Conversely, to restore the hiding of implicit arguments, use command
+\begin{quote}
+{\tt Unset Printing Implicit.}
+\end{quote}
+
+By default the basic pretty-printing rules display the implicit arguments that are not detected as strict implicit arguments. This ``defensive'' mode can quickly make the display cumbersome so this can be deactivated by using the command
+\begin{quote}
+{\tt Unset Printing Implicit Defensive.}
+\end{quote}
+Conversely, to force the display of non strict arguments, use command
+\begin{quote}
+{\tt Set Printing Implicit Defensive.}
+\end{quote}
+
+\SeeAlso {\tt Set Printing All} in Section~\ref{SetPrintingAll}.
+
+\subsection{Interaction with subtyping}
+
+When an implicit argument can be inferred from the type of more than
+one of the other arguments, then only the type of the first of these
+arguments is taken into account, and not an upper type of all of
+them.  As a consequence, the inference of the implicit argument of
+``='' fails in
+
+\begin{coq_example*}
+Check nat = Prop.
+\end{coq_example*}
+
+but succeeds in 
+
+\begin{coq_example*}
+Check Prop = nat.
+\end{coq_example*}
+
+
+
+
+\subsection{Canonical structures
+\comindex{Canonical Structure}}
+
+A canonical structure is an instance of a record/structure type that
+can be used to solve equations involving implicit arguments. Assume
+that {\qualid} denotes an object $(Build\_struc~ c_1~ \ldots~ c_n)$ in the
+structure {\em struct} of which the fields are $x_1$, ...,
+$x_n$. Assume that {\qualid} is declared as a canonical structure
+using the command
+\begin{quote}
+{\tt Canonical Structure {\qualid}.}
+\end{quote}
+Then, each time an equation of the form $(x_i~
+\_)=_{\beta\delta\iota\zeta}c_i$ has to be solved during the
+type-checking process, {\qualid} is used as a solution. Otherwise
+said, {\qualid} is canonically used to extend the field $c_i$ into a
+complete structure built on $c_i$.
+
+Canonical structures are particularly useful when mixed with
+coercions and strict implicit arguments. Here is an example.
+\begin{coq_example*}
+Require Import Relations.
+Require Import EqNat.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Structure Setoid : Type := 
+  {Carrier :> Set;
+   Equal : relation Carrier;
+   Prf_equiv : equivalence Carrier Equal}.
+Definition is_law (A B:Setoid) (f:A -> B) :=
+  forall x y:A, Equal x y -> Equal (f x) (f y).
+Axiom eq_nat_equiv : equivalence nat eq_nat.
+Definition nat_setoid : Setoid := Build_Setoid eq_nat_equiv.
+Canonical Structure nat_setoid.
+\end{coq_example*}
+
+Thanks to \texttt{nat\_setoid} declared as canonical, the implicit
+arguments {\tt A} and {\tt B} can be synthesized in the next statement.
+\begin{coq_example}
+Lemma is_law_S : is_law S.
+\end{coq_example}
+
+\Rem If a same field occurs in several canonical structure, then
+only the structure declared first as canonical is considered.
+
+\begin{Variants}
+\item {\tt Canonical Structure {\ident} := {\term} : {\type}.}\\
+ {\tt Canonical Structure {\ident} := {\term}.}\\
+ {\tt Canonical Structure {\ident} : {\type} := {\term}.}
+
+These are equivalent to a regular definition of {\ident} followed by
+the declaration 
+
+{\tt Canonical Structure {\ident}}.
+\end{Variants}
+
+\SeeAlso more examples in user contribution \texttt{category}
+(\texttt{Rocq/ALGEBRA}).
+
+\subsubsection{Print Canonical Projections.
+\comindex{Print Canonical Projections}}
+
+This displays the list of global names that are components of some
+canonical structure. For each of them, the canonical structure of
+which it is a projection is indicated. For instance, the above example 
+gives the following output:
+
+\begin{coq_example}
+Print Canonical Projections.
+\end{coq_example}
+
+\subsection{Implicit types of variables}
+\comindex{Implicit Types}
+
+It is possible to bind variable names to a given type (e.g. in a
+development using arithmetic, it may be convenient to bind the names
+{\tt n} or {\tt m} to the type {\tt nat} of natural numbers). The
+command for that is
+\begin{quote}
+\tt Implicit Types \nelist{\ident}{} : {\type}
+\end{quote}
+The effect of the command is to automatically set the type of bound
+variables starting with {\ident} (either {\ident} itself or
+{\ident} followed by one or more single quotes, underscore or digits)
+to be {\type} (unless the bound variable is already declared with an
+explicit type in which case, this latter type is considered).
+
+\Example
+\begin{coq_example}
+Require Import List.
+Implicit Types m n : nat.
+Lemma cons_inj_nat : forall m n l, n :: l = m :: l -> n = m.
+intros m n.
+Lemma cons_inj_bool : forall (m n:bool) l, n :: l = m :: l -> n = m.
+\end{coq_example}
+
+\begin{Variants}
+\item {\tt Implicit Type {\ident} : {\type}}\\
+This is useful for declaring the implicit type of a single variable.
+\item
+ {\tt Implicit Types\,%
+(\,{\ident$_{1,1}$}\ldots{\ident$_{1,k_1}$}\,{\tt :}\,{\term$_1$} {\tt )}\,%
+\ldots\,{\tt (}\,{\ident$_{n,1}$}\ldots{\ident$_{n,k_n}$}\,{\tt :}\,%
+{\term$_n$} {\tt )}.}\\ 
+  Adds $n$ blocks of implicit types with different specifications.
+\end{Variants}
+
+
+\subsection{Implicit generalization
+\label{implicit-generalization}
+\comindex{Generalizable Variables}}
+
+Implicit generalization is an automatic elaboration of a statement with
+free variables into a closed statement where these variables are
+quantified explicitly. Implicit generalization is done inside binders
+starting with a \verb|`| and terms delimited by \verb|`{ }| and
+\verb|`( )|, always introducing maximally inserted implicit arguments for
+the generalized variables. Inside implicit generalization
+delimiters, free variables in the current context are automatically
+quantified using a product or a lambda abstraction to generate a closed
+term. In the following statement for example, the variables \texttt{n}
+and \texttt{m} are autamatically generalized and become explicit
+arguments of the lemma as we are using \verb|`( )|:
+
+\begin{coq_example}
+Generalizable All Variables.
+Lemma nat_comm : `(n = n + 0).
+\end{coq_example}
+\begin{coq_eval}
+Abort.
+\end{coq_eval}
+One can control the set of generalizable identifiers with the
+\texttt{Generalizable} vernacular command to avoid unexpected
+generalizations when mistyping identifiers. There are three variants of
+the command:
+
+\begin{quote}
+{\tt Generalizable (All|No) Variable(s)? ({\ident$_1$ \ident$_n$})?.}
+\end{quote}
+
+\begin{Variants}
+\item {\tt Generalizable All Variables.} All variables are candidate for 
+  generalization if they appear free in the context under a
+  generalization delimiter. This may result in confusing errors in
+  case of typos. In such cases, the context will probably contain some
+  unexpected generalized variable.
+
+\item {\tt Generalizable No Variables.} Disable implicit generalization 
+  entirely. This is the default behavior.
+
+\item {\tt Generalizable Variable(s)? {\ident$_1$ \ident$_n$}.} 
+  Allow generalization of the given identifiers only. Calling this
+  command multiple times adds to the allowed identifiers.
+
+\item {\tt Global Generalizable} Allows to export the choice of
+  generalizable variables.
+\end{Variants}
+
+One can also use implicit generalization for binders, in which case the
+generalized variables are added as binders and set maximally implicit.
+\begin{coq_example*}
+Definition id `(x : A) : A := x.
+\end{coq_example*}
+\begin{coq_example}
+Print id.
+\end{coq_example}
+
+The generalizing binders \verb|`{ }| and \verb|`( )| work similarly to
+their explicit counterparts, only binding the generalized variables
+implicitly, as maximally-inserted arguments. In these binders, the
+binding name for the bound object is optional, whereas the type is
+mandatory, dually to regular binders.
+
+\section{Coercions
+\label{Coercions}
+\index{Coercions}}
+
+Coercions can be used to implicitly inject terms from one {\em class} in
+which they reside into another one. A {\em class} is either a sort
+(denoted by the keyword {\tt Sortclass}), a product type (denoted by the
+keyword {\tt Funclass}), or a type constructor (denoted by its name),
+e.g. an inductive type or any constant with a type of the form
+\texttt{forall} $(x_1:A_1) .. (x_n:A_n),~s$ where $s$ is a sort.
+
+Then the user is able to apply an
+object that is not a function, but can be coerced to a function, and
+more generally to consider that a term of type A is of type B provided
+that there is a declared coercion between A and B. The main command is
+\comindex{Coercion}
+\begin{quote}
+\tt Coercion {\qualid} : {\class$_1$} >-> {\class$_2$}.
+\end{quote}
+which declares the construction denoted by {\qualid} as a
+coercion between {\class$_1$} and {\class$_2$}.
+
+More details and examples, and a description of the commands related
+to coercions are provided in Chapter~\ref{Coercions-full}.
+
+\section[Printing constructions in full]{Printing constructions in full\label{SetPrintingAll}
+\comindex{Set Printing All}
+\comindex{Unset Printing All}}
+
+Coercions, implicit arguments, the type of pattern-matching, but also
+notations (see Chapter~\ref{Addoc-syntax}) can obfuscate the behavior
+of some tactics (typically the tactics applying to occurrences of
+subterms are sensitive to the implicit arguments). The command
+\begin{quote}
+{\tt Set Printing All.}
+\end{quote}
+deactivates all high-level printing features such as coercions,
+implicit arguments, returned type of pattern-matching, notations and
+various syntactic sugar for pattern-matching or record projections.
+Otherwise said, {\tt Set Printing All} includes the effects
+of the commands {\tt Set Printing Implicit}, {\tt Set Printing
+Coercions}, {\tt Set Printing Synth}, {\tt Unset Printing Projections}
+and {\tt Unset Printing Notations}.  To reactivate the high-level
+printing features, use the command
+\begin{quote}
+{\tt Unset Printing All.}
+\end{quote}
+
+\section[Printing universes]{Printing universes\label{PrintingUniverses}
+\comindex{Set Printing Universes}
+\comindex{Unset Printing Universes}}
+
+The following command:
+\begin{quote}
+{\tt Set Printing Universes}
+\end{quote}
+activates the display of the actual level of each occurrence of
+{\Type}. See Section~\ref{Sorts} for details.  This wizard option, in
+combination with \texttt{Set Printing All} (see
+section~\ref{SetPrintingAll}) can help to diagnose failures to unify
+terms apparently identical but internally different in the Calculus of
+Inductive Constructions. To reactivate the display of the actual level
+of the occurrences of {\Type}, use
+\begin{quote}
+{\tt Unset Printing Universes.}
+\end{quote}
+
+\comindex{Print Universes}
+
+The constraints on the internal level of the occurrences of {\Type}
+(see Section~\ref{Sorts}) can be printed using the command
+\begin{quote}
+{\tt Print Universes.}
+\end{quote}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "Reference-Manual"
+%%% End: 
