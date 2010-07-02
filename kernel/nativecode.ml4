@@ -307,10 +307,21 @@ and translate env ik t =
 	  let f i  =
               let (trans,annots) = translate annots (n + m) bodies.(i) in
               let fix_lid = lid_of_index (n + i) in
-              let lids = (gen_names n m) in
-	      (<:patt< $lid:fix_lid$ >>, trans)
-	  in let functions = Array.to_list (Array.init m f)
-	  in <:expr< let rec $list:functions$ in $lid:lid_of_index (n + i)$ >>, annots
+              let trans = <:expr< fun $lid:fix_lid$ -> $trans$ >> in
+              let args = gen_names (n+m) (recargs.(i)+1) in
+              let app e = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) e args in
+              let ratom_app = app <:expr< mk_accu $lid:fix_lid^"_ratom"$.val >> in
+              let norm_app = app <:expr< $lid:fix_lid^"_norm"$ $lid:fix_lid^"_rec"$>> in
+              let tr_rec = <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then $ratom_app$ else $norm_app$ >> in
+              let tr_rec = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) args tr_rec in
+                <:patt< $lid:lid_of_index i$ >>, <:expr< let $lid:fix_lid^"_ratom"$ = ref (Nativevalues.dummy_atom) in
+                let $lid:fix_lid^"_norm"$ = $trans$ in 
+                let rec $lid:fix_lid^"_rec"$ = $tr_rec$ in do {
+                  $lid:fix_lid^"_ratom"$.val := Afix $lid:fix_lid^"_rec"$ $lid:fix_lid^"_norm"$ $int:string_of_int recargs.(i)$;
+                  mk_fix_accu $lid:fix_lid^"_ratom"$.val } >>
+	  in
+          let tr_bodies = Array.to_list (Array.init m f) in
+          <:expr< let rec $list:tr_bodies$ in $lid:lid_of_index (n + i)$ >>, annots
       | CoFix(ln, (_, tl, bl)) -> <:expr< mk_id_accu $str:"cofix"$ >>, annots(* invalid_arg "translate"*)
       | _ -> <:expr< mk_id_accu $str:"other"$ >>, annots(* invalid_arg "translate"*)
 and translate_app annots n c args =
