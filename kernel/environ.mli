@@ -197,7 +197,7 @@ val compile_constant_body :
     env -> constr_substituted constant_def -> bool -> Cemitcodes.body_code
                                  (* boxed *)
 
-val translate : env -> id_key -> Term.constr -> MLast.expr * NbeAnnotTbl.t
+val translate : env -> id_key -> Term.constr -> MLast.str_item list * NbeAnnotTbl.t
 
 exception Hyp_not_found
 
