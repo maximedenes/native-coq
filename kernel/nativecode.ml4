@@ -33,10 +33,8 @@ let uniq = ref 256
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
+let add_dummy_loc = List.map (fun t -> (t,loc))
 (* Flag to signal whether recompilation is needed. *)
-
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
 
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
