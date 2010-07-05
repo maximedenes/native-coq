@@ -171,6 +171,8 @@ let make_constructor_pattern ob i args =
 let lid_of_index n = "x" ^ string_of_int n
 let code_lid_of_index p = "b" ^ string_of_int p
 
+let lid_of_id_key ik = lid_of_string (string_of_id_key ik)
+
 let rec gen_names start len =
   if len = 0 then []
   else if len > 0 then

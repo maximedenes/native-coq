@@ -428,4 +428,4 @@ let string_of_id_key ik =
   match ik with
     | ConstKey cn -> string_of_con cn
     | VarKey id -> string_of_id id
-    | RelKey i -> string_of_int i
+    | RelKey i -> "rel"^string_of_int i
