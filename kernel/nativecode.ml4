@@ -340,11 +340,11 @@ and translate env ik t =
               let norm_app = app <:expr< $lid:fix_lid^"_norm"$ $lid:fix_lid^"_rec"$>> in
               let tr_rec = <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then $ratom_app$ else $norm_app$ >> in
               let tr_rec = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) args tr_rec in
-                (<:patt< $lid:lid_of_index i$ >>, <:expr< let $lid:fix_lid^"_ratom"$ = ref (Nativevalues.dummy_atom) in
-                let $lid:fix_lid^"_norm"$ = $trans$ in 
-                let rec $lid:fix_lid^"_rec"$ = $tr_rec$ in do {
-                  $lid:fix_lid^"_ratom"$.val := Afix $lid:fix_lid^"_rec"$ $lid:fix_lid^"_norm"$ $int:string_of_int recargs.(i)$;
-                  mk_fix_accu $lid:fix_lid^"_ratom"$.val } >>)::xs, auxdefs, annots
+              let auxdefs = <:str_item< value $lid:fix_lid^"_ratom"$ = ref (Nativevalues.dummy_atom) >>::auxdefs in
+              let auxdefs = <:str_item< value $lid:fix_lid^"_norm"$ = $trans$ >>::auxdefs in 
+              let auxdefs = <:str_item< value rec $lid:fix_lid^"_rec"$ = $tr_rec$ >>::auxdefs in
+              let auxdefs = <:str_item< value _ = $lid:fix_lid^"_ratom"$.val := Afix $lid:fix_lid^"_rec"$ $lid:fix_lid^"_norm"$ $int:string_of_int recargs.(i)$ >>::auxdefs in
+                (<:patt< $lid:lid_of_index i$ >>, <:expr< mk_fix_accu $lid:fix_lid^"_ratom"$.val >>)::xs, auxdefs, annots
 	  in
           let tr_bodies,auxdefs,annots = Array.fold_right f (Array.init m (fun i -> i)) ([],auxdefs,annots) in
           <:expr< let rec $list:tr_bodies$ in $lid:lid_of_index (n + i)$ >>, auxdefs, annots
