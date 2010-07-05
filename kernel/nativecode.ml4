@@ -185,6 +185,28 @@ let rec gen_rels start len =
     <:expr< Rel 0 >> :: gen_rels (start + 1) (len - 1)
   else raise (Invalid_argument "gen_rels")
 
+let free_vars_acc n xs t =
+  let rec aux m xs t =
+    match kind_of_term t with
+      | Rel i ->
+          let j = m-i in
+          if (j >= n || List.mem j xs) then xs else j::xs
+      | Prod (_,t,c) -> aux (m+1) (aux m xs t) c
+      | Lambda (_,t,c) -> aux (m+1) (aux m xs t) c
+      | LetIn (_,b,t,c) -> aux (m+1) (aux m (aux m xs b) t) c
+      | Fix (_,(lna,tl,bl)) ->
+          let i = Array.length tl in
+          let fd = array_map3 (fun na t b -> (na,t,b)) lna tl bl in
+          Array.fold_left (fun xs (na,t,b) -> aux (m+i) (aux m xs t) b) xs fd
+      | CoFix (_,(lna,tl,bl)) ->
+          let i = Array.length tl in
+          let fd = array_map3 (fun na t b -> (na,t,b)) lna tl bl in
+          Array.fold_left (fun xs (na,t,b) -> aux (m+i) (aux m xs t) b) xs fd
+      | _ -> fold_constr (aux m) xs t
+  in (aux n xs t)
+
+let free_vars n t = free_vars_acc n [] t
+
 let rec patch_fix l n =
   if n > 0 then function
     | <:expr< fun $x$ -> $t$ >> ->
