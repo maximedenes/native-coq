@@ -12,6 +12,8 @@ val opaque_const : constant -> MLast.expr
 
 val assums : env -> constr -> string list
 
+val add_dummy_loc : MLast.str_item list -> (MLast.str_item * Ploc.t) list
+
 val translate_ind : env ->
            Names.inductive ->
            Declarations.mutual_inductive_body *
