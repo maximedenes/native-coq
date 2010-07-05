@@ -30,15 +30,15 @@ let compile env c =
     Pcaml.output_file := Some "envpr.ml";
     !Pcaml.print_implem (dump);
     Pcaml.output_file := Some "termspr.ml";
-    !Pcaml.print_implem [(<:str_item< value c = $code$ >>, loc)];
+    !Pcaml.print_implem (add_dummy_loc code);
   let kns = Stringmap.add "-1" (RelKey (-1),annots) kns in
     Nbeconv.print_implem (env_name^".ml") (compute_loc dump);
     Nbeconv.print_implem (terms_name^".ml")
-	 [(<:str_item< open Nativelib >>, loc);
+	 ([(<:str_item< open Nativelib >>, loc);
 	  (<:str_item< open Nativevalues >>, loc);
-	  (<:str_item< open $list: [env_name]$ >>, loc);
-	  (<:str_item< value c = Obj.magic $code$ >>, loc);
-	  (<:str_item< value _ = print_nf (lazy c) >>, loc)];
+	  (<:str_item< open $list: [env_name]$ >>, loc)]
+         @ (add_dummy_loc code)
+	 @ [(<:str_item< value _ = print_nf (lazy $lid:"xrel-1"$) >>, loc)]);
   kns
 
 let decompose_prod env t =

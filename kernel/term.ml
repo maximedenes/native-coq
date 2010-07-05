@@ -1333,7 +1333,7 @@ let (hcons1_constr, hcons1_types) = hcons_constr (hcons_names())
 
 (*******)
 (* Type of abstract machine values *)
-type values = MLast.expr
+type values = MLast.str_item list
 
 let expr_of_values v = v
 

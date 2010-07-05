@@ -71,7 +71,7 @@ let add_value env (id, value) xs =
   match !value with
     | VKvalue (v, _) ->
 	let sid = string_of_id id in
-	let ast = (<:str_item< value $lid:lid_of_string sid$ = $expr_of_values v$ >>, loc) in
+        let ast = add_dummy_loc (expr_of_values v) in
         let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	let deps = (match b with
           | None -> [] 
@@ -85,7 +85,8 @@ let add_constant c ck xs =
   match (fst ck).const_body_ast with
     | Some v ->
 	let sc = Nativecode.string_of_con c in
-	let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in
+	(* let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in *)
+        let ast = add_dummy_loc (expr_of_values v) in
 	let deps = match (fst ck).const_body_deps with
 	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
 	  | None -> []
@@ -117,7 +118,7 @@ let topological_sort init xs =
 	  visited := Stringset.add s !visited;
           let (l,kns) = List.fold_right aux deps (result,kns) in
           let kns = Stringmap.add s (c,annots) kns in
-	  (x :: l, kns)
+	  (x @ l, kns)
       with Not_found -> (result,kns)
     end
   in
@@ -187,13 +188,13 @@ let compile env t1 t2 =
     	  (<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);
     	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];*)
     print_implem (terms_name^".ml")
-	 [(<:str_item< open Nativelib >>, loc);
-	  (<:str_item< open $list:[env_name]$ >>, loc);
-	  (<:str_item< value t1 = $code1$ >>, loc);
-	  (<:str_item< value t2 = $code2$ >>, loc);
+	 ([(<:str_item< open Nativelib >>, loc);
+	  (<:str_item< open $list:[env_name]$ >>, loc)]
+	  @ (add_dummy_loc code1)
+	  @ (add_dummy_loc code2)
     	  (*(<:str_item< value _ = print_endline (string_of_term 0 t1) >>, loc);*)
     	  (*(<:str_item< value _ = print_endline (string_of_term 0 t2) >>, loc);*)
-	  (<:str_item< value _ = compare 0 t1 t2 >>, loc)];
+	  @ [(<:str_item< value _ = compare 0 t1 t2 >>, loc)]);
     env_updated := false;
     (values code1, values code2)
 
