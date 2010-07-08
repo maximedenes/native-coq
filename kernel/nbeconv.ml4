@@ -200,21 +200,21 @@ let compile env t1 t2 =
 
 let compare (v1, v2) cu =
   let file_names = env_name^".ml "^terms_name^".ml" in
-  let _ = Unix.system ("touch "^env_name^".ml") in
+  let _ = Sys.command ("touch "^env_name^".ml") in
   print_endline "Compilation...";
   let comp_cmd =
     "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
   in
-  let res = Unix.system comp_cmd in
+  let res = Sys.command comp_cmd in
   match res with
-    | Unix.WEXITED 0 ->
+    | 0 ->
       begin
-      let _ = Unix.system ("rm "^file_names) in
+      let _ = Sys.command ("rm "^file_names) in
       print_endline "Running conversion test...";
-      let res = Unix.system "./a.out" in
-      let _ = Unix.system "rm a.out" in
+      let res = Sys.command "./a.out" in
+      let _ = Sys.command "rm a.out" in
       match res with
-        | Unix.WEXITED 0 -> cu
+        | 0 -> cu
         | _ -> (print_endline "Conversion test failure"; raise NotConvertible)
       end
     | _ -> (print_endline "Compilation failure"; raise NotConvertible)
