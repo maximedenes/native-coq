@@ -293,57 +293,46 @@ and translate env ik t =
 	    <:expr< (Obj.magic $uid:string_of_id ob.mind_consnames.(i-1)$ : Nativevalues.t) >>, auxdefs, annots
           else translate_app auxdefs annots n t [||]
       | Case (ci, p, c, branches) ->
-	  let mb = lookup_mind (fst ci.ci_ind) env in
-	  let ob = mb.mind_packets.(snd ci.ci_ind) in
-	  let f i br (xs1,auxdefs,annots) =
-	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
-            let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
-            let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
-       	    (*let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in*)
-	    let pat1 = make_constructor_pattern ob i args in
-            let (tr,auxdefs,annots) = translate auxdefs annots n br in
-            let body = apps tr args in
-                ((pat1, None, body)::xs1,auxdefs,annots)
-          in
-          let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
-          let (bodies,auxdefs,annots) =
-            array_fold_right_i f branches ([],auxdefs,annots)
-          in
-          let annot_i_str = string_of_int annot_i in
-          let annot_ik = lid_of_id_key ik in
-          let match_lid = annot_ik^"_match_rec"^annot_i_str in
-          let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
-          let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
-          let neutral_match = <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ ($str:annot_ik$,$int:annot_i_str$,$tbl$) >> in
-          let ind_str = string_of_id ob.mind_typename in
-          let accu_str = "Accu"^ind_str in
-          let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
-          let (tr,auxdefs,annots) = translate auxdefs annots n c in
-          let fv = Array.fold_left (free_vars_acc n) [] branches in
-          let fv = List.map (fun i -> lid_of_index i) fv in 
-          let match_body =
-            <:expr< match (Obj.magic c : $lid:ind_str$) with [$list:default::bodies$] >>
-          in
-          let match_body = List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) match_body ("c"::fv) in
-          let auxdefs = <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs in
-          let match_app = List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>) fv <:expr< $lid:match_lid$ >> in
-          <:expr< $match_app$ $tr$ >>, auxdefs, annots
-      | Fix ((recargs, i), (_, _, bodies)) ->
+          let u = (ci, p, c, branches) in
+          let ast, auxdefs, annots, _ = translate_case auxdefs annots n u None in
+            ast, auxdefs, annots
+      | Fix ((recargs, i), (_, _, bodies)) -> (* TODO : compile local fix *)
 	  let m = Array.length bodies in
 	  let f i (xs,auxdefs,annots) =
-              let (trans,auxdefs,annots) = translate auxdefs annots (n + m) bodies.(i) in
-              let fix_lid = lid_of_index (n + i) in
-              let trans = <:expr< fun $lid:fix_lid$ -> $trans$ >> in
-              let args = gen_names (n+m) (recargs.(i)+1) in
-              let app e = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) e args in
-              let ratom_app = app <:expr< mk_accu $lid:fix_lid^"_ratom"$.val >> in
-              let norm_app = app <:expr< $lid:fix_lid^"_norm"$ $lid:fix_lid^"_rec"$>> in
-              let tr_rec = <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then $ratom_app$ else $norm_app$ >> in
-              let tr_rec = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) args tr_rec in
+              let fix_lid = lid_of_string (string_of_id_key ik ^ "_" ^ string_of_int (n + i)) in
+              let rec traverse_lambdas app abs lvl t =
+                match kind_of_term t with
+                  | Lambda (_, _, c) ->
+                      let app e = <:expr< $app e$ $lid:lid_of_index (n+m+lvl)$ >> in 
+                      let abs e = abs <:expr< fun $lid:lid_of_index (n+m+lvl)$ -> $e$ >> in 
+                        traverse_lambdas app abs (lvl+1) c
+                  | Case (ci, p, c, branches) when kind_of_term c = Rel (lvl-recargs.(i)) ->
+                      let u = (ci, p, c, branches) in
+                      let ratom_app = app <:expr< mk_accu $lid:fix_lid^"_ratom"$.val >> in
+                      let tr_norm, auxdefs, annots, tr_rec =
+                        translate_case auxdefs annots (n+m+lvl) u (Some ratom_app)
+                      in
+                      let tr_rec =
+                        <:expr< let $lid:lid_of_index (n+i)$ =
+                                  $lid:fix_lid^"_rec"$ in $tr_rec$ >>
+                      in
+                        abs tr_rec, abs tr_norm, auxdefs, annots
+                  | _ ->
+                      let ratom_app = app <:expr< mk_accu $lid:fix_lid^"_ratom"$.val >> in
+                      let norm_app = app <:expr< $lid:fix_lid^"_norm"$ $lid:fix_lid^"_rec"$>> in
+                      let tr_rec = <:expr< if is_accu $lid:lid_of_index (n+m)$ then $ratom_app$ else $norm_app$ >> in
+                      let tr_norm, auxdefs, annots = translate auxdefs annots (n+m+lvl) t in
+                        abs tr_rec, abs tr_norm, auxdefs, annots
+              in
+              let tr_rec, tr_norm, auxdefs, annots =
+                let id x = x in traverse_lambdas id id 0 bodies.(i)
+              in
+              let tr_norm = <:expr< fun $lid:lid_of_index (n+i)$ -> $tr_norm$ >> in
               let auxdefs = <:str_item< value $lid:fix_lid^"_ratom"$ = ref (Nativevalues.dummy_atom) >>::auxdefs in
-              let auxdefs = <:str_item< value $lid:fix_lid^"_norm"$ = $trans$ >>::auxdefs in 
+              let auxdefs = <:str_item< value $lid:fix_lid^"_norm"$ = $tr_norm$ >>::auxdefs in 
               let auxdefs = <:str_item< value rec $lid:fix_lid^"_rec"$ = $tr_rec$ >>::auxdefs in
-              let auxdefs = <:str_item< value _ = $lid:fix_lid^"_ratom"$.val := Afix $lid:fix_lid^"_rec"$ $lid:fix_lid^"_norm"$ $int:string_of_int recargs.(i)$ >>::auxdefs in
+              let afix = <:expr< Afix $lid:fix_lid^"_rec"$ $lid:fix_lid^"_norm"$ $int:string_of_int recargs.(i)$ >> in
+              let auxdefs = <:str_item< value _ = $lid:fix_lid^"_ratom"$.val := $afix$ >>::auxdefs in
                 (<:patt< $lid:lid_of_index i$ >>, <:expr< mk_fix_accu $lid:fix_lid^"_ratom"$.val >>)::xs, auxdefs, annots
 	  in
           let tr_bodies,auxdefs,annots = Array.fold_right f (Array.init m (fun i -> i)) ([],auxdefs,annots) in
@@ -390,6 +379,50 @@ and translate_app auxdefs annots n c args =
              <:expr< $apps$ $tr$ >>, auxdefs, annots
          in
 	   Array.fold_left f zero args
+  and translate_case auxdefs annots n (ci,p,c,branches) aux_neutral =
+	  let mb = lookup_mind (fst ci.ci_ind) env in
+	  let ob = mb.mind_packets.(snd ci.ci_ind) in
+	  let f i br (xs1,auxdefs,annots) =
+	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
+            let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
+            let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
+       	    (*let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in*)
+	    let pat1 = make_constructor_pattern ob i args in
+            let (tr,auxdefs,annots) = translate auxdefs annots n br in
+            let body = apps tr args in
+                ((pat1, None, body)::xs1,auxdefs,annots)
+          in
+          let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
+          let (bodies,auxdefs,annots) =
+            array_fold_right_i f branches ([],auxdefs,annots)
+          in
+          let annot_i_str = string_of_int annot_i in
+          let annot_ik = lid_of_id_key ik in
+          let match_lid = annot_ik^"_match_rec"^annot_i_str in
+          let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
+          let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
+          let neutral_match = <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ ($str:annot_ik$,$int:annot_i_str$,$tbl$) >> in
+          let ind_str = string_of_id ob.mind_typename in
+          let accu_str = "Accu"^ind_str in
+          let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
+          let (tr,auxdefs,annots) = translate auxdefs annots n c in
+          let fv = Array.fold_left (free_vars_acc n) [] branches in
+          let fv = List.map (fun i -> lid_of_index i) fv in 
+          let match_body =
+            <:expr< match (Obj.magic c : $lid:ind_str$) with [$list:default::bodies$] >>
+          in
+          let match_body = List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) match_body ("c"::fv) in
+          let aux_body = match aux_neutral with
+            | Some e ->
+                let default = (<:patt< $uid:accu_str $ _ >>, None, e) in
+                <:expr< match (Obj.magic $tr$ : $lid:ind_str$) with [$list:default::bodies$] >>
+                (*List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) r fv*)
+            | None -> match_body
+          in
+          let auxdefs = <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs in
+          let match_app = List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>) fv <:expr< $lid:match_lid$ >> in
+          <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
+
   in
   let tr,auxdefs,annots = translate [] NbeAnnotTbl.empty 0 t in
     (<:str_item< value $lid:lid_of_id_key ik$ = $uncurrify tr$ >>::auxdefs), annots)
