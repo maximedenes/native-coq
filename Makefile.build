@@ -664,7 +664,7 @@ $(OCAMLDOCDIR)/%.pdf: $(OCAMLDOCDIR)/%.tex
 dev/printers.cma: | dev/printers.mllib.d
 	$(SHOW)'Testing $@'
 	@touch test.ml4
-	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $(SYSCMA) -pp "$(CAMLP4O) -I $(CAMLLIB) $(SYSCMA) $^ -impl" -impl test.ml4 -o test-grammar
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) unix.cma gramlib.cma -pp "$(CAMLP4O) -I $(CAMLLIB) unix.cma gramlib.cma $^ -impl" -impl test.ml4 -o test-grammar
 	@rm -f test-printer
 	$(SHOW)'OCAMLC -a $@'   
 	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@

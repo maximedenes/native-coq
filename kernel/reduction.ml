@@ -661,8 +661,8 @@ let native_conv cv_pb env t1 t2 =
      try
         let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
         let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
-        let values = Nbeconv.compile (pre_env env) t1 t2 in
-        Nbeconv.compare values Constraint.empty 
+        let values = Nativeconv.compile (pre_env env) t1 t2 in
+        Nativeconv.compare Constraint.empty 
       with e -> Util.anomaly (Printexc.to_string e)
   end
 

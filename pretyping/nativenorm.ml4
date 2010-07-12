@@ -7,10 +7,9 @@ open Declarations
 open Names
 open Inductive
 open Util
+open Unix
 open Nativelib
 open Nativecode
-open Nbeconv
-open Unix
 open Inductiveops
 
 exception Find_at of int
@@ -19,27 +18,14 @@ exception Find_at of int
 let loc = Ploc.dummy
 
 let compile env c =
-  if Sys.file_exists (env_name^".ml") then
-    anomaly (env_name ^".ml already exists");
-  if Sys.file_exists (terms_name^".ml") then
-    anomaly (terms_name ^".ml already exists");
   let code,annots = translate env (RelKey (-1)) c in
-  Pcaml.input_file := "/dev/null";
   let (dump,kns) = dump_env [c] env in
-    Pcaml.input_file := "/dev/null";
-    Pcaml.output_file := Some "envpr.ml";
-    !Pcaml.print_implem (dump);
-    Pcaml.output_file := Some "termspr.ml";
-    !Pcaml.print_implem (add_dummy_loc code);
   let kns = Stringmap.add "-1" (RelKey (-1),annots) kns in
-    Nbeconv.print_implem (env_name^".ml") (compute_loc dump);
-    Nbeconv.print_implem (terms_name^".ml")
-	 ([(<:str_item< open Nativelib >>, loc);
-	  (<:str_item< open Nativevalues >>, loc);
-	  (<:str_item< open $list: [env_name]$ >>, loc)]
-         @ (add_dummy_loc code)
-	 @ [(<:str_item< value _ = print_nf (lazy $lid:"xrel-1"$) >>, loc)]);
-  kns
+  let code =
+    code @ [<:str_item< value _ = print_nf (lazy $lid:"xrel-1"$) >>]
+  in
+  let res = call_compiler dump code in
+    res, kns
 
 let decompose_prod env t =
   let (name,dom,codom as res) = destProd (whd_betadeltaiota env t) in
@@ -175,17 +161,9 @@ and rebuild_constr n kns env ty t =
     | _ -> assert false
 
 let native_norm env c ty =
-  let kns = compile (pre_env env) c in
-  let file_names = env_name^".ml "^terms_name^".ml" in
-  let _ = Unix.system ("touch "^env_name^".ml") in
-  print_endline "Compilation...";
-  let comp_cmd =
-    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
-  in
-  let res = Unix.system comp_cmd in
-  let _ = Unix.system ("rm "^file_names) in
+  let res, kns = compile (pre_env env) c in
   match res with
-    | Unix.WEXITED 0 ->
+    | 0 ->
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
       let nf = Marshal.from_channel ch_in in

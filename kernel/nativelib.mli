@@ -1,6 +1,20 @@
 open Names
 open Term
 
+
+(* Global utilies for interface with OCaml *)
+val print_implem :
+  string -> (MLast.str_item * Ploc.t) list -> unit
+
+val topological_sort :
+  Util.Stringset.elt list ->
+  ('a * 'b * 'c list * Util.Stringset.elt list) Util.Stringmap.t ->
+  'c list * ('a * 'b) Util.Stringmap.t
+
+val call_compiler :
+  MLast.str_item list -> MLast.str_item list -> int
+
+
 exception Bug of string
 
 type nbe_annotation =

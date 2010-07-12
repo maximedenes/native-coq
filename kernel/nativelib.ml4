@@ -1,7 +1,87 @@
+(*i camlp4use: "q_MLast.cmo" i*)
+
 open Names
 open Term
 open Util
 open Nativevalues
+
+(* Required to make camlp5 happy. *)
+let loc = Ploc.dummy
+
+(* Global settings and utilies for interface with OCaml *)
+let env_name = "Coq_conv_env"
+let terms_name = "Coq_conv_terms"
+
+let include_dirs =
+  "-I "^Coq_config.camllib^"/camlp5 -I "^Coq_config.coqlib^"/config -I "
+  ^Coq_config.coqlib^"/lib -I "^Coq_config.coqlib^"/kernel "
+
+let include_libs =
+  "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
+
+let ocaml_version = "3.11.1"
+let ast_impl_magic_number = "Caml1999M012"
+let ast_intf_magic_number = "Caml1999N011"
+
+let print_implem fname ast =
+  let pt = Ast2pt.implem fname (List.map fst ast) in
+  let oc = open_out_bin fname in
+  output_string oc ast_impl_magic_number;
+  output_value oc fname;
+  output_value oc pt;
+  close_out oc
+
+let compute_loc xs =
+  let rec f n = function
+    | [] -> []
+    | str_item :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
+  in f 0 xs
+
+let call_compiler env_code terms_code =
+  if Sys.file_exists (env_name^".ml") then
+    anomaly (env_name ^".ml already exists");
+  if Sys.file_exists (terms_name^".ml") then
+    anomaly (terms_name ^".ml already exists");
+  let terms_code =
+    [<:str_item< open Nativelib >>;
+     <:str_item< open Nativevalues >>;
+     <:str_item< open $list: [env_name]$ >>] @ terms_code
+  in
+  Pcaml.input_file := "/dev/null";
+  Pcaml.output_file := Some "envpr.ml";
+  !Pcaml.print_implem (compute_loc env_code);
+  Pcaml.output_file := Some "termspr.ml";
+  !Pcaml.print_implem (compute_loc terms_code);
+  print_implem (env_name^".ml") (compute_loc env_code);
+  print_implem (terms_name^".ml") (compute_loc terms_code);
+  let file_names = env_name^".ml "^terms_name^".ml" in
+  let _ = Sys.command ("touch "^env_name^".ml") in
+  print_endline "Compilation...";
+  let comp_cmd =
+    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
+  in
+  let res = Sys.command comp_cmd in
+  let _ = Sys.command ("rm "^file_names) in
+    res
+
+let topological_sort init xs =
+  let visited = ref Stringset.empty in
+  let rec aux s (result,kns) =
+    if Stringset.mem s !visited
+    then (result,kns)
+    else begin
+      try
+	let (c, annots, x, deps) = Stringmap.find s xs in
+	  visited := Stringset.add s !visited;
+          let (l,kns) = List.fold_right aux deps (result,kns) in
+          let kns = Stringmap.add s (c,annots) kns in
+	  (x @ l, kns)
+      with Not_found -> (result,kns)
+    end
+  in
+    let kns = Stringmap.empty in
+    let (res, kns) = List.fold_right aux init ([],kns) in
+      List.rev res, kns
 
 exception Bug of string
 

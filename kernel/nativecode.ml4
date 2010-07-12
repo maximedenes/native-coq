@@ -33,12 +33,6 @@ let uniq = ref 256
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
-let add_dummy_loc = List.map (fun t -> (t,loc))
-(* Flag to signal whether recompilation is needed. *)
-
-(* Flag to signal whether recompilation is needed. *)
-let env_updated = ref false
-
 (* Bringert and Ranta's 'descend' operator for OCaml representations
    of the target code. *)
 let descend_ast f t = match t with
@@ -239,7 +233,6 @@ let dump_reloc_tbl tbl =
   <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
 let rec push_value id body env =
-  env_updated := true;
   let kind = lookup_named_val id env in
     match !kind with
       | VKvalue (v, _) -> ()
@@ -383,8 +376,8 @@ and translate_app auxdefs annots n c args =
 	  let mb = lookup_mind (fst ci.ci_ind) env in
 	  let ob = mb.mind_packets.(snd ci.ci_ind) in
 	  let f i br (xs1,auxdefs,annots) =
-	    let args = gen_names n ci.ci_cstr_ndecls.(i) in
-            let rels = gen_rels n  ci.ci_cstr_ndecls.(i) in
+	    let args = gen_names n ci.ci_cstr_nargs.(i) in
+            let rels = gen_rels n  ci.ci_cstr_nargs.(i) in
             let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
        	    (*let abs = List.fold_right (fun arg e -> <:expr< fun $lid:arg$ -> $e$ >>) in*)
 	    let pat1 = make_constructor_pattern ob i args in
@@ -470,6 +463,62 @@ let translate_ind env ind (mb,ob) =
   in
   let const_ids = Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls) in
   let const_ids = (loc,"Accu"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
-  [(<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>,loc)]
+  [<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>]
 
 (*let translate_ind_tbl env ind (mb,ob) =*)
+
+
+(* Code dumping functions *)
+let add_value env (id, value) xs =
+  match !value with
+    | VKvalue (v, _) ->
+	let sid = string_of_id id in
+        let ast = expr_of_values v in
+        let (_, b, _) = Sign.lookup_named id env.env_named_context in
+	let deps = (match b with
+          | None -> [] 
+	  | Some body -> let res = assums env body in
+             (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
+              res)
+        in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
+    | VKnone -> xs
+
+let add_constant c ck xs =
+  match (fst ck).const_body_ast with
+    | Some v ->
+	let sc = string_of_con c in
+	(* let ast = (<:str_item< value $lid:lid_of_string sc$ = $expr_of_values v$ >>, loc) in *)
+        let ast = expr_of_values v in
+	let deps = match (fst ck).const_body_deps with
+	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
+	  | None -> []
+        in
+	let annots = match (fst ck).const_body_annots with
+          | Some t -> t
+          | None -> NbeAnnotTbl.empty
+        in
+	Stringmap.add sc (ConstKey c, annots, ast, deps) xs
+    | None ->
+        ((*print_endline ("Const body AST not found: "^string_of_con c);*) xs)
+
+let add_ind env c ind xs =
+  (* TODO : dump all inductives from current mutual_inductive *)
+  let mb = lookup_mind c env in
+  (*let ob = ind.mind_packets.(snd ind) in*)
+  let ob = ind.mind_packets.(0) in
+  let ast = translate_ind env (c,0) (mb,ob) in
+  Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
+
+let dump_env terms env =
+  let vars = List.fold_right (add_value env) env.env_named_vals Stringmap.empty in
+  let vars_and_cons = Cmap_env.fold add_constant env.env_globals.env_constants vars in
+  let vars_cons_ind = Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
+  in
+  let initial_set = List.fold_left (fun acc t -> assums env t @ acc) [] terms in
+  print_endline (String.concat "," initial_set);
+  let header =
+    [<:str_item< open Nativelib >>;
+     <:str_item< open Nativevalues >>]
+  in
+  let (l,kns) = topological_sort initial_set vars_cons_ind in
+    (header @ l,kns)
