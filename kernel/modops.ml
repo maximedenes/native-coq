@@ -260,7 +260,7 @@ let strengthen_const env mp_from l cb resolver =
       let const = mkConst con in 
       let const_subs = Declarations.from_val const in
       let body = Declarations.force const_subs in
-      let tr,annots = (translate env (ConstKey con) body) in
+      let tr,annots = (translate env (Nativecode.lid_of_con con) body) in
       let ast = values tr in
       let deps = Nativecode.assums (pre_env env) body in
       { cb with 

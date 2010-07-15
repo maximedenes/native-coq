@@ -4,9 +4,12 @@ open Pre_env
 open Univ
 open Nativelib
 
-val string_of_con : constant -> string
+val lid_of_con : constant -> string
 
-val translate : env -> id_key -> constr -> MLast.str_item list  * NbeAnnotTbl.t
+val lid_of_id : identifier -> string
+
+val translate :
+  env -> string -> constr -> MLast.str_item list  * NbeAnnotTbl.t
 
 val opaque_const : constant -> MLast.str_item list
 
