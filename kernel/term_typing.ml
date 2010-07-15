@@ -136,7 +136,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
   let (ast,deps,annots) = match body with
               Def b -> 
         let t = Declarations.force b in
-        let tr,annots = translate env (ConstKey kn) t in
+        let tr,annots = translate env (Nativecode.lid_of_con kn) t in
         let deps = Nativecode.assums (pre_env env) t in
           (Some (values tr), Some deps, Some annots)
       | _ ->

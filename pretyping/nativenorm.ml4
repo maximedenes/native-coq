@@ -18,11 +18,11 @@ exception Find_at of int
 let loc = Ploc.dummy
 
 let compile env c =
-  let code,annots = translate env (RelKey (-1)) c in
+  let code,annots = translate env "t1" c in
   let (dump,kns) = dump_env [c] env in
-  let kns = Stringmap.add "-1" (RelKey (-1),annots) kns in
+  let kns = Stringmap.add "t1" (RelKey (-1),annots) kns in
   let code =
-    code @ [<:str_item< value _ = print_nf (lazy $lid:"xrel-1"$) >>]
+    code @ [<:str_item< value _ = print_nf (lazy $lid:"t1"$) >>]
   in
   let res = call_compiler dump code in
     res, kns

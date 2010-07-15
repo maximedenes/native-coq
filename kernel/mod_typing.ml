@@ -88,7 +88,8 @@ and check_with_aux_def env sign with_decl mp equiv =
 	      let cst = Constraint.union cb.const_constraints cst1 in
 	      let body = Declarations.from_val c in
               let t = Declarations.force body in
-              let tr,annots = translate env' (VarKey id) t in
+              let id_str = Nativecode.lid_of_id id in
+              let tr,annots = translate env' id_str t in
               let ast = values tr in
               let deps = Nativecode.assums (pre_env env) t in
 	      let cb' = {cb with
@@ -121,7 +122,9 @@ and check_with_aux_def env sign with_decl mp equiv =
 		  cst2 in
 	      let body = Declarations.from_val j.uj_val in
               let t = Declarations.force body in
-              let ast = values (translate env' t) in
+              let id_str = Nativecode.lid_of_id id in
+              let tr,annots = translate env' id_str t in
+              let ast = values tr in
               let deps = Nativecode.assums (pre_env env) t in
 	      let cb' = {cb with
 			 const_body = Def body;
@@ -129,6 +132,7 @@ and check_with_aux_def env sign with_decl mp equiv =
                            (compile_constant_body env' (Def body) false);
                          const_body_ast=Some ast;
                          const_body_deps=Some deps;
+                         const_body_annots = Some annots;
                          const_constraints = cst} in
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | Primitive _ -> assert false

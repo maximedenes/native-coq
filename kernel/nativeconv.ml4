@@ -53,8 +53,8 @@ let rec string_of_mp = function
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
 let compile env t1 t2 =
-  let (code1,_) = translate env (RelKey (-1)) t1 in
-  let (code2,_) = translate env (RelKey (-1)) t2 in
+  let (code1,_) = translate env "t1" t1 in
+  let (code2,_) = translate env "t2" t2 in
   let (dump,_) = dump_env [t1;t2] env in
   let terms_code =
     code1 @ code2 @ [<:str_item< value _ = compare 0 t1 t2 >>]
