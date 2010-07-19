@@ -402,7 +402,7 @@ and translate_app auxdefs annots n c args =
 
   in
   let tr,auxdefs,annots = translate [] NbeAnnotTbl.empty 0 t in
-    (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
+    List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 let opaque_const kn =
   [<:str_item< value $lid:lid_of_con kn$ = mk_id_accu $str:lid_of_con kn$ >>]
