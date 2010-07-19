@@ -8,6 +8,7 @@
 
 open Util
 open Names
+open Term
 open Entries
 open Environ
 open Libnames
@@ -83,7 +84,8 @@ val register_library :
 val start_library : library_name -> unit
 
 val end_library :
-  library_name -> Safe_typing.compiled_library * library_objects
+  library_name ->
+    Safe_typing.compiled_library * library_objects * values list * dir_path list
 
 (** set a function to be executed at end_library *)
 val set_end_library_hook : (unit -> unit) -> unit

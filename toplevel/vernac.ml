@@ -277,6 +277,6 @@ let compile verbosely f =
 	(message "Error: There are pending proofs"; exit 1);
       if !Flags.xml_export then !xml_end_library ();
       if Dumpglob.multi_dump () then Dumpglob.close_glob_file ();
-      Library.save_library_to ldir (long_f_dot_v ^ "o")
+      Library.save_library_to ldir (long_f_dot_v ^ "o") (f ^ ".ml")
 
 
