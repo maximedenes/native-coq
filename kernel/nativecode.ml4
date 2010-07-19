@@ -373,7 +373,8 @@ and translate_app auxdefs annots n c args =
           let accu_str = "Accu"^ind_str in
           let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
           let (tr,auxdefs,annots) = translate auxdefs annots n c in
-          let fv = Array.fold_left (free_vars_acc n) [] branches in
+          let fv = free_vars_acc n [] p in
+          let fv = Array.fold_left (free_vars_acc n) fv branches in
           let fv = List.map (fun i -> lid_of_index i) fv in 
           let match_body =
             <:expr< match (Obj.magic c : $lid:ind_str$) with
