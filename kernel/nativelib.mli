@@ -12,7 +12,7 @@ val topological_sort :
   'c list * ('a * 'b) Util.Stringmap.t
 
 val compile_module :
-  values list -> string list -> string -> unit
+  values list -> string list -> string list -> string -> int
 
 val call_compiler :
   MLast.str_item list -> MLast.str_item list -> int
