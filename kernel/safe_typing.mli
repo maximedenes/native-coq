@@ -105,7 +105,7 @@ val start_library : dir_path -> safe_environment
       -> module_path * safe_environment
 
 val export : safe_environment -> dir_path
-      -> module_path * compiled_library
+      -> module_path * compiled_library * values list * dir_path list
 
 val import : compiled_library -> Digest.t -> safe_environment
       -> module_path * safe_environment

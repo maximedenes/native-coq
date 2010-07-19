@@ -744,6 +744,30 @@ let pack_module senv =
    mod_retroknowledge = []
   }
 
+let dump_mod l =
+  let f acc (l,x) =
+    match x with
+      | SFBconst cb ->
+          begin
+            match cb.const_body_ast with
+              | None -> acc
+              | Some v -> v::acc
+          end
+      | SFBmind mb ->
+          (*let ob = ind.mind_packets.(snd ind) in*)
+          let ob = mb.mind_packets.(0) in
+          let ast = values (Nativecode.translate_ind (mb,ob)) in
+          ast::acc
+          (* print_endline ("mind: "^string_of_label l)*)
+      | SFBmodule md ->
+          acc
+          (*print_endline ("mod: "^string_of_label l)*)
+      | SFBmodtype mdtyp ->
+          acc
+          (*print_endline ("mod type: "^string_of_label l)*)
+  in
+  List.fold_left f [] l
+
 let export senv dir =
   let modinfo = senv.modinfo in
   begin
@@ -768,7 +792,8 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-   mp, (dir,mb,senv.imports,engagement senv.env)
+  let ast = dump_mod senv.revstruct in
+   mp, (dir,mb,senv.imports,engagement senv.env), ast, List.map fst senv.imports
 
 
 let check_imports senv needed =

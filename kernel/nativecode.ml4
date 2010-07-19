@@ -491,7 +491,7 @@ let add_ind env c ind xs =
   let mb = lookup_mind c env in
   (*let ob = ind.mind_packets.(snd ind) in*)
   let ob = ind.mind_packets.(0) in
-  let ast = translate_ind env (c,0) (mb,ob) in
+  let ast = translate_ind (mb,ob) in
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
 let dump_env terms env =

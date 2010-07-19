@@ -37,6 +37,21 @@ let compute_loc xs =
     | str_item :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
   in f 0 xs
 
+let compile_module ast imports f =
+  let code = List.flatten (List.map expr_of_values ast) in
+  (* let imports = List.map (fun id -> <:str_item< open $mod_ident:id$ >>) imports in *)
+  print_endline ("Imports: "^(String.concat "," imports));
+  let imports = List.map (fun id -> <:str_item< open $list:[id]$ >>) imports in
+  let code =
+    [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>]
+     @ imports @ code
+  in
+  let code = compute_loc code in
+    Pcaml.input_file := "/dev/null";
+    Pcaml.output_file := Some (f^".pr");
+    !Pcaml.print_implem code;
+    print_implem f code
+
 let call_compiler env_code terms_code =
   if Sys.file_exists (env_name^".ml") then
     anomaly (env_name ^".ml already exists");
