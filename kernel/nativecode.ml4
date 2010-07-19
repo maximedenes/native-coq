@@ -67,18 +67,21 @@ let rec shrink rho = function
   | <:expr< $lid:x$ >> -> <:expr< $lid:subst rho x$ >>
   | t -> descend_ast (shrink rho) t
 
-let lid_of_id id = "var_"^string_of_id id
+let var_lid_of_id id = "var_"^string_of_id id
+let mind_lid_of_id id = "mind_"^string_of_id id
+let construct_lid_of_id id = "construct_"^string_of_id id
+let const_lid_of_id id = "const_"^string_of_id id
 
 (* Redefine a bunch of functions in module Names to generate names
    acceptable to OCaml. *)
-let string_of_dirpath = function
+(*let string_of_dirpath = function
   | [] -> "_"
   | sl -> String.concat "_" (List.map lid_of_id (List.rev sl))
 
 let rec string_of_mp = function
   | MPfile sl -> string_of_dirpath (repr_dirpath sl)
   | MPbound uid -> string_of_mbid uid
-  | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
+  | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l*)
 
 (*let string_of_kn kn =
   let (modpath, _dirpath, label) = repr_kn kn in
@@ -108,7 +111,7 @@ let rec_lid id n i =
 
 (* First argument the index of the constructor *)
 let make_constructor_pattern ob i args =
-  let f = <:patt< $uid:lid_of_id ob.mind_consnames.(i)$ >> in 
+  let f = <:patt< $uid:construct_lid_of_id ob.mind_consnames.(i)$ >> in 
   List.fold_left (fun e arg -> <:patt< $e$ $lid:arg$ >>) f args
 
 let lid_of_index n = "x" ^ string_of_int n
@@ -159,7 +162,7 @@ let rec push_value id body env =
     match !kind with
       | VKvalue (v, _) -> ()
       | VKnone ->
-         let (tr, annots) = translate env (lid_of_id id) body in
+         let (tr, annots) = translate env (var_lid_of_id id) body in
 	 let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
@@ -181,7 +184,7 @@ and translate env t_id t =
                     in
                       <:expr< mk_var_accu $id_app$>>, auxdefs, annots
 		| Some body ->
-	            let v = <:expr< $lid:lid_of_id id$ >> in
+	            let v = <:expr< $lid:var_lid_of_id id$ >> in
                       push_value id body env; v, auxdefs, annots
           end
       | Sort (Prop Null) -> <:expr< Prop >>, auxdefs, annots
@@ -214,7 +217,7 @@ and translate env t_id t =
 	  let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-            let cons_str = lid_of_id ob.mind_consnames.(i-1) in
+            let cons_str = construct_lid_of_id ob.mind_consnames.(i-1) in
 	    let e = <:expr< (Obj.magic $uid:cons_str$ : Nativevalues.t) >> in
               e, auxdefs, annots
           else translate_app auxdefs annots n t [||]
@@ -325,7 +328,7 @@ and translate_app auxdefs annots n c args =
 	     else aux (n - 1) <:expr< fun _ -> $z$ >>
 	   in
            let tr_constr =
-             <:expr< $uid:lid_of_id ob.mind_consnames.(i-1)$ >>
+             <:expr< $uid:construct_lid_of_id ob.mind_consnames.(i-1)$ >>
            in
            let apps =
              List.fold_left (fun e x -> <:expr< $e$ $x$ >>) tr_constr (vs@pad)
@@ -366,7 +369,7 @@ and translate_app auxdefs annots n c args =
           let neutral_match =
             <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $annot$ >>
           in
-          let ind_str = lid_of_id ob.mind_typename in
+          let ind_str = mind_lid_of_id ob.mind_typename in
           let accu_str = "Accu"^ind_str in
           let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
           let (tr,auxdefs,annots) = translate auxdefs annots n c in
@@ -408,7 +411,7 @@ let opaque_const kn =
 let assums env t =
   let rec aux xs t =
     match kind_of_term t with
-      | Var id -> lid_of_id id :: xs
+      | Var id -> var_lid_of_id id :: xs
       | Const c -> lid_of_con c :: xs
       | Construct cstr ->
           let i = index_of_constructor cstr in
@@ -436,11 +439,11 @@ let assums env t =
   let const_ids = Array.to_list (array_map2 aux ob.mind_consnames constr_ty) in
   (<:str_item< type $lid:lid_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);*)
 
-let translate_ind env ind (mb,ob) =
-  let type_str = lid_of_id ob.mind_typename in
+let translate_ind (mb,ob) =
+  let type_str = mind_lid_of_id ob.mind_typename in
   let aux x n =
-    if n = 0 then (loc,lid_of_id x,[])
-    else (loc,lid_of_id x, [<:ctyp< Nativevalues.t >>])
+    if n = 0 then (loc,construct_lid_of_id x,[])
+    else (loc,construct_lid_of_id x, [<:ctyp< Nativevalues.t >>])
   in
   let const_ids =
     Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
@@ -455,7 +458,7 @@ let translate_ind env ind (mb,ob) =
 let add_value env (id, value) xs =
   match !value with
     | VKvalue (v, _) ->
-	let sid = lid_of_id id in
+	let sid = var_lid_of_id id in
         let ast = expr_of_values v in
         let (_, b, _) = Sign.lookup_named id env.env_named_context in
 	let deps = (match b with

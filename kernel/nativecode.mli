@@ -6,7 +6,7 @@ open Nativelib
 
 val lid_of_con : constant -> string
 
-val lid_of_id : identifier -> string
+val const_lid_of_id : identifier -> string
 
 val translate :
   env -> string -> constr -> MLast.str_item list  * NbeAnnotTbl.t

@@ -88,7 +88,7 @@ and check_with_aux_def env sign with_decl mp equiv =
 	      let cst = Constraint.union cb.const_constraints cst1 in
 	      let body = Declarations.from_val c in
               let t = Declarations.force body in
-              let id_str = Nativecode.lid_of_id id in
+              let id_str = Nativecode.const_lid_of_id id in
               let tr,annots = translate env' id_str t in
               let ast = values tr in
               let deps = Nativecode.assums (pre_env env) t in
@@ -122,7 +122,7 @@ and check_with_aux_def env sign with_decl mp equiv =
 		  cst2 in
 	      let body = Declarations.from_val j.uj_val in
               let t = Declarations.force body in
-              let id_str = Nativecode.lid_of_id id in
+              let id_str = Nativecode.const_lid_of_id id in
               let tr,annots = translate env' id_str t in
               let ast = values tr in
               let deps = Nativecode.assums (pre_env env) t in
