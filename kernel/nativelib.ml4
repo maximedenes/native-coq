@@ -37,7 +37,7 @@ let compute_loc xs =
     | str_item :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
   in f 0 xs
 
-let compile_module ast imports f =
+let compile_module ast imports load_paths f =
   let code = List.flatten (List.map expr_of_values ast) in
   (* let imports = List.map (fun id -> <:str_item< open $mod_ident:id$ >>) imports in *)
   print_endline ("Imports: "^(String.concat "," imports));
@@ -50,7 +50,13 @@ let compile_module ast imports f =
     Pcaml.input_file := "/dev/null";
     Pcaml.output_file := Some (f^".pr");
     !Pcaml.print_implem code;
-    print_implem f code
+    print_implem f code;
+  let imports = "-I " ^ (String.concat " -I " load_paths) ^ " " in
+  let comp_cmd =
+    "ocamlopt.opt -c -rectypes "^include_dirs^imports^include_libs^f
+  in
+  Sys.command comp_cmd
+
 
 let call_compiler env_code terms_code =
   if Sys.file_exists (env_name^".ml") then

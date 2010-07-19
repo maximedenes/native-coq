@@ -640,9 +640,10 @@ let save_library_to dir f mlf =
     close_out ch;
     let f s = string_of_id (snd (repr_qualid (qualid_of_dirpath s))) in
     let imports = List.map f imports in
-      Nativelib.compile_module ast imports mlf;
-    let loadpath = get_load_paths () in
-    print_endline (String.concat " " (List.map (fun f -> "-I "^System.string_of_physical_path f) loadpath))
+    let lp = List.map System.string_of_physical_path (get_load_paths ()) in
+    match Nativelib.compile_module ast imports lp mlf with
+      | 0 -> ()
+      | _ -> anomaly "Library compilation failure"
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e
 
 (************************************************************************)
