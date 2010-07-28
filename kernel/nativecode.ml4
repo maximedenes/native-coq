@@ -442,9 +442,12 @@ let assums env t =
 
 let translate_ind (mb,ob) =
   let type_str = mind_lid_of_id ob.mind_typename in
+  let rec build_const_sig acc n = match n with
+    | 0 -> acc
+    | _ -> build_const_sig (<:ctyp< Nativevalues.t >>::acc) (n-1)
+  in
   let aux x n =
-    if n = 0 then (loc,construct_lid_of_id x,[])
-    else (loc,construct_lid_of_id x, [<:ctyp< Nativevalues.t >>])
+    let const_sig = build_const_sig [] n in (loc,construct_lid_of_id x,const_sig)
   in
   let const_ids =
     Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
