@@ -19,6 +19,7 @@ type atom =
   | Avar of identifier
   | Acase of accumulator * t * (t -> t) * case_annot
   | Afix of t * (t -> t) * rec_pos
+  | Aprod of t * (t -> t)
 
 (* Constructors *)
 
@@ -27,6 +28,7 @@ val mk_rel_accu : int -> t
 val mk_id_accu : string -> t
 val mk_var_accu : identifier -> t
 val mk_sw_accu : accumulator -> t -> (t -> t) -> case_annot -> t
+val mk_prod_accu : t -> t -> t
 val mk_fix_accu : atom -> t
 
 val mk_const : tag -> t

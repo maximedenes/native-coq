@@ -134,6 +134,7 @@ type lam =
   | Const_int of int
   | Const_block of int * lam array
   | Case of string * int * lam * lam * lam array
+  | Prod of lam * lam
   | Fix of int * lam 
 
 let pp_var fmt x =
@@ -223,6 +224,9 @@ and norm_atom lvl a =
       let lp = norm_val lvl p in
       let lac = Array.map (norm_branch lvl ac) tbl in
       Case(s,i,lp,lc,lac)
+  | Aprod (dom,codom) ->
+      let rel = mk_rel_accu lvl in
+      Prod(norm_val lvl dom, norm_val (lvl+1) (codom rel))
   | Afix(_,f,_) ->
       let fr = mk_rel_accu lvl in
       Fix(lvl, norm_val (lvl+1) (f fr))

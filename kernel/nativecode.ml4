@@ -194,7 +194,7 @@ and translate env t_id t =
       | Prod (_, t, c) ->
           let vt,auxdefs,annots = translate auxdefs annots n t in
           let vc,auxdefs,annots = translate auxdefs annots (n + 1) c in
-          let e = <:expr< Prod ($vt$,(fun $lid:lid_of_index n$ -> $vc$)) >> in
+          let e = <:expr< mk_prod_accu $vt$ (fun $lid:lid_of_index n$ -> $vc$) >> in
             e, auxdefs, annots
       | Lambda (_, t, c) ->
           let v,auxdefs,annots = translate auxdefs annots (n + 1) c in
