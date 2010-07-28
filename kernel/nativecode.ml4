@@ -171,7 +171,7 @@ let rec push_value id body env =
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
 and translate env t_id t =
-  (let rec translate auxdefs annots n t =
+  (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
       | Var id ->
@@ -225,7 +225,7 @@ and translate env t_id t =
           let u = (ci, p, c, branches) in
           let ast, auxdefs, annots, _ = translate_case auxdefs annots n u None in
             ast, auxdefs, annots
-      | Fix ((recargs, i), (_, _, bodies)) -> (* TODO : compile local fix *)
+      | Fix ((recargs, i), (_, _, bodies)) -> (* TODO : compile mutual fixpoints *)
 	  let m = Array.length bodies in
 	  let f i (xs,auxdefs,annots) =
           let norm_lid = norm_lid t_id n i in
@@ -272,24 +272,32 @@ and translate env t_id t =
                 <:expr< fun $lid:lid_of_index (n+i)$ -> $tr_norm$ >>
               in
               let atom = <:expr< ref (Nativevalues.dummy_atom) >> in
-              let auxdefs =
-                <:str_item< value $lid:atom_lid$ = $atom$ >>::auxdefs
-              in
-              let auxdefs =
-                <:str_item< value $lid:norm_lid$ = $tr_norm$ >>::auxdefs
-              in
-              let auxdefs =
-                <:str_item< value rec $lid:rec_lid$ = $tr_rec$ >>::auxdefs
-              in
               let arg_str = string_of_int recargs.(i) in
               let afix =
                 <:expr< Afix $lid:rec_lid$ $lid:norm_lid$ $int:arg_str$ >>
               in
-              let auxdefs =
-                <:str_item< value _ = $lid:atom_lid$.val := $afix$ >>::auxdefs
-              in
-              let e = <:expr< mk_fix_accu $lid:atom_lid$.val >> in
-                (<:patt< $lid:lid_of_index i$ >>, e)::xs, auxdefs, annots
+              if global then
+                let auxdefs =
+                  <:str_item< value $lid:atom_lid$ = $atom$ >>::auxdefs
+                in
+                let auxdefs =
+                  <:str_item< value $lid:norm_lid$ = $tr_norm$ >>::auxdefs
+                in
+                let auxdefs =
+                  <:str_item< value rec $lid:rec_lid$ = $tr_rec$ >>::auxdefs
+                in
+                let auxdefs =
+                  <:str_item< value _ = $lid:atom_lid$.val := $afix$ >>::auxdefs
+                in
+                let e = <:expr< mk_fix_accu $lid:atom_lid$.val >> in
+                  (<:patt< $lid:lid_of_index i$ >>, e)::xs, auxdefs, annots
+              else
+                let e = <:expr< do {$lid:atom_lid$.val := $afix$; $lid:lid_of_index (n+i)$} >> in
+                let e = <:expr< let rec $lid:rec_lid$ = $tr_rec$ in $e$ >> in
+                let e = <:expr< let $lid:lid_of_index (n+i)$ = mk_fix_accu $lid:atom_lid$.val in $e$ >> in
+                let e = <:expr< let $lid:atom_lid$ = $atom$ in $e$ >> in
+                let e = <:expr< let $lid:norm_lid$ = $tr_norm$ in $e$ >> in
+                  (<:patt< $lid:lid_of_index (n+i)$ >>, e)::xs, auxdefs, annots
 	  in
           let tr_bodies,auxdefs,annots =
             Array.fold_right f (Array.init m (fun i -> i)) ([],auxdefs,annots)
@@ -402,7 +410,7 @@ and translate_app auxdefs annots n c args =
           <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
 
   in
-  let tr,auxdefs,annots = translate [] NbeAnnotTbl.empty 0 t in
+  let tr,auxdefs,annots = translate ~global:true [] NbeAnnotTbl.empty 0 t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 let opaque_const kn =
