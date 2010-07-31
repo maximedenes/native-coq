@@ -199,7 +199,7 @@ and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
             e, auxdefs, annots
       | Lambda (_, t, c) ->
           let v,auxdefs,annots = translate auxdefs annots (n + 1) c in
-	  <:expr< fun $lid:lid_of_index n$ -> $v$ >>, auxdefs, annots
+	  <:expr< fun ($lid:lid_of_index n$ : Nativevalues.t) -> $v$ >>, auxdefs, annots
       | LetIn (_, b, t, c) ->
           let vb,auxdefs,annots = translate auxdefs annots n b in
           let vc,auxdefs,annots = translate auxdefs annots (n + 1) c in
