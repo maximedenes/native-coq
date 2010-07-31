@@ -187,9 +187,10 @@ and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
 	            let v = <:expr< $lid:var_lid_of_id id$ >> in
                       push_value id body env; v, auxdefs, annots
           end
-      | Sort (Prop Null) -> <:expr< Prop >>, auxdefs, annots
-      | Sort (Prop Pos) -> <:expr< Set >>, auxdefs, annots
-      | Sort (Type _) -> <:expr< Type 0 >>, auxdefs, annots (* TODO: check universe constraints *)
+      | Sort s -> (* TODO: check universe constraints *)
+          let annots,i = NbeAnnotTbl.add (SortAnnot s) annots in
+          let e = <:expr< mk_sort_accu ($str:t_id$,$int:string_of_int i$) >> in
+          e, auxdefs, annots
       | Cast (c, _, ty) -> translate auxdefs annots n c
       | Prod (_, t, c) ->
           let vt,auxdefs,annots = translate auxdefs annots n t in
