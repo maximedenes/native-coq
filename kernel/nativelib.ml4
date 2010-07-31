@@ -109,6 +109,7 @@ exception Bug of string
 
 type nbe_annotation =
   | CaseAnnot of case_info
+  | SortAnnot of sorts
 
 module NbeAnnotTbl =
   struct

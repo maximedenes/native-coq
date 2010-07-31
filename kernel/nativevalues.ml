@@ -15,12 +15,14 @@ type reloc_table = (tag * arity) array
   | KOCblock of tag * arity*)
     
 type case_annot = string * int * reloc_table
+type sort_annot = string * int
 
 type rec_pos = int
 
 type atom = 
   | Arel of int
   | Aid of string
+  | Asort of sort_annot
   | Avar of identifier
   | Acase of accumulator * t * (t -> t) * case_annot
   | Afix of t * (t -> t) * rec_pos
@@ -56,6 +58,9 @@ let mk_rel_accu i =
 
 let mk_id_accu s = 
   mk_accu (Aid s)
+
+let mk_sort_accu annot =
+  mk_accu (Asort annot)
 
 let mk_var_accu id = 
   mk_accu (Avar id)
