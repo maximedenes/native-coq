@@ -75,6 +75,7 @@ open Modops
 open Subtyping
 open Mod_typing
 open Mod_subst
+open Nativelib
 
 
 type modvariant =
@@ -698,6 +699,8 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option
 
+type native_library = values list * NbeAnnotTbl.t
+
 (* We check that only initial state Require's were performed before
    [start_library] was called *)
 
@@ -744,29 +747,35 @@ let pack_module senv =
    mod_retroknowledge = []
   }
 
-let dump_mod l =
-  let f acc (l,x) =
+let dump_mod mp env l =
+  let f (ast,annots) (l,x) =
     match x with
       | SFBconst cb ->
           begin
-            match cb.const_body_ast with
-              | None -> acc
-              | Some v -> v::acc
+            let id_str = Nativecode.lid_of_con (make_con mp empty_dirpath l) in
+            match cb.const_body with
+            | Some t -> 
+                let t = Declarations.force t in
+                let tr,annots = translate ~annots env id_str t in values tr::ast,annots
+            | None ->
+                ast,annots
           end
       | SFBmind mb ->
           (*let ob = ind.mind_packets.(snd ind) in*)
           let ob = mb.mind_packets.(0) in
-          let ast = values (Nativecode.translate_ind (mb,ob)) in
-          ast::acc
+          let tr = values (Nativecode.translate_ind (mb,ob)) in
+          tr::ast,annots
           (* print_endline ("mind: "^string_of_label l)*)
       | SFBmodule md ->
-          acc
+          (* TODO: module compilation *)
+          ast,annots
           (*print_endline ("mod: "^string_of_label l)*)
       | SFBmodtype mdtyp ->
-          acc
+          (* TODO: module compilation *)
+          ast,annots
           (*print_endline ("mod type: "^string_of_label l)*)
   in
-  List.fold_left f [] l
+  List.fold_left f ([],NbeAnnotTbl.empty) l
 
 let export senv dir =
   let modinfo = senv.modinfo in
@@ -792,8 +801,8 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast = dump_mod senv.revstruct in
-   mp, (dir,mb,senv.imports,engagement senv.env), ast, List.map fst senv.imports
+  let tr_mod = dump_mod mp senv.env senv.revstruct in
+   mp, (dir,mb,senv.imports,engagement senv.env), tr_mod, List.map fst senv.imports
 
 
 let check_imports senv needed =

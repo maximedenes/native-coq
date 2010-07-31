@@ -14,6 +14,7 @@ open Environ
 open Libnames
 open Libobject
 open Lib
+open Safe_typing
 
 (** This modules provides official functions to declare modules and
   module types *)
@@ -85,7 +86,7 @@ val start_library : library_name -> unit
 
 val end_library :
   library_name ->
-    Safe_typing.compiled_library * library_objects * values list * dir_path list
+    Safe_typing.compiled_library * library_objects * native_library * dir_path list
 
 (** set a function to be executed at end_library *)
 val set_end_library_hook : (unit -> unit) -> unit

@@ -91,7 +91,7 @@ val mind_of_delta : mutual_inductive -> mutual_inductive
 (** Compiled modules *)
 val start_library : dir_path -> module_path
 val export : dir_path ->
-      module_path * compiled_library * values list * dir_path list
+      module_path * compiled_library * native_library * dir_path list
 val import : compiled_library -> Digest.t -> module_path
 
 (** {6 ... } *)
