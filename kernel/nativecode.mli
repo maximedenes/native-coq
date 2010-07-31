@@ -9,6 +9,7 @@ val lid_of_con : constant -> string
 val const_lid_of_id : identifier -> string
 
 val translate :
+  ?annots:Nativelib.NbeAnnotTbl.t ->
   env -> string -> constr -> MLast.str_item list  * NbeAnnotTbl.t
 
 val opaque_const : constant -> MLast.str_item list

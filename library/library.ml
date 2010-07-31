@@ -615,7 +615,7 @@ let error_recursively_dependent_library dir =
 (* Security weakness: file might have been changed on disk between
    writing the content and computing the checksum... *)
 let save_library_to dir f mlf =
-  let cenv, seg, ast, imports = Declaremods.end_library dir in
+  let cenv, seg, (ast, annots), imports = Declaremods.end_library dir in
   let cenv, table = LightenLibrary.save cenv in
   let md = {
     md_name = dir;

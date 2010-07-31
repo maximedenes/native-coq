@@ -170,7 +170,7 @@ let rec push_value id body env =
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate env t_id t =
+and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
@@ -410,7 +410,7 @@ and translate_app auxdefs annots n c args =
           <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
 
   in
-  let tr,auxdefs,annots = translate ~global:true [] NbeAnnotTbl.empty 0 t in
+  let tr,auxdefs,annots = translate ~global:true [] annots 0 t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 let opaque_const kn =
