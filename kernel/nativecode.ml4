@@ -129,6 +129,14 @@ let rec gen_rels start len =
     <:expr< Rel 0 >> :: gen_rels (start + 1) (len - 1)
   else raise (Invalid_argument "gen_rels")
 
+let rec push_abstractions start n e =
+  if n = 0 then e
+  else if n > 0 then
+    let e = push_abstractions (start+1) (n-1) e in
+    <:expr< fun $lid:lid_of_index start$ -> $e$ >>
+  else raise (Invalid_argument "push_abstractions")
+
+
 let free_vars_acc n xs t =
   let rec aux m xs t =
     match kind_of_term t with
@@ -227,86 +235,84 @@ and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
           let ast, auxdefs, annots, _ = translate_case auxdefs annots n u None in
             ast, auxdefs, annots
       | Fix ((recargs, i), (_, _, bodies)) -> (* TODO : compile mutual fixpoints *)
-	  let m = Array.length bodies in
-	  let f i (xs,auxdefs,annots) =
-          let norm_lid = norm_lid t_id n i in
-          let rec_lid = rec_lid t_id n i in
-          let atom_lid = atom_lid t_id n i in
-              let rec traverse_lambdas app abs lvl t =
-                match kind_of_term t with
-                  | Lambda (_, _, c) ->
-                      let app e =
-                        <:expr< $app e$ $lid:lid_of_index (n+m+lvl)$ >>
-                      in
-                      let abs e =
-                        abs <:expr< fun $lid:lid_of_index (n+m+lvl)$ -> $e$ >>
-                      in
-                        traverse_lambdas app abs (lvl+1) c
-                  | Case (ci, p, c, branches)
-                    when kind_of_term c = Rel (lvl-recargs.(i)) ->
-                      let u = (ci, p, c, branches) in
-                      let atom_app = app <:expr< mk_accu $lid:atom_lid$.val >> in
-                      let tr_norm, auxdefs, annots, tr_rec =
-                        translate_case auxdefs annots (n+m+lvl) u (Some atom_app)
-                      in
-                      let tr_rec =
-                        <:expr< let $lid:lid_of_index (n+i)$ =
-                                  $lid:rec_lid$ in $tr_rec$ >>
-                      in
-                        abs tr_rec, abs tr_norm, auxdefs, annots
-                  | _ ->
-                      let atom_app = app <:expr< mk_accu $lid:atom_lid$.val >> in
-                      let norm_app = app <:expr< $lid:norm_lid$ $lid:rec_lid$>> in
-                      let tr_rec =
-                        <:expr< if is_accu $lid:lid_of_index (n+m)$ then
-                                   $atom_app$ else $norm_app$ >>
-                      in
-                      let tr_norm, auxdefs, annots =
-                        translate auxdefs annots (n+m+lvl) t
-                      in
-                        abs tr_rec, abs tr_norm, auxdefs, annots
-              in
-              let tr_rec, tr_norm, auxdefs, annots =
-                let id x = x in traverse_lambdas id id 0 bodies.(i)
-              in
-              let tr_norm =
-                <:expr< fun $lid:lid_of_index (n+i)$ -> $tr_norm$ >>
-              in
-              let atom = <:expr< ref (Nativevalues.dummy_atom) >> in
-              let arg_str = string_of_int recargs.(i) in
-              let afix =
-                <:expr< Afix $lid:rec_lid$ $lid:norm_lid$ $int:arg_str$ >>
-              in
-              if global then
-                let auxdefs =
-                  <:str_item< value $lid:atom_lid$ = $atom$ >>::auxdefs
-                in
-                let auxdefs =
-                  <:str_item< value $lid:norm_lid$ = $tr_norm$ >>::auxdefs
-                in
-                let auxdefs =
-                  <:str_item< value rec $lid:rec_lid$ = $tr_rec$ >>::auxdefs
-                in
-                let auxdefs =
-                  <:str_item< value _ = $lid:atom_lid$.val := $afix$ >>::auxdefs
-                in
-                let e = <:expr< mk_fix_accu $lid:atom_lid$.val >> in
-                  (<:patt< $lid:lid_of_index i$ >>, e)::xs, auxdefs, annots
-              else
-                let e = <:expr< do {$lid:atom_lid$.val := $afix$; $lid:lid_of_index (n+i)$} >> in
-                let e = <:expr< let rec $lid:rec_lid$ = $tr_rec$ in $e$ >> in
-                let e = <:expr< let $lid:lid_of_index (n+i)$ = mk_fix_accu $lid:atom_lid$.val in $e$ >> in
-                let e = <:expr< let $lid:atom_lid$ = $atom$ in $e$ >> in
-                let e = <:expr< let $lid:norm_lid$ = $tr_norm$ in $e$ >> in
-                  (<:patt< $lid:lid_of_index (n+i)$ >>, e)::xs, auxdefs, annots
-	  in
-          let tr_bodies,auxdefs,annots =
-            Array.fold_right f (Array.init m (fun i -> i)) ([],auxdefs,annots)
+          let m = Array.length bodies in
+          let abs_over_bodies e = push_abstractions n m e in
+          let rec map_bodies acc i =
+            if i >= 0 then
+              let body_lid = lid_of_index (n+i) in
+              let rec_lid = rec_lid t_id n i in
+              let x = (<:patt< $lid:body_lid$>>, <:expr< $lid:rec_lid$ >>) in
+              map_bodies (x::acc) (i-1)
+            else acc
           in
-          let e =
-            <:expr< let rec $list:tr_bodies$ in $lid:lid_of_index (n + i)$ >>
+          let mappings = map_bodies [] (m-1) in
+          let f i (recs,norms,atoms,updates,auxdefs,annots) =
+            let norm_lid = norm_lid t_id n i in
+            let rec_lid = rec_lid t_id n i in
+            let atom_lid = atom_lid t_id n i in
+            let rec traverse_lambdas app abs lvl t =
+              match kind_of_term t with
+              | Lambda (_, _, c) ->
+                  let app e =
+                    <:expr< $app e$ $lid:lid_of_index (n+m+lvl)$ >>
+                  in
+                  let abs e =
+                    abs <:expr< fun $lid:lid_of_index (n+m+lvl)$ -> $e$ >>
+                  in
+                  traverse_lambdas app abs (lvl+1) c
+              | Case (ci, p, c, branches)
+              when kind_of_term c = Rel (lvl-recargs.(i)) ->
+                let u = (ci, p, c, branches) in
+                let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
+                let tr_norm, auxdefs, annots, tr_rec =
+                  translate_case auxdefs annots (n+m+lvl) u (Some atom_app)
+                in
+                let tr_rec = <:expr< let $list:mappings$ in $tr_rec$>> in
+                  abs tr_rec, abs tr_norm, auxdefs, annots
+              | _ ->
+                  let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
+                  let norm_app = app <:expr< $lid:norm_lid$ $lid:rec_lid$>> in
+                  let tr_rec =
+                    <:expr< if is_accu $lid:lid_of_index (n+m)$ then
+                      $atom_app$ else $norm_app$ >>
+                  in
+                  let tr_norm, auxdefs, annots =
+                    translate auxdefs annots (n+m+lvl) t
+                  in
+                  abs tr_rec, abs tr_norm, auxdefs, annots
+            in
+            let tr_rec, tr_norm, auxdefs, annots =
+              let id x = x in traverse_lambdas id id 0 bodies.(i)
+            in
+            let tr_norm = abs_over_bodies tr_norm in
+            let norms = (<:patt< $lid:norm_lid$>>, tr_norm)::norms in
+            let arg_str = string_of_int recargs.(i) in
+            let atom = <:expr< dummy_atom_fix $lid:norm_lid$ $int:arg_str$>> in
+            let atoms = (<:patt< $lid:atom_lid$ >>, atom)::atoms in
+            let upd = <:expr< upd_fix_atom $lid:atom_lid$ $lid:rec_lid$ >> in
+            let updates = (<:patt< _ >>, upd)::updates in
+            let recs = (<:patt< $lid:rec_lid$ >>, tr_rec)::recs in
+            recs, norms, atoms, updates, auxdefs, annots
           in
-            e, auxdefs, annots
+          let recs,norms,atoms,updates,auxdefs,annots =
+            Array.fold_right f (Array.init m (fun i -> i)) ([],[],[],[],auxdefs,annots)
+          in
+          if global then
+            let atoms = <:str_item< value $list:atoms$ >> in
+            let norms = <:str_item< value $list:norms$ >> in
+            let updates = <:str_item< value $list:updates$ >> in
+            let recs = <:str_item< value rec $list:recs$ >> in
+            let e = <:expr< mk_fix_accu $lid:atom_lid t_id n i$ >> in
+            e, updates::recs::atoms::norms::auxdefs, annots
+          else
+            let e = <:expr< $lid:lid_of_index (n+i)$ >> in
+            let e = <:expr< let $list:updates$ in $e$ >> in
+            let e = <:expr< let rec $list:recs$ in $e$ >> in
+            let e = <:expr< let $lid:lid_of_index (n+i)$ =
+              mk_fix_accu $lid:atom_lid t_id n i$ in $e$ >>
+            in
+            let e = <:expr< let $list:atoms$ in $e$ >> in
+            <:expr< let $list:norms$ in $e$ >>, auxdefs, annots
       | CoFix(ln, (_, tl, bl)) ->
           <:expr< mk_id_accu $str:"cofix"$ >>, auxdefs, annots(* invalid_arg "translate"*)
       | _ -> assert false

@@ -28,6 +28,11 @@ type atom =
   | Afix of t * (t -> t) * rec_pos
   | Aprod of t * (t -> t)
 
+type atom_fix = atom
+let dummy_atom_fix f rec_pos (*ntbl ti*)= Afix ((fun x -> x), f, rec_pos(*,ntbl,ti*))
+let upd_fix_atom af frec =
+     (Obj.set_field (Obj.magic af) 0 (Obj.magic frec))
+
 let accumulate_tag = 0
 
 let accumulate_code (k:accumulator) (x:t) =
