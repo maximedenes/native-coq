@@ -69,26 +69,28 @@ let rec shrink rho = function
 
 let var_lid_of_id id = "var_"^string_of_id id
 let mind_lid_of_id id = "mind_"^string_of_id id
-let construct_lid_of_id id = "construct_"^string_of_id id
+let construct_lid_of_id id = "Construct_"^string_of_id id
 let const_lid_of_id id = "const_"^string_of_id id
 
 (* Redefine a bunch of functions in module Names to generate names
    acceptable to OCaml. *)
-(*let string_of_dirpath = function
+let string_of_dirpath = function
   | [] -> "_"
-  | sl -> String.concat "_" (List.map lid_of_id (List.rev sl))
+  | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
 
 let rec string_of_mp = function
   | MPfile sl -> string_of_dirpath (repr_dirpath sl)
   | MPbound uid -> string_of_mbid uid
-  | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l*)
+  | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
-(*let string_of_kn kn =
+let string_of_kn kn =
   let (modpath, _dirpath, label) = repr_kn kn in
-    string_of_mp modpath ^ "_" ^ string_of_label label*)
+    string_of_mp modpath ^ "_" ^ string_of_label label
+
+let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
 let lid_of_con con =
-  "const_"^string_of_kn (canonical_con con)
+  "const_"^string_of_kn (user_con con)
 
 let ind_lid ind i =
   let (mind,i) = ind in
