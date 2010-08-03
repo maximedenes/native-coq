@@ -638,9 +638,11 @@ let save_library_to dir f mlf =
     System.marshal_out ch di;
     System.marshal_out ch table;
     close_out ch;
-    let f s = string_of_id (snd (repr_qualid (qualid_of_dirpath s))) in
+(*    let f s = string_of_id (snd (repr_qualid (qualid_of_dirpath s))) in*)
+    let f s = Nativecode.mod_uid_of_dirpath s in
     let imports = List.map f imports in
     let lp = List.map System.string_of_physical_path (get_load_paths ()) in
+    let mlf = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir^".ml" in
     match Nativelib.compile_module ast imports lp mlf with
       | 0 -> ()
       | _ -> anomaly "Library compilation failure"
