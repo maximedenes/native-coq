@@ -441,39 +441,23 @@ let assums env t =
       | _ -> fold_constr aux xs t
   in aux [] t
 
-(*let translate_ind env ind (mb,ob) =
-  let tr_aux t =
-    let l,_ = decompose_prod t in
-    List.map (fun (_,t) -> 
-      match kind_of_term t with
-      | Ind ind ->
-	let mb = lookup_mind (fst ind) env in
-	let ob = mb.mind_packets.(snd ind) in
-          <:ctyp< $lid:lid_of_id ob.mind_typename$ >>
-      | _ -> assert false) l
-  in
-  let constr_ty = type_of_constructors ind (mb,ob) in 
-  let aux x t = (loc,lid_of_id x,tr_aux t) in
-  let const_ids = Array.to_list (array_map2 aux ob.mind_consnames constr_ty) in
-  (<:str_item< type $lid:lid_of_id ob.mind_typename$ = [ $list:const_ids$ ] >>,loc);*)
-
-let translate_ind (mb,ob) =
-  let type_str = mind_lid_of_id ob.mind_typename in
+let translate_mind mb =
   let rec build_const_sig acc n = match n with
-    | 0 -> acc
-    | _ -> build_const_sig (<:ctyp< Nativevalues.t >>::acc) (n-1)
+  | 0 -> acc
+  | _ -> build_const_sig (<:ctyp< Nativevalues.t >>::acc) (n-1)
   in
   let aux x n =
     let const_sig = build_const_sig [] n in (loc,construct_lid_of_id x,const_sig)
   in
-  let const_ids =
-    Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
+  let f acc ob =
+    let type_str = mind_lid_of_id ob.mind_typename in
+      let const_ids =
+        Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
+      in
+      let const_ids = (loc,"Accu"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
+      <:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>::acc
   in
-  let const_ids = (loc,"Accu"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
-  [<:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>]
-
-(*let translate_ind_tbl env ind (mb,ob) =*)
-
+  Array.fold_left f [] mb.mind_packets
 
 (* Code dumping functions *)
 let add_value env (id, value) xs =
@@ -508,11 +492,8 @@ let add_constant c ck xs =
         ((*print_endline ("Const body AST not found: "^lid_of_con c);*) xs)
 
 let add_ind env c ind xs =
-  (* TODO : dump all inductives from current mutual_inductive *)
   let mb = lookup_mind c env in
-  (*let ob = ind.mind_packets.(snd ind) in*)
-  let ob = ind.mind_packets.(0) in
-  let ast = translate_ind (mb,ob) in
+  let ast = translate_mind mb in
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
 let dump_env terms env =

@@ -761,9 +761,7 @@ let dump_mod mp env l =
                 ast,annots
           end
       | SFBmind mb ->
-          (*let ob = ind.mind_packets.(snd ind) in*)
-          let ob = mb.mind_packets.(0) in
-          let tr = values (Nativecode.translate_ind (mb,ob)) in
+          let tr = values (Nativecode.translate_mind mb) in
           tr::ast,annots
           (* print_endline ("mind: "^string_of_label l)*)
       | SFBmodule md ->

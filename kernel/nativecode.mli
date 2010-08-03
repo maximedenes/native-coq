@@ -1,6 +1,7 @@
 open Names
 open Term
 open Pre_env
+open Declarations
 open Univ
 open Nativelib
 
@@ -18,9 +19,8 @@ val opaque_const : constant -> MLast.str_item list
 
 val assums : env -> constr -> string list
 
-val translate_ind : 
-   Declarations.mutual_inductive_body *
-   Declarations.one_inductive_body -> MLast.str_item list
+val translate_mind : 
+   mutual_inductive_body -> MLast.str_item list
 
 val dump_env :
   constr list -> env -> MLast.str_item list * 
