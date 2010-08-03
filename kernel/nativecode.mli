@@ -8,6 +8,8 @@ val lid_of_con : constant -> string
 
 val const_lid_of_id : identifier -> string
 
+val mod_uid_of_dirpath : dir_path -> string
+
 val translate :
   ?annots:Nativelib.NbeAnnotTbl.t ->
   env -> string -> constr -> MLast.str_item list  * NbeAnnotTbl.t
