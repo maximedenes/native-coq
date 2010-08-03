@@ -98,7 +98,7 @@ let topological_sort init xs =
 	  visited := Stringset.add s !visited;
           let (l,kns) = List.fold_right aux deps (result,kns) in
           let kns = Stringmap.add s (c,annots) kns in
-	  (x @ l, kns)
+	  ((List.rev x) @ l, kns)
       with Not_found -> (result,kns)
     end
   in
