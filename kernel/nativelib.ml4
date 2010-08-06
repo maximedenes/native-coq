@@ -48,10 +48,10 @@ let compile_module ast imports load_paths f =
   in
   let code = compute_loc code in
     Pcaml.input_file := "/dev/null";
-    Pcaml.output_file := Some f;
+    Pcaml.output_file := Some (f^".pr");
     Pcaml.inter_phrases := Some "\n";
     !Pcaml.print_implem code;
-    (*print_implem f code;*)
+    print_implem f code;
   let imports = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
     "ocamlopt.opt -c -rectypes "^include_dirs^imports^include_libs^f
