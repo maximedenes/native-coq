@@ -38,20 +38,7 @@ let loc = Ploc.dummy
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
 
-
-let lid_of_string s = "x" ^ s
-
-(* Redefine a bunch of functions in module Names to generate names
-   acceptable to OCaml. *)
-let string_of_dirpath = function
-  | [] -> "_"
-  | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
-
-let rec string_of_mp = function
-  | MPfile sl -> string_of_dirpath (repr_dirpath sl)
-  | MPbound uid -> string_of_mbid uid
-  | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
-
+(* TODO : retrieve current module_path *)
 let compile env t1 t2 =
   let (code1,_) = translate env "t1" t1 in
   let (code2,_) = translate env "t2" t2 in
