@@ -67,7 +67,10 @@ let rec shrink rho = function
   | <:expr< $lid:x$ >> -> <:expr< $lid:subst rho x$ >>
   | t -> descend_ast (shrink rho) t
 
-let var_lid_of_id id = "var_"^string_of_id id
+let var_lid_of_id id =
+  let lid = "var_"^string_of_id id in
+  <:expr< $lid:lid$ >>, lid
+
 let mind_lid_of_id id = "mind_"^string_of_id id
 let construct_lid_of_id id = "Construct_"^string_of_id id
 let const_lid_of_id id = "const_"^string_of_id id
@@ -80,17 +83,52 @@ let string_of_dirpath = function
 
 let rec string_of_mp = function
   | MPfile sl -> string_of_dirpath (repr_dirpath sl)
-  | MPbound uid -> string_of_mbid uid
+  | MPbound mbid -> string_of_label (label_of_mbid mbid)
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
-let string_of_kn kn =
+
+let rec list_of_mp acc = function
+  | MPdot (mp,l) -> list_of_mp (string_of_label l::acc) mp
+  | MPfile dp ->
+      let dp = repr_dirpath dp in
+      string_of_dirpath dp :: acc
+  | MPbound mbid -> string_of_label (label_of_mbid mbid)::acc
+
+let list_of_mp mp = list_of_mp [] mp
+
+let rec strip_common_prefix l1 l2 =
+  match l1, l2 with
+  | [], _
+  | _, [] -> l1, l2
+  | hd1::tl1, hd2::tl2 ->
+      if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
+
+let relative_id_of_mp base_mp (mp,lid) =
+  let base_l = list_of_mp base_mp in
+  let l = list_of_mp mp in
+  let _,l = strip_common_prefix base_l l in
+  List.fold_right (fun x acc -> <:expr< $uid:x$.$acc$ >>) l lid
+
+let relative_mp_of_mp base_mp mp =
+  let base_l = list_of_mp base_mp in
+  let l = list_of_mp mp in
+  let _,l = strip_common_prefix base_l l in
+  match l with
+  | [] -> assert false
+  | hd::tl ->
+      let f acc x = <:module_expr< $acc$.$uid:x$ >> in
+      List.fold_left f <:module_expr< $uid:hd$ >> tl
+
+let translate_kn base_mp prefix kn =
   let (modpath, _dirpath, label) = repr_kn kn in
-    string_of_mp modpath ^ "_" ^ string_of_label label
+  let lid = <:expr< $lid:prefix^string_of_label label$>> in
+  let short_name = prefix^string_of_label label in
+  relative_id_of_mp base_mp (modpath,lid), short_name
 
 let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
-let lid_of_con con =
-  "const_"^string_of_kn (user_con con)
+let lid_of_con base_mp con =
+  translate_kn base_mp "const_" (user_con con)
 
 let ind_lid ind i =
   let (mind,i) = ind in
@@ -167,20 +205,22 @@ let dump_reloc_tbl tbl =
   in
   <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
+(* TODO : rewrite this function for modules *)
 let rec push_value id body env =
   let kind = lookup_named_val id env in
     match !kind with
       | VKvalue (v, _) -> ()
       | VKnone ->
-         let (tr, annots) = translate env (var_lid_of_id id) body in
-	 let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
+          let dummy_mp = MPfile empty_dirpath in
+          let (tr, annots) = translate dummy_mp env (var_lid_of_id id) body in
+          let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
 (** The side-effect of translate is to add the translated construction
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
+and translate ?(annots=NbeAnnotTbl.empty) mp env (mp_expr,t_id) t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
@@ -194,7 +234,7 @@ and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
                     in
                       <:expr< mk_var_accu $id_app$>>, auxdefs, annots
 		| Some body ->
-	            let v = <:expr< $lid:var_lid_of_id id$ >> in
+	            let v,_ = var_lid_of_id id in
                       push_value id body env; v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
@@ -217,7 +257,8 @@ and translate ?(annots=NbeAnnotTbl.empty) env t_id t =
       | App (c, args) ->
           translate_app auxdefs annots n c args
       | Const c ->
-          <:expr< $lid:lid_of_con c$ >>, auxdefs, annots
+          let e,_ = lid_of_con mp c in
+          e, auxdefs, annots
       | Ind c ->
           <:expr< mk_id_accu $str:string_of_mind (fst c)$ >>, auxdefs, annots (* xxx *)
       | Construct cstr ->
@@ -422,15 +463,18 @@ and translate_app auxdefs annots n c args =
   let tr,auxdefs,annots = translate ~global:true [] annots 0 t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
-let opaque_const kn =
-  [<:str_item< value $lid:lid_of_con kn$ = mk_id_accu $str:lid_of_con kn$ >>]
+let opaque_const mp kn =
+  let _,lid = lid_of_con mp kn in
+  [<:str_item< value $lid:lid$ = mk_id_accu $str:lid$ >>]
 
 (** Collect all variables and constants in the term. *)
-let assums env t =
+let assums mp env t =
   let rec aux xs t =
     match kind_of_term t with
-      | Var id -> var_lid_of_id id :: xs
-      | Const c -> lid_of_con c :: xs
+      | Var id ->
+          snd (var_lid_of_id id)::xs
+      | Const c ->
+          snd (lid_of_con mp c)::xs
       | Construct cstr ->
           let i = index_of_constructor cstr in
 	  let (mind,_) = inductive_of_constructor cstr in
@@ -460,18 +504,19 @@ let translate_mind mb =
   Array.fold_left f [] mb.mind_packets
 
 (* Code dumping functions *)
+(* TODO: rewrite this function for modules *)
 let add_value env (id, value) xs =
   match !value with
-    | VKvalue (v, _) ->
-	let sid = var_lid_of_id id in
-        let ast = expr_of_values v in
-        let (_, b, _) = Sign.lookup_named id env.env_named_context in
-	let deps = (match b with
-          | None -> [] 
-	  | Some body -> let res = assums env body in
-             (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
-              res)
-        in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
+  | VKvalue (v, _) ->
+      let _,sid = var_lid_of_id id in
+      let ast = expr_of_values v in
+      let (_, b, _) = Sign.lookup_named id env.env_named_context in
+      let deps = (match b with
+      | None -> [] 
+      | Some body -> let res = assums (MPfile empty_dirpath) env body in
+      (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
+      res)
+      in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
     | VKnone -> xs
 
 let add_constant mp c ck xs =
@@ -497,18 +542,20 @@ let add_ind env c ind xs =
   let ast = translate_mind mb in
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
+(* TODO: rewrite this function for modules *)
 let dump_env terms env =
+  let dummy_mp = MPfile empty_dirpath in
   let vars =
     List.fold_right (add_value env) env.env_named_vals Stringmap.empty
   in
   let vars_and_cons =
-    Cmap_env.fold add_constant env.env_globals.env_constants vars
+    Cmap_env.fold (add_constant dummy_mp) env.env_globals.env_constants vars
   in
   let vars_cons_ind =
     Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
   in
   let initial_set =
-    List.fold_left (fun acc t -> assums env t @ acc) [] terms
+    List.fold_left (fun acc t -> assums dummy_mp env t @ acc) [] terms
   in
   print_endline (String.concat "," initial_set);
   let header =
@@ -517,3 +564,87 @@ let dump_env terms env =
   in
   let (l,kns) = topological_sort initial_set vars_cons_ind in
     (header @ l,kns)
+
+let rec translate_mod_type mp env typ_expr =
+  let f (l,e) =
+    match e with
+    | SFBconst cb ->
+        let _,lid = lid_of_con mp (make_con mp empty_dirpath l) in
+        <:sig_item< value $lid:lid$ : Nativevalues.t >>
+    | _ -> assert false
+  in
+  match typ_expr with
+  | SEBident mp ->
+      <:module_type< $uid:string_of_mp mp$ >>
+  | SEBstruct expr_list ->
+      let ast = List.map f expr_list in
+      <:module_type< sig $list:ast$ end >>
+  | SEBfunctor (mbid, modtyp, e) ->
+      let (_,mbid,_) = repr_mbid mbid in
+      let ast = translate_mod_type mp env e in
+      let typ_ast = translate_mod_type mp env modtyp.typ_expr in
+      <:module_type< functor ($uid:mbid$ : $typ_ast$) -> $ast$ >>
+  | _ -> assert false
+
+let rec translate_mod mp env annots mod_expr =
+  match mod_expr with
+  | SEBident mp' ->
+      let uid = relative_mp_of_mp mp mp' in
+      <:module_expr< $uid$ >>, annots
+  | SEBstruct l ->
+      let ast, annots = List.fold_right (translate_fields mp env) l ([],annots) in
+      let e = <:module_expr< struct $list:ast$ end >> in
+      e, annots
+  | SEBfunctor (mbid,modtyp,e) ->
+      let (_,mbid,_) = repr_mbid mbid in
+      let ast, annots = translate_mod mp env annots e in
+      let typ_ast = translate_mod_type mp env modtyp.typ_expr in
+      let e = <:module_expr< functor ($uid:mbid$ : $typ_ast$) -> $ast$ >> in
+      e, annots
+  | SEBapply (f,x,_) ->
+      let tr_f, annots = translate_mod mp env annots f in
+      let tr_x, annots = translate_mod mp env annots x in
+      <:module_expr< $tr_f$ $tr_x$ >>, annots
+  | SEBwith _ -> assert false
+and translate_fields mp env (l,x) (ast,annots) =
+  match x with
+  | SFBconst cb ->
+      begin
+        let kn = make_con mp empty_dirpath l in
+        let lid = lid_of_con mp kn in
+        match cb.const_body with
+        | Some t -> 
+            let t = Declarations.force t in
+            let tr,annots = translate ~annots mp env lid t in tr@ast,annots
+        | None ->
+            let tr = opaque_const mp kn in 
+            tr@ast,annots
+      end
+        | SFBmind mb ->
+            let tr = translate_mind mb in
+            tr@ast,annots
+            (* print_endline ("mind: "^string_of_label l)*)
+      | SFBmodule md ->
+          (* TODO: module compilation *)
+          begin
+            match md.mod_expr with
+            | Some e ->
+                let mod_expr,annots =
+                  translate_mod md.mod_mp env annots e
+                in
+                let mod_ast = <:str_item< module $uid:string_of_label l$ = $mod_expr$ >> in
+                mod_ast::ast, annots
+            | None -> assert false
+          end
+          (*print_endline ("mod: "^string_of_label l)*)
+      | SFBmodtype mdtyp ->
+          (* TODO: module compilation *)
+          let tr = translate_mod_type mp env mdtyp.typ_expr in
+          <:str_item< module type $uid:string_of_label l$ = $tr$ >>::ast, annots
+          (*print_endline ("mod type: "^string_of_label l)*)
+
+let dump_library mp env mod_expr =
+  let mod_ast,annots = translate_mod mp env NbeAnnotTbl.empty mod_expr in
+  match mod_ast with
+  | <:module_expr< struct $list:ast$ end >> -> ast, annots
+  | _ -> assert false

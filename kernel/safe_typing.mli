@@ -102,7 +102,7 @@ val delta_of_senv : safe_environment -> delta_resolver*delta_resolver
 (** exporting and importing modules *)
 type compiled_library
 
-type native_library = values list * NbeAnnotTbl.t
+type native_library = values * NbeAnnotTbl.t
 
 val start_library : dir_path -> safe_environment
       -> module_path * safe_environment

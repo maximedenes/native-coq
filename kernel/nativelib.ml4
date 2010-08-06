@@ -38,7 +38,7 @@ let compute_loc xs =
   in f 0 xs
 
 let compile_module ast imports load_paths f =
-  let code = List.flatten (List.map expr_of_values ast) in
+  let code = expr_of_values ast in
   (* let imports = List.map (fun id -> <:str_item< open $mod_ident:id$ >>) imports in *)
   print_endline ("Imports: "^(String.concat "," imports));
   let imports = List.map (fun id -> <:str_item< open $list:[id]$ >>) imports in

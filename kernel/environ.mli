@@ -198,8 +198,9 @@ val compile_constant_body :
                                  (* boxed *)
 
 val translate :
-  ?annots:Nativelib.NbeAnnotTbl.t ->
-  env -> string -> Term.constr -> MLast.str_item list * NbeAnnotTbl.t
+  ?annots:Nativelib.NbeAnnotTbl.t -> module_path ->
+  env -> MLast.expr * string -> Term.constr ->
+    MLast.str_item list * NbeAnnotTbl.t
 
 exception Hyp_not_found
 
