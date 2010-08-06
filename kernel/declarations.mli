@@ -48,9 +48,6 @@ type constant_body = {
     const_body_code : Cemitcodes.to_patch_substituted;
     const_body_code : to_patch_substituted;
    (*i const_type_code : to_patch;i*)
-    const_body_ast : values option;
-    const_body_deps : string list option;
-    const_body_annots : NbeAnnotTbl.t option;
     const_constraints : constraints;
     const_inline : bool;
     const_inline_code : bool}
