@@ -699,7 +699,7 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option
 
-type native_library = values list * NbeAnnotTbl.t
+type native_library = values * NbeAnnotTbl.t
 
 (* We check that only initial state Require's were performed before
    [start_library] was called *)
@@ -747,34 +747,6 @@ let pack_module senv =
    mod_retroknowledge = []
   }
 
-let dump_mod mp env l =
-  let f (ast,annots) (l,x) =
-    match x with
-      | SFBconst cb ->
-          begin
-            let id_str = Nativecode.lid_of_con (make_con mp empty_dirpath l) in
-            match cb.const_body with
-            | Some t -> 
-                let t = Declarations.force t in
-                let tr,annots = translate ~annots env id_str t in values tr::ast,annots
-            | None ->
-                ast,annots
-          end
-      | SFBmind mb ->
-          let tr = values (Nativecode.translate_mind mb) in
-          tr::ast,annots
-          (* print_endline ("mind: "^string_of_label l)*)
-      | SFBmodule md ->
-          (* TODO: module compilation *)
-          ast,annots
-          (*print_endline ("mod: "^string_of_label l)*)
-      | SFBmodtype mdtyp ->
-          (* TODO: module compilation *)
-          ast,annots
-          (*print_endline ("mod type: "^string_of_label l)*)
-  in
-  List.fold_left f ([],NbeAnnotTbl.empty) l
-
 let export senv dir =
   let modinfo = senv.modinfo in
   begin
@@ -799,8 +771,9 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let tr_mod = dump_mod mp senv.env senv.revstruct in
-   mp, (dir,mb,senv.imports,engagement senv.env), tr_mod, List.map fst senv.imports
+  let pre_env = pre_env senv.env in
+  let ast,annots = Nativecode.dump_library mp pre_env str in
+   mp, (dir,mb,senv.imports,engagement senv.env), (values ast, annots), List.map fst senv.imports
 
 
 let check_imports senv needed =
