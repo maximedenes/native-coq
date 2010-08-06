@@ -133,15 +133,6 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
     | _ -> global_vars_set_constant_type env typ
   in
   let tps = Cemitcodes.from_val (compile_constant_body env body boxed) in
-  let (ast,deps,annots) = match body with
-              Def b -> 
-        let t = Declarations.force b in
-        let tr,annots = translate env (Nativecode.lid_of_con kn) t in
-        let deps = Nativecode.assums (pre_env env) t in
-          (Some (values tr), Some deps, Some annots)
-      | _ ->
-        let opaque = Nativecode.opaque_const kn in
-          (Some (values opaque), Some [],Some Nativelib.NbeAnnotTbl.empty)
   in
   let hyps = keep_hyps env ids in
     { const_hyps = hyps;
@@ -149,9 +140,6 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
       const_type = typ;
       const_body_code = tps;
      (* const_type_code = to_patch env typ;*)
-      const_body_ast = ast;
-      const_body_deps = deps;
-      const_body_annots = annots;
       const_constraints = cst;
       const_inline = inline;
       const_inline_code = inline_code

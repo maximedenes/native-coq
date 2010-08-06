@@ -474,22 +474,23 @@ let add_value env (id, value) xs =
         in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
     | VKnone -> xs
 
-let add_constant c ck xs =
-  match (fst ck).const_body_ast with
-    | Some v ->
-	let sc = lid_of_con c in
-        let ast = expr_of_values v in
-	let deps = match (fst ck).const_body_deps with
-	  | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
-	  | None -> []
-        in
-	let annots = match (fst ck).const_body_annots with
-          | Some t -> t
-          | None -> NbeAnnotTbl.empty
-        in
-	Stringmap.add sc (ConstKey c, annots, ast, deps) xs
+let add_constant mp c ck xs =
+  xs
+  (*match (fst ck).const_body_ast with
+  | Some v ->
+      let sc = "TODO" (*lid_of_con mp c*) in
+      let ast = expr_of_values v in
+      let deps = match (fst ck).const_body_deps with
+      | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
+      | None -> []
+      in
+      let annots = match (fst ck).const_body_annots with
+      | Some t -> t
+      | None -> NbeAnnotTbl.empty
+      in
+      Stringmap.add sc (ConstKey c, annots, ast, deps) xs
     | None ->
-        ((*print_endline ("Const body AST not found: "^lid_of_con c);*) xs)
+        ((*print_endline ("Const body AST not found: "^lid_of_con c);*) xs)*)
 
 let add_ind env c ind xs =
   let mb = lookup_mind c env in

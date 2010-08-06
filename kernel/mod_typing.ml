@@ -86,19 +86,11 @@ and check_with_aux_def env sign with_decl mp equiv =
 	  | Def b ->
 	      let cst1 = Reduction.conv env' c (Declarations.force b) in
 	      let cst = Constraint.union cb.const_constraints cst1 in
-	      let body = Declarations.from_val c in
-              let t = Declarations.force body in
-              let id_str = Nativecode.const_lid_of_id id in
-              let tr,annots = translate env' id_str t in
-              let ast = values tr in
-              let deps = Nativecode.assums (pre_env env) t in
+	      let body = Def (Declarations.from_val c) in
 	      let cb' = {cb with
-			 const_body = Def body;
+			 const_body = body;
 			 const_body_code = Cemitcodes.from_val 
-			   (compile_constant_body env' (Def body) false);
-                         const_body_ast=Some ast;
-                         const_body_deps=Some deps;
-                         const_body_annots = Some annots;
+			   (compile_constant_body env' body false);
                         const_constraints = cst} in
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | Opaque (Some b) -> assert false
@@ -120,19 +112,11 @@ and check_with_aux_def env sign with_decl mp equiv =
 		Constraint.union
 		  (Constraint.union cb.const_constraints cst1)
 		  cst2 in
-	      let body = Declarations.from_val j.uj_val in
-              let t = Declarations.force body in
-              let id_str = Nativecode.const_lid_of_id id in
-              let tr,annots = translate env' id_str t in
-              let ast = values tr in
-              let deps = Nativecode.assums (pre_env env) t in
+	      let body = Def (Declarations.from_val j.uj_val) in
 	      let cb' = {cb with
-			 const_body = Def body;
+			 const_body = body;
 			 const_body_code = Cemitcodes.from_val
-                           (compile_constant_body env' (Def body) false);
-                         const_body_ast=Some ast;
-                         const_body_deps=Some deps;
-                         const_body_annots = Some annots;
+                           (compile_constant_body env' body false);
                          const_constraints = cst} in
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | Primitive _ -> assert false
