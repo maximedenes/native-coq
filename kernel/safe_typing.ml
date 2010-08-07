@@ -771,8 +771,7 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let pre_env = pre_env senv.env in
-  let ast,annots = Nativecode.dump_library mp pre_env str in
+  let ast,annots = Nativemodules.dump_library mp senv.env str in
    mp, (dir,mb,senv.imports,engagement senv.env), (values ast, annots), List.map fst senv.imports
 
 
