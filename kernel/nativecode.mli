@@ -11,6 +11,8 @@ val const_lid_of_id : identifier -> string
 
 val mod_uid_of_dirpath : dir_path -> string
 
+val relative_mp_of_mp : module_path -> module_path -> MLast.module_expr
+
 val translate :
   ?annots:Nativelib.NbeAnnotTbl.t -> module_path ->
   env -> MLast.expr * string -> constr ->
@@ -26,7 +28,3 @@ val translate_mind :
 val dump_env :
   constr list -> env -> MLast.str_item list * 
       (Names.id_key * NbeAnnotTbl.t) Util.Stringmap.t
-
-val dump_library : module_path -> env -> struct_expr_body ->
-  MLast.str_item list * Nativelib.NbeAnnotTbl.t
-
