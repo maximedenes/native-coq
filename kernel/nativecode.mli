@@ -5,9 +5,7 @@ open Declarations
 open Univ
 open Nativelib
 
-val lid_of_con : module_path -> constant -> MLast.expr * string
-
-val const_lid_of_id : identifier -> string
+val const_lid : module_path -> constant -> MLast.expr * string
 
 val mod_uid_of_dirpath : dir_path -> string
 
