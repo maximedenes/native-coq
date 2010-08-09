@@ -67,14 +67,6 @@ let rec shrink rho = function
   | <:expr< $lid:x$ >> -> <:expr< $lid:subst rho x$ >>
   | t -> descend_ast (shrink rho) t
 
-let var_lid_of_id id =
-  let lid = "var_"^string_of_id id in
-  <:expr< $lid:lid$ >>, lid
-
-let mind_lid_of_id id = "mind_"^string_of_id id
-let construct_lid_of_id id = "Construct_"^string_of_id id
-let const_lid_of_id id = "const_"^string_of_id id
-
 (* Redefine a bunch of functions in module Names to generate names
    acceptable to OCaml. *)
 let string_of_dirpath = function
@@ -127,8 +119,20 @@ let translate_kn base_mp prefix kn =
 
 let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
-let lid_of_con base_mp con =
+let const_lid base_mp con =
   translate_kn base_mp "const_" (user_con con)
+
+let var_lid id =
+  let lid = "var_"^string_of_id id in
+  <:expr< $lid:lid$ >>, lid
+
+let mind_lid id = "mind_"^string_of_id id
+
+let construct_uid base_mp (mp,id) =
+  let prefix = "Construct_" in
+  let lid = <:expr< $uid:prefix^string_of_id id$>> in
+  let short_name = prefix^string_of_id id in
+  relative_id_of_mp base_mp (mp,lid), short_name
 
 let ind_lid ind i =
   let (mind,i) = ind in
@@ -150,8 +154,9 @@ let rec_lid id n i =
   "rec"^fix_lid id n i
 
 (* First argument the index of the constructor *)
-let make_constructor_pattern ob i args =
-  let f = <:patt< $uid:construct_lid_of_id ob.mind_consnames.(i)$ >> in 
+let make_constructor_pattern base_mp mp ob i args =
+  let _,uid = construct_uid base_mp (mp,ob.mind_consnames.(i)) in
+  let f = <:patt< $uid:uid$ >> in 
   List.fold_left (fun e arg -> <:patt< $e$ $lid:arg$ >>) f args
 
 let lid_of_index n = "x" ^ string_of_int n
@@ -212,7 +217,7 @@ let rec push_value id body env =
       | VKvalue (v, _) -> ()
       | VKnone ->
           let dummy_mp = MPfile empty_dirpath in
-          let (tr, annots) = translate dummy_mp env (var_lid_of_id id) body in
+          let (tr, annots) = translate dummy_mp env (var_lid id) body in
           let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
@@ -234,7 +239,7 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env (mp_expr,t_id) t =
                     in
                       <:expr< mk_var_accu $id_app$>>, auxdefs, annots
 		| Some body ->
-	            let v,_ = var_lid_of_id id in
+	            let v,_ = var_lid id in
                       push_value id body env; v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
@@ -257,21 +262,24 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env (mp_expr,t_id) t =
       | App (c, args) ->
           translate_app auxdefs annots n c args
       | Const c ->
-          let e,_ = lid_of_con mp c in
+          let e,_ = const_lid mp c in
           e, auxdefs, annots
       | Ind c ->
           <:expr< mk_id_accu $str:string_of_mind (fst c)$ >>, auxdefs, annots (* xxx *)
       | Construct cstr ->
-	  let i = index_of_constructor cstr in
-	  let ind = inductive_of_constructor cstr in
-	  let mb = lookup_mind (fst ind) env in
-	  let ob = mb.mind_packets.(snd ind) in
-	  let nparams = mb.mind_nparams in
+          let i = index_of_constructor cstr in
+          let ind = inductive_of_constructor cstr in
+          let mb = lookup_mind (fst ind) env in
+          let ob = mb.mind_packets.(snd ind) in
+          let nparams = mb.mind_nparams in
           let _,arity = ob.mind_reloc_tbl.(i-1) in
           if nparams+arity = 0 then
-            let cons_str = construct_lid_of_id ob.mind_consnames.(i-1) in
-	    let e = <:expr< (Obj.magic $uid:cons_str$ : Nativevalues.t) >> in
-              e, auxdefs, annots
+            let mp' = ind_modpath ind in
+            let cons_expr,_ =
+              construct_uid mp (mp',ob.mind_consnames.(i-1))
+            in
+            let e = <:expr< (Obj.magic $cons_expr$ : Nativevalues.t) >> in
+            e, auxdefs, annots
           else translate_app auxdefs annots n t [||]
       | Case (ci, p, c, branches) ->
           let u = (ci, p, c, branches) in
@@ -368,6 +376,7 @@ and translate_app auxdefs annots n c args =
          in
 	 let i = index_of_constructor cstr in
 	 let ind = inductive_of_constructor cstr in
+     let mp' = ind_modpath ind in
 	 let mb = lookup_mind (fst ind) env in
 	 let ob = mb.mind_packets.(snd ind) in
 	 let nparams = mb.mind_nparams in
@@ -385,86 +394,85 @@ and translate_app auxdefs annots n c args =
 	     then z
 	     else aux (n - 1) <:expr< fun _ -> $z$ >>
 	   in
-           let tr_constr =
-             <:expr< $uid:construct_lid_of_id ob.mind_consnames.(i-1)$ >>
-           in
-           let apps =
-             List.fold_left (fun e x -> <:expr< $e$ $x$ >>) tr_constr (vs@pad)
-           in
-             aux underscores
-		(List.fold_right (fun x e -> <:expr< fun $lid:x$ -> $e$ >>)
-		 names apps)
-	 in
-         <:expr< (Obj.magic $prefix$ : Nativevalues.t) >>, auxdefs, annots
+       let tr_constr,_ = construct_uid mp (mp',ob.mind_consnames.(i-1)) in
+       let apps =
+         List.fold_left (fun e x -> <:expr< $e$ $x$ >>) tr_constr (vs@pad)
+       in
+       aux underscores
+       (List.fold_right (fun x e -> <:expr< fun $lid:x$ -> $e$ >>)
+       names apps)
+     in
+     <:expr< (Obj.magic $prefix$ : Nativevalues.t) >>, auxdefs, annots
      | _ ->
-	 let zero = translate auxdefs annots n c in
-	 let f (apps,auxdefs,annots) x =
+         let zero = translate auxdefs annots n c in
+         let f (apps,auxdefs,annots) x =
            let tr,auxdefs,annots = translate auxdefs annots n x in
-             <:expr< $apps$ $tr$ >>, auxdefs, annots
+           <:expr< $apps$ $tr$ >>, auxdefs, annots
          in
-	   Array.fold_left f zero args
+         Array.fold_left f zero args
   and translate_case auxdefs annots n (ci,p,c,branches) aux_neutral =
-	  let mb = lookup_mind (fst ci.ci_ind) env in
-	  let ob = mb.mind_packets.(snd ci.ci_ind) in
-	  let f i br (xs1,auxdefs,annots) =
-	    let args = gen_names n ci.ci_cstr_nargs.(i) in
-            let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
-	    let pat1 = make_constructor_pattern ob i args in
-            let (tr,auxdefs,annots) = translate auxdefs annots n br in
-            let body = apps tr args in
-                ((pat1, None, body)::xs1,auxdefs,annots)
-          in
-          let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
-          let (bodies,auxdefs,annots) =
-            array_fold_right_i f branches ([],auxdefs,annots)
-          in
-          let match_lid = match_lid t_id annot_i in
-          let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
-          let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
-          let annot =
-            <:expr< ($str:t_id$,$int:string_of_int annot_i$,$tbl$) >>
-          in
-          let neutral_match =
-            <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $annot$ >>
-          in
-          let ind_str = mind_lid_of_id ob.mind_typename in
-          let accu_str = "Accu"^ind_str in
-          let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
-          let (tr,auxdefs,annots) = translate auxdefs annots n c in
-          let fv = free_vars_acc n [] p in
-          let fv = Array.fold_left (free_vars_acc n) fv branches in
-          let fv = List.map (fun i -> lid_of_index i) fv in 
-          let match_body =
-            <:expr< match (Obj.magic c : $lid:ind_str$) with
-                      [$list:default::bodies$] >>
-          in
-          let match_body =
-            List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>)
-              match_body ("c"::fv)
-          in
-          let aux_body = match aux_neutral with
-            | Some e ->
-                let default = (<:patt< $uid:accu_str $ _ >>, None, e) in
-                <:expr< match (Obj.magic $tr$ : $lid:ind_str$) with
-                          [$list:default::bodies$] >>
-                (*List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) r fv*)
-            | None -> match_body
-          in
-          let auxdefs =
-            <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs
-          in
-          let match_app =
-            List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>)
-              fv <:expr< $lid:match_lid$ >>
-          in
-          <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
+    let mb = lookup_mind (fst ci.ci_ind) env in
+    let ob = mb.mind_packets.(snd ci.ci_ind) in
+    let mp' = ind_modpath ci.ci_ind in
+    let f i br (xs1,auxdefs,annots) =
+      let args = gen_names n ci.ci_cstr_nargs.(i) in
+      let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
+      let pat1 = make_constructor_pattern mp mp' ob i args in
+      let (tr,auxdefs,annots) = translate auxdefs annots n br in
+      let body = apps tr args in
+      ((pat1, None, body)::xs1,auxdefs,annots)
+    in
+    let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
+    let (bodies,auxdefs,annots) =
+      array_fold_right_i f branches ([],auxdefs,annots)
+    in
+    let match_lid = match_lid t_id annot_i in
+    let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
+    let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
+    let annot =
+      <:expr< ($str:t_id$,$int:string_of_int annot_i$,$tbl$) >>
+    in
+    let neutral_match =
+      <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $annot$ >>
+    in
+    let ind_str = mind_lid ob.mind_typename in
+    let accu_str = "Accu"^ind_str in
+    let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
+    let (tr,auxdefs,annots) = translate auxdefs annots n c in
+    let fv = free_vars_acc n [] p in
+    let fv = Array.fold_left (free_vars_acc n) fv branches in
+    let fv = List.map (fun i -> lid_of_index i) fv in 
+    let match_body =
+      <:expr< match (Obj.magic c : $lid:ind_str$) with
+      [$list:default::bodies$] >>
+    in
+    let match_body =
+      List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>)
+      match_body ("c"::fv)
+    in
+    let aux_body = match aux_neutral with
+    | Some e ->
+        let default = (<:patt< $uid:accu_str $ _ >>, None, e) in
+        <:expr< match (Obj.magic $tr$ : $lid:ind_str$) with
+        [$list:default::bodies$] >>
+        (*List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) r fv*)
+      | None -> match_body
+        in
+        let auxdefs =
+          <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs
+        in
+        let match_app =
+          List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>)
+          fv <:expr< $lid:match_lid$ >>
+        in
+        <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
 
   in
   let tr,auxdefs,annots = translate ~global:true [] annots 0 t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 let opaque_const mp kn =
-  let _,lid = lid_of_con mp kn in
+  let _,lid = const_lid mp kn in
   [<:str_item< value $lid:lid$ = mk_id_accu $str:lid$ >>]
 
 (** Collect all variables and constants in the term. *)
@@ -472,9 +480,9 @@ let assums mp env t =
   let rec aux xs t =
     match kind_of_term t with
       | Var id ->
-          snd (var_lid_of_id id)::xs
+          snd (var_lid id)::xs
       | Const c ->
-          snd (lid_of_con mp c)::xs
+          snd (const_lid mp c)::xs
       | Construct cstr ->
           let i = index_of_constructor cstr in
 	  let (mind,_) = inductive_of_constructor cstr in
@@ -490,11 +498,13 @@ let translate_mind mb =
   | 0 -> acc
   | _ -> build_const_sig (<:ctyp< Nativevalues.t >>::acc) (n-1)
   in
+  let dummy_mp = MPfile (empty_dirpath) in
   let aux x n =
-    let const_sig = build_const_sig [] n in (loc,construct_lid_of_id x,const_sig)
+    let _,s = construct_uid dummy_mp (dummy_mp,x) in
+    let const_sig = build_const_sig [] n in (loc,s,const_sig)
   in
   let f acc ob =
-    let type_str = mind_lid_of_id ob.mind_typename in
+    let type_str = mind_lid ob.mind_typename in
       let const_ids =
         Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
       in
@@ -508,7 +518,7 @@ let translate_mind mb =
 let add_value env (id, value) xs =
   match !value with
   | VKvalue (v, _) ->
-      let _,sid = var_lid_of_id id in
+      let _,sid = var_lid id in
       let ast = expr_of_values v in
       let (_, b, _) = Sign.lookup_named id env.env_named_context in
       let deps = (match b with
@@ -523,7 +533,7 @@ let add_constant mp c ck xs =
   xs
   (*match (fst ck).const_body_ast with
   | Some v ->
-      let sc = "TODO" (*lid_of_con mp c*) in
+      let sc = "TODO" (*const_lid mp c*) in
       let ast = expr_of_values v in
       let deps = match (fst ck).const_body_deps with
       | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
@@ -535,7 +545,7 @@ let add_constant mp c ck xs =
       in
       Stringmap.add sc (ConstKey c, annots, ast, deps) xs
     | None ->
-        ((*print_endline ("Const body AST not found: "^lid_of_con c);*) xs)*)
+        ((*print_endline ("Const body AST not found: "^const_lid c);*) xs)*)
 
 let add_ind env c ind xs =
   let mb = lookup_mind c env in
