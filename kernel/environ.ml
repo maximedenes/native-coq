@@ -737,3 +737,5 @@ module RedNative (E:RedNativeEntries) :
       with _ -> None
   	  
   end
+
+let set_current_mp env mp = { env with current_mp = mp }

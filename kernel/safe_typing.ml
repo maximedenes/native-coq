@@ -351,8 +351,9 @@ let start_module l senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
  in
+ let env = set_current_mp senv.env mp in
    mp, { old = senv;
-	 env = senv.env;
+	 env = env;
 	 modinfo = modinfo;
 	 labset = Labset.empty;
 	 revstruct = [];
@@ -615,8 +616,9 @@ let start_modtype l senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
  in
+ let env = set_current_mp senv.env mp in
   mp, { old = senv;
-	env = senv.env;
+	env = env;
 	modinfo = modinfo;
 	labset = Labset.empty;
 	revstruct = [];
@@ -725,8 +727,9 @@ let start_library dir senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
   in
+  let env = set_current_mp senv.env mp in
   mp, { old = senv;
-	env = senv.env;
+	env = env;
 	modinfo = modinfo;
 	labset = Labset.empty;
 	revstruct = [];
