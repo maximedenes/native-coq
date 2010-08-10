@@ -59,6 +59,7 @@ type env = {
     env_nb_rel         : int;
     env_stratification : stratification;
     env_retroknowledge : retroknowledge
+    current_mp : module_path
 }
 
 type named_context_val = named_context * named_vals
