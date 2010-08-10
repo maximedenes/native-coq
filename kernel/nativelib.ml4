@@ -8,6 +8,9 @@ open Nativevalues
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
+let load_paths = ref ([] : string list)
+let imports = ref ([] : string list)
+
 (* Global settings and utilies for interface with OCaml *)
 let env_name = "Coq_conv_env"
 let terms_name = "Coq_conv_terms"
@@ -43,7 +46,6 @@ let compute_loc xs =
 
 let compile_module ast imports load_paths f =
   let code = expr_of_values ast in
-  let imports = List.map (fun id -> <:str_item< open $list:[id]$ >>) imports in
   let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>]
     @ code
@@ -82,8 +84,13 @@ let call_compiler env_code terms_code =
   let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Sys.command ("touch "^env_name^".ml") in
   print_endline "Compilation...";
+  let include_dirs =
+    include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
+  in
+  let imports = List.map (fun s -> s^".cmx") !imports in
+  let imports = String.concat " " imports ^ " " in
   let comp_cmd =
-    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
+    "ocamlopt.opt -rectypes "^include_dirs^include_libs^imports^file_names
   in
   let res = Sys.command comp_cmd in
   let _ = Sys.command ("rm "^file_names) in

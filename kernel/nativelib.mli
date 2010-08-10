@@ -2,6 +2,9 @@ open Names
 open Term
 
 
+val load_paths : string list ref
+val imports : string list ref
+
 (* Global utilies for interface with OCaml *)
 val print_implem :
   string -> (MLast.str_item * MLast.loc) list -> unit
