@@ -40,7 +40,9 @@ let is_in_load_paths phys_dir =
     List.exists check_p lp
 
 let remove_load_path dir =
-  load_paths := List.filter (fun (p,d,_) -> p <> dir) !load_paths
+  load_paths := List.filter (fun (p,d,_) -> p <> dir) !load_paths;
+  let f x = System.string_of_physical_path (pi1 x) in
+  Nativelib.load_paths := List.map f !load_paths
 
 let add_load_path isroot (phys_path,coq_path) =
   let phys_path = System.canonical_path_name phys_path in
@@ -61,9 +63,13 @@ let add_load_path isroot (phys_path,coq_path) =
 		   pr_dirpath coq_path);
 	      remove_load_path phys_path;
 	      load_paths := (phys_path,coq_path,isroot) :: !load_paths;
+          let s = System.string_of_physical_path phys_path in
+          Nativelib.load_paths :=  s :: !Nativelib.load_paths
 	    end
       | [] ->
 	  load_paths := (phys_path,coq_path,isroot) :: !load_paths;
+      let s = System.string_of_physical_path phys_path in
+      Nativelib.load_paths :=  s :: !Nativelib.load_paths
       | _ -> anomaly ("Two logical paths are associated to "^phys_path)
 
 let extend_path_with_dirpath p dir =
@@ -164,13 +170,17 @@ let unfreeze (mt,mo,mi,me) =
   libraries_table := mt;
   libraries_loaded_list := mo;
   libraries_imports_list := mi;
-  libraries_exports_list := me
+  libraries_exports_list := me;
+  let f m = Nativecode.mod_uid_of_dirpath m.library_name in
+  Nativelib.imports := List.map f !libraries_loaded_list
+
 
 let init () =
   libraries_table := LibraryMap.empty;
   libraries_loaded_list := [];
   libraries_imports_list := [];
-  libraries_exports_list := []
+  libraries_exports_list := [];
+  Nativelib.imports := []
 
 let _ =
   Summary.declare_summary "MODULES"
@@ -226,6 +236,8 @@ let register_loaded_library m =
     | m'::_ as l when m'.library_name = m.library_name -> l
     | m'::l' -> m' :: aux l' in
   libraries_loaded_list := aux !libraries_loaded_list;
+  let f m = Nativecode.mod_uid_of_dirpath m.library_name in
+  Nativelib.imports := List.map f !libraries_loaded_list;
   libraries_table := LibraryMap.add m.library_name m !libraries_table
 
   (* ... while if a library is imported/exported several time, then
