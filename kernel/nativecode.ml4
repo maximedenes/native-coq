@@ -78,6 +78,14 @@ let rec string_of_mp = function
   | MPbound mbid -> string_of_label (label_of_mbid mbid)
   | MPdot (mp,l) -> string_of_mp mp ^ "." ^ string_of_label l
 
+let rec in_same_library mp1 mp2 =
+  match mp1, mp2 with
+  | MPbound _, _ -> assert false
+  | _, MPbound _ -> true
+  | MPfile dp1, MPfile dp2 -> dp1 = dp2
+  | MPdot (mp1,_), MPdot (mp2,_) -> in_same_library mp1 mp2
+  | MPdot (mp,_), _ -> in_same_library mp mp2
+  | _, MPdot (mp,_) -> in_same_library mp1 mp
 
 let rec list_of_mp acc = function
   | MPdot (mp,l) -> list_of_mp (string_of_label l::acc) mp
@@ -238,7 +246,8 @@ let rec push_value id body env =
       | VKvalue (v, _) -> ()
       | VKnone ->
           let dummy_mp = MPfile empty_dirpath in
-          let (tr, annots) = translate dummy_mp env (var_lid id) body in
+          let _,id = var_lid id in
+          let (tr, annots) = translate dummy_mp env id body in
           let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
          in kind := VKvalue (v,d)
 
@@ -246,7 +255,7 @@ let rec push_value id body env =
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate ?(annots=NbeAnnotTbl.empty) mp env (mp_expr,t_id) t =
+and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
@@ -504,14 +513,23 @@ let assums mp env t =
       | Var id ->
           snd (var_lid id)::xs
       | Const c ->
-          snd (const_lid mp c)::xs
+          if in_same_library mp (con_modpath c) then
+            snd (const_lid mp c)::xs
+          else
+            xs
       | Construct cstr ->
           let i = index_of_constructor cstr in
-	  let (mind,_) = inductive_of_constructor cstr in
-          string_of_mind mind :: xs
+          let (mind,_) = inductive_of_constructor cstr in
+          if in_same_library mp (mind_modpath mind) then
+            string_of_mind mind :: xs
+          else
+            xs
       | Case (ci, pi, c, branches) ->
           let type_str = string_of_mind (fst ci.ci_ind) in
-          fold_constr aux (type_str::xs) t
+          if in_same_library mp (mind_modpath (fst ci.ci_ind)) then
+            fold_constr aux (type_str::xs) t
+          else
+            fold_constr aux xs t
       | _ -> fold_constr aux xs t
   in aux [] t
 
@@ -551,43 +569,34 @@ let add_value env (id, value) xs =
       in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
     | VKnone -> xs
 
-let add_constant mp c ck xs =
-  xs
-  (*match (fst ck).const_body_ast with
-  | Some v ->
-      let sc = "TODO" (*const_lid mp c*) in
-      let ast = expr_of_values v in
-      let deps = match (fst ck).const_body_deps with
-      | Some l -> (*print_endline (sc^" assums "^String.concat "," l);*) l 
-      | None -> []
-      in
-      let annots = match (fst ck).const_body_annots with
-      | Some t -> t
-      | None -> NbeAnnotTbl.empty
-      in
-      Stringmap.add sc (ConstKey c, annots, ast, deps) xs
-    | None ->
-        ((*print_endline ("Const body AST not found: "^const_lid c);*) xs)*)
+let add_constant mp env c ck xs =
+  match (fst ck).const_body with
+  | Some cb ->
+      let _,lid = const_lid mp c in
+      let cb = Declarations.force cb in
+      let ast, annots = translate mp env lid cb in
+      let deps = assums mp env cb in
+      Stringmap.add lid (ConstKey c, annots, ast, deps) xs
+  | None ->
+      assert false
 
 let add_ind env c ind xs =
   let mb = lookup_mind c env in
   let ast = translate_mind mb in
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
-(* TODO: rewrite this function for modules *)
-let dump_env terms env =
-  let dummy_mp = MPfile empty_dirpath in
+let dump_env mp terms env =
   let vars =
     List.fold_right (add_value env) env.env_named_vals Stringmap.empty
   in
   let vars_and_cons =
-    Cmap_env.fold (add_constant dummy_mp) env.env_globals.env_constants vars
+    Cmap_env.fold (add_constant mp env) env.env_globals.env_constants vars
   in
   let vars_cons_ind =
     Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
   in
   let initial_set =
-    List.fold_left (fun acc t -> assums dummy_mp env t @ acc) [] terms
+    List.fold_left (fun acc t -> assums mp env t @ acc) [] terms
   in
   print_endline (String.concat "," initial_set);
   let header =

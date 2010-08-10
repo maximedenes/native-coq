@@ -38,14 +38,11 @@ let loc = Ploc.dummy
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
 
-(* TODO : retrieve current module_path *)
 let compile env t1 t2 =
-  let dummy_mp = MPfile empty_dirpath in
-  let t1_id = <:expr< $lid:"t1"$ >>, "t1" in
-  let t2_id = <:expr< $lid:"t2"$ >>, "t2" in
-  let (code1,_) = translate dummy_mp env t1_id t1 in
-  let (code2,_) = translate dummy_mp env t2_id t2 in
-  let (dump,_) = dump_env [t1;t2] env in
+  let mp = env.current_mp in
+  let (code1,_) = translate mp env "t1" t1 in
+  let (code2,_) = translate mp env "t2" t2 in
+  let (dump,_) = dump_env mp [t1;t2] env in
   let terms_code =
     code1 @ code2 @ [<:str_item< value _ = compare 0 t1 t2 >>]
   in

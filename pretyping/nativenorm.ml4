@@ -17,12 +17,10 @@ exception Find_at of int
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
-(* TODO: retrieve current module_path *)
 let compile env c =
-  let dummy_mp = MPfile empty_dirpath in
-  let t1_id = <:expr< $lid:"t1"$ >>, "t1" in
-  let code,annots = translate dummy_mp env t1_id c in
-  let (dump,kns) = dump_env [c] env in
+  let mp = fst (Lib.current_prefix ()) in
+  let code,annots = translate mp env "t1" c in
+  let (dump,kns) = dump_env mp [c] env in
   let kns = Stringmap.add "t1" (RelKey (-1),annots) kns in
   let code =
     code @ [<:str_item< value _ = print_nf (lazy $lid:"t1"$) >>]

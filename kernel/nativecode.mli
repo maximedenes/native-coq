@@ -13,7 +13,7 @@ val relative_mp_of_mp : module_path -> module_path -> MLast.module_expr
 
 val translate :
   ?annots:Nativelib.NbeAnnotTbl.t -> module_path ->
-  env -> MLast.expr * string -> constr ->
+  env -> string -> constr ->
     MLast.str_item list  * NbeAnnotTbl.t
 
 val opaque_const : module_path -> constant -> MLast.str_item list
@@ -24,5 +24,5 @@ val translate_mind :
    mutual_inductive_body -> MLast.str_item list
 
 val dump_env :
-  constr list -> env -> MLast.str_item list * 
+  module_path -> constr list -> env -> MLast.str_item list * 
       (Names.id_key * NbeAnnotTbl.t) Util.Stringmap.t
