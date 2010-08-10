@@ -82,7 +82,7 @@ and translate_fields mp env (l,x) (ast,annots) =
   | SFBconst cb ->
       begin
         let kn = make_con mp empty_dirpath l in
-        let lid = const_lid mp kn in
+        let _,lid = const_lid mp kn in
         match cb.const_body with
         | Some t -> 
             let env = pre_env env in
