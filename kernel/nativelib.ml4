@@ -43,12 +43,10 @@ let compute_loc xs =
 
 let compile_module ast imports load_paths f =
   let code = expr_of_values ast in
-  (* let imports = List.map (fun id -> <:str_item< open $mod_ident:id$ >>) imports in *)
-  print_endline ("Imports: "^(String.concat "," imports));
   let imports = List.map (fun id -> <:str_item< open $list:[id]$ >>) imports in
   let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>]
-     @ imports @ code
+    @ code
   in
   let code = compute_loc code in
     Pcaml.input_file := "/dev/null";

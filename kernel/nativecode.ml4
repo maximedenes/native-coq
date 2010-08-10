@@ -95,11 +95,23 @@ let rec strip_common_prefix l1 l2 =
   | hd1::tl1, hd2::tl2 ->
       if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
 
-let relative_id_of_mp base_mp (mp,lid) =
+let mk_relative_id base_mp (mp,lid) f =
   let base_l = list_of_mp base_mp in
   let l = list_of_mp mp in
   let _,l = strip_common_prefix base_l l in
-  List.fold_right (fun x acc -> <:expr< $uid:x$.$acc$ >>) l lid
+  List.fold_right f l lid
+
+let relative_id_of_mp base_mp (mp,lid) =
+ let f x acc = <:expr< $uid:x$.$acc$ >> in
+ mk_relative_id base_mp (mp,lid) f
+
+let relative_patt_of_mp base_mp (mp,lid) =
+ let f x acc = <:patt< $uid:x$.$acc$ >> in
+ mk_relative_id base_mp (mp,lid) f
+
+let relative_type_of_mp base_mp (mp,lid) =
+ let f x acc = <:ctyp< $uid:x$.$acc$ >> in
+ mk_relative_id base_mp (mp,lid) f
 
 let relative_mp_of_mp base_mp mp =
   let base_l = list_of_mp base_mp in
@@ -126,13 +138,23 @@ let var_lid id =
   let lid = "var_"^string_of_id id in
   <:expr< $lid:lid$ >>, lid
 
-let mind_lid id = "mind_"^string_of_id id
-
-let construct_uid base_mp (mp,id) =
-  let prefix = "Construct_" in
-  let lid = <:expr< $uid:prefix^string_of_id id$>> in
+let mind_lid base_mp (mp,id) =
+  let prefix = "mind_" in
+  let lid = <:ctyp< $uid:prefix^string_of_id id$>> in
   let short_name = prefix^string_of_id id in
-  relative_id_of_mp base_mp (mp,lid), short_name
+  relative_type_of_mp base_mp (mp,lid), short_name
+
+let construct_uid ?(accu=false) base_mp (mp,id) =
+  let prefix = if accu then "Accu_" else "Construct_" in
+  let uid = <:expr< $uid:prefix^string_of_id id$>> in
+  let short_name = prefix^string_of_id id in
+  relative_id_of_mp base_mp (mp,uid), short_name
+
+let construct_uid_patt ?(accu=false) base_mp (mp,id) =
+  let prefix = if accu then "Accu_" else "Construct_" in
+  let uid = <:patt< $uid:prefix^string_of_id id$>> in
+  let short_name = prefix^string_of_id id in
+  relative_patt_of_mp base_mp (mp,uid), short_name
 
 let ind_lid ind i =
   let (mind,i) = ind in
@@ -155,9 +177,8 @@ let rec_lid id n i =
 
 (* First argument the index of the constructor *)
 let make_constructor_pattern base_mp mp ob i args =
-  let _,uid = construct_uid base_mp (mp,ob.mind_consnames.(i)) in
-  let f = <:patt< $uid:uid$ >> in 
-  List.fold_left (fun e arg -> <:patt< $e$ $lid:arg$ >>) f args
+  let uid,_ = construct_uid_patt base_mp (mp,ob.mind_consnames.(i)) in
+  List.fold_left (fun e arg -> <:patt< $e$ $lid:arg$ >>) uid args
 
 let lid_of_index n = "x" ^ string_of_int n
 let code_lid_of_index p = "b" ^ string_of_int p
@@ -435,15 +456,16 @@ and translate_app auxdefs annots n c args =
     let neutral_match =
       <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $annot$ >>
     in
-    let ind_str = mind_lid ob.mind_typename in
-    let accu_str = "Accu"^ind_str in
-    let default = (<:patt< $uid:accu_str $ _ >>, None, neutral_match) in
+    let ind_lid,ind_str = mind_lid mp (mp',ob.mind_typename) in
+    let accu_id = id_of_string ind_str in
+    let accu_expr,_ = construct_uid_patt ~accu:true mp (mp',accu_id) in
+    let default = (<:patt< $accu_expr$ _ >>, None, neutral_match) in
     let (tr,auxdefs,annots) = translate auxdefs annots n c in
     let fv = free_vars_acc n [] p in
     let fv = Array.fold_left (free_vars_acc n) fv branches in
     let fv = List.map (fun i -> lid_of_index i) fv in 
     let match_body =
-      <:expr< match (Obj.magic c : $lid:ind_str$) with
+      <:expr< match (Obj.magic c : $ind_lid$) with
       [$list:default::bodies$] >>
     in
     let match_body =
@@ -452,8 +474,8 @@ and translate_app auxdefs annots n c args =
     in
     let aux_body = match aux_neutral with
     | Some e ->
-        let default = (<:patt< $uid:accu_str $ _ >>, None, e) in
-        <:expr< match (Obj.magic $tr$ : $lid:ind_str$) with
+        let default = (<:patt< $accu_expr$ _ >>, None, e) in
+        <:expr< match (Obj.magic $tr$ : $ind_lid$) with
         [$list:default::bodies$] >>
         (*List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) r fv*)
       | None -> match_body
@@ -504,11 +526,11 @@ let translate_mind mb =
     let const_sig = build_const_sig [] n in (loc,s,const_sig)
   in
   let f acc ob =
-    let type_str = mind_lid ob.mind_typename in
+    let _,type_str = mind_lid dummy_mp (dummy_mp,ob.mind_typename) in
       let const_ids =
         Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
       in
-      let const_ids = (loc,"Accu"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
+      let const_ids = (loc,"Accu_"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
       <:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>::acc
   in
   Array.fold_left f [] mb.mind_packets
