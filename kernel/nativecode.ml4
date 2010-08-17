@@ -569,16 +569,19 @@ let add_value env (id, value) xs =
       in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
     | VKnone -> xs
 
-let add_constant mp env c ck xs =
+let add_constant mp env kn ck xs =
   match (fst ck).const_body with
   | Some cb ->
-      let _,lid = const_lid mp c in
+      let _,lid = const_lid mp kn in
       let cb = Declarations.force cb in
       let ast, annots = translate mp env lid cb in
       let deps = assums mp env cb in
-      Stringmap.add lid (ConstKey c, annots, ast, deps) xs
+      Stringmap.add lid (ConstKey kn, annots, ast, deps) xs
   | None ->
-      assert false
+      let _,lid = const_lid mp kn in
+      let ast = opaque_const mp kn in
+      let annots = NbeAnnotTbl.empty in
+      Stringmap.add lid (ConstKey kn, annots, ast, []) xs
 
 let add_ind env c ind xs =
   let mb = lookup_mind c env in
