@@ -38,18 +38,30 @@ let loc = Ploc.dummy
 (* Flag to signal whether recompilation is needed. *)
 let env_updated = ref false
 
-let compile env t1 t2 =
+let compare env t1 t2 cu =
   let mp = env.current_mp in
   let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in
   let (dump,_) = dump_env mp [t1;t2] env in
   let terms_code =
-    code1 @ code2 @ [<:str_item< value _ = compare 0 t1 t2 >>]
+    code1 @ code2 @ [<:str_item< value _ = (*let t0 = Unix.time () in *)
+      (*do {*)try conv_val 0 t1 t2 with _ -> exit 1 (*;
+    Format.fprintf Format.std_formatter
+    "Test running time: %.5fs\n" (Unix.time() -. t0);
+    flush_all() }*)
+    >>]
   in
-    call_compiler dump terms_code
+    match call_compiler dump terms_code with
+    | 0 ->
+      begin
+        print_endline "Running test...";
+        let res = Sys.command "time ./a.out" in
+        match res with
+          | 0 -> cu
+          | _ -> raise NotConvertible
+      end
+    | _ -> anomaly "Compilation failure" 
 
-let compare cu =
-  cu
   (*let file_names = env_name^".ml "^terms_name^".ml" in
   let _ = Sys.command ("touch "^env_name^".ml") in
   print_endline "Compilation...";

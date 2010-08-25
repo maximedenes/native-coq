@@ -1,6 +1,7 @@
 open Names
 open Term
 
+exception NotConvertible
 
 val load_paths : string list ref
 val imports : string list ref
@@ -65,3 +66,5 @@ val app : term -> term -> term
 val compare : int -> term -> term -> unit
 val normalize : int -> term -> term*)
 val print_nf : Nativevalues.t Lazy.t -> unit
+
+val conv_val : int -> Nativevalues.t -> Nativevalues.t -> unit

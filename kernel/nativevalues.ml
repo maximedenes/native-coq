@@ -157,11 +157,8 @@ let kind_of_value (v:t) =
     let tag = Obj.tag o in
     if tag = accumulate_tag then Vaccu (Obj.magic v)
     else 
-      if tag = Obj.closure_tag || tag = Obj.infix_tag then
-	Vfun v
+      if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
       else
-	begin 
-	  assert (accumulate_tag < tag && tag < Obj.lazy_tag);
-	  Vblock (Obj.magic v)
-	end
-	     
+        (* assert (tag = Obj.closure_tag || tag = Obj.infix_tag); 
+           or ??? what is 1002*)
+        Vfun v
