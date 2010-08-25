@@ -33,20 +33,16 @@ and translate_fields_type mp env (l,e) =
   | SFBconst cb ->
       let _,lid = const_lid mp (make_con mp empty_dirpath l) in
       <:sig_item< value $lid:lid$ : Nativevalues.t >>
-(*  | SFBmodule md ->
+  | SFBmodule md ->
       begin
         match md.mod_expr with
         | Some e ->
-            let mod_expr,annots =
-              translate_mod md.mod_mp env annots e
-            in
-            let mod_ast =
-              <:str_item< module $uid:string_of_label l$ = $mod_expr$ >>
-            in
-            mod_ast::ast, annots
+            let mod_type_expr = translate_mod_type md.mod_mp env e in
+            let uid = string_of_label l in
+            <:sig_item< module $uid:uid$ : $mod_type_expr$ >>
         | None -> assert false
       end
-  | SFBmodtype mdtyp ->
+(*  | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in
       <:str_item< module type $uid:string_of_label l$ = $tr$ >>*)
   | _ -> assert false
