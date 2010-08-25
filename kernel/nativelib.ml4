@@ -5,6 +5,8 @@ open Term
 open Util
 open Nativevalues
 
+exception NotConvertible
+
 (* Required to make camlp5 happy. *)
 let loc = Ploc.dummy
 
@@ -256,4 +258,65 @@ let lazy_norm lv =
   norm_val 0 v
 
 let print_nf c = Marshal.to_channel stdout (lazy_norm c) []
+
+let rec conv_val lvl v1 v2 = 
+  if not (v1 == v2) then 
+    match kind_of_value v1, kind_of_value v2 with
+    | Vaccu k1, Vaccu k2 ->
+	conv_accu lvl k1 k2
+    | Vfun f1, Vfun f2 -> 
+	conv_fun lvl f1 f2
+    | Vconst i1, Vconst i2 -> 
+(*        print_endline ("Vconst: "^string_of_int i1);*)
+	if i1 <> i2 then raise NotConvertible
+    | Vblock b1, Vblock b2 ->
+	let n1 = block_size b1 in
+	if block_tag b1 <> block_tag b2 || n1 <> block_size b2 then
+	  raise NotConvertible;
+        for i = 0 to n1 - 1 do 
+	  conv_val lvl (block_field b1 i) (block_field b2 i) 
+	done
+    | _, _ -> raise NotConvertible
+and conv_accu lvl k1 k2 = 
+  let n1 = accu_nargs k1 in
+  if n1 <> accu_nargs k2 then raise NotConvertible;
+(*  print_endline ("nargs: "^string_of_int n1);*)
+  conv_atom lvl (atom_of_accu k1) (atom_of_accu k2);
+  for i = 0 to n1 - 1 do
+    conv_val lvl (arg_of_accu k1 i) (arg_of_accu k2 i) 
+  done
+
+and conv_atom lvl a1 a2 =
+  if not (a1 == a2) then
+    match a1, a2 with
+    | Arel i1, Arel i2 -> 
+	if i1 <> i2 then raise NotConvertible
+    | Aid s1, Aid s2 ->
+        if s1 <> s2 then raise NotConvertible
+(* TODO    | Aconstruct(_,_,i1), Aconstruct(_,_,i2) -> 
+	if i1 <> i2 then raise NotConvertible*)
+(* TODO    | Acase(k1,f1,tbl1,_,it1), Acase(k2,f2,tbl2,_,it2) ->
+	let t1,t2 = get_type_of_index it1, get_type_of_index it2 in
+        if not (eq_type t1 t2) then raise NotConvertible;
+	conv_accu lvl k1 k2;
+	assert (tbl1==tbl2);
+	for i = 0 to Array.length tbl1 - 1 do
+	  let (tag,arity) = tbl1.(i) in
+	  let ci =
+ 	    if arity = 0 then mk_const tag 
+	    else 
+	      let args = Array.init arity (fun i -> mk_rel_accu (lvl+i)) in
+	      mk_block tag args in
+	  conv_val (lvl+arity) (f1 ci) (f2 ci)
+	done*)
+(* TODO    | Afix(_,f1,rp1,_,it1), Afix(_,f2,rp2,_,it2) ->
+	let t1, t2= get_type_of_index it1, get_type_of_index it2 in
+	if not (eq_type t1 t2) then raise NotConvertible;
+	if rp1 <> rp2 then raise NotConvertible;
+	conv_fun lvl f1 f2 *)
+    | _, _ -> raise NotConvertible
+
+and conv_fun lvl f1 f2 = 
+  let x = mk_rel_accu lvl in
+  conv_val (lvl+1) (f1 x) (f2 x)
 
