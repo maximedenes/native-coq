@@ -79,12 +79,12 @@ and translate_fields mp env (l,x) (ast,annots) =
       begin
         let kn = make_con mp empty_dirpath l in
         let _,lid = const_lid mp kn in
-        match cb.const_body with
-        | Some t -> 
+        match cb.const_opaque, cb.const_body with
+        | false, Some t -> 
             let env = pre_env env in
             let t = Declarations.force t in
             let tr,annots = translate ~annots mp env lid t in tr@ast,annots
-        | None ->
+        | _ ->
             let tr = opaque_const mp kn in 
             tr@ast,annots
       end
