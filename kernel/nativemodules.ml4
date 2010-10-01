@@ -34,14 +34,9 @@ and translate_fields_type mp env (l,e) =
       let _,lid = const_lid mp (make_con mp empty_dirpath l) in
       <:sig_item< value $lid:lid$ : Nativevalues.t >>
   | SFBmodule md ->
-      begin
-        match md.mod_expr with
-        | Some e ->
-            let mod_type_expr = translate_mod_type md.mod_mp env e in
-            let uid = string_of_label l in
-            <:sig_item< module $uid:uid$ : $mod_type_expr$ >>
-        | None -> assert false
-      end
+      let mod_type_expr = translate_mod_type md.mod_mp env md.mod_type in
+      let uid = string_of_label l in
+      <:sig_item< module $uid:uid$ : $mod_type_expr$ >>
 (*  | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in
       <:str_item< module type $uid:string_of_label l$ = $tr$ >>*)
