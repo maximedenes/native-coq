@@ -103,23 +103,30 @@ let rec strip_common_prefix l1 l2 =
   | hd1::tl1, hd2::tl2 ->
       if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
 
-let mk_relative_id base_mp (mp,lid) f =
+let mk_relative_id base_mp (mp,id) f g =
   let base_l = list_of_mp base_mp in
   let l = list_of_mp mp in
   let _,l = strip_common_prefix base_l l in
-  List.fold_right f l lid
+  match l with
+  | [] -> id
+  | hd1::tl1 ->
+      let e = List.fold_left (fun acc x -> f acc (g x)) (g hd1) tl1 in
+      f e id
 
 let relative_id_of_mp base_mp (mp,lid) =
- let f x acc = <:expr< $uid:x$.$acc$ >> in
- mk_relative_id base_mp (mp,lid) f
+ let f acc e = <:expr< $acc$.$e$ >> in
+ let g x = <:expr< $uid:x$ >> in
+ mk_relative_id base_mp (mp,lid) f g
 
 let relative_patt_of_mp base_mp (mp,lid) =
- let f x acc = <:patt< $uid:x$.$acc$ >> in
- mk_relative_id base_mp (mp,lid) f
+ let f acc e = <:patt< $acc$.$e$ >> in
+ let g x = <:patt< $uid:x$ >> in
+  mk_relative_id base_mp (mp,lid) f g
 
 let relative_type_of_mp base_mp (mp,lid) =
- let f x acc = <:ctyp< $uid:x$.$acc$ >> in
- mk_relative_id base_mp (mp,lid) f
+ let f acc e = <:ctyp< $acc$.$e$ >> in
+ let g x = <:ctyp< $uid:x$ >> in
+  mk_relative_id base_mp (mp,lid) f g
 
 let relative_mp_of_mp base_mp mp =
   let base_l = list_of_mp base_mp in
