@@ -86,7 +86,7 @@ and rebuild_constr n kns env ty t =
       let name,dom,codom  = decompose_prod env ty in
       mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
   | Rel i ->
-      mkRel (i+1)
+      mkRel (n-i)
   (*| App of lam * lam array*)
   | Const_int tag ->
     fst (construct_of_constr true env tag ty)
