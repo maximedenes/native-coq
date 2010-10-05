@@ -82,11 +82,15 @@ let rec app_construct_args n kns env t ty args =
 
 and rebuild_constr n kns env ty t =
   match t with
-  |  Lam st ->
+  | Lam st ->
       let name,dom,codom  = decompose_prod env ty in
       mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
   | Rel i ->
       mkRel (n-i)
+  | App (f,args) ->
+      let f = rebuild_constr n kns env mkSet f in
+      let args = Array.map (rebuild_constr n kns env mkSet) args in
+      mkApp (f,args)
   (*| App of lam * lam array*)
   | Const_int tag ->
     fst (construct_of_constr true env tag ty)
@@ -121,7 +125,11 @@ and rebuild_constr n kns env ty t =
       let c_constr = rebuild_constr n kns env mkSet c in
       let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
         mkCase (ci,p_constr,c_constr,ac_constr)
-   
+  | Prod (dom,codom) ->
+      let dom = rebuild_constr n kns env mkSet dom in
+      let codom = rebuild_constr (n+1) kns env mkSet codom in
+      mkProd (Name (id_of_string "x"),dom,codom) 
+
  (* | Fix of int * lam
 
     | Set -> mkSet
