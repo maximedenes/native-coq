@@ -595,6 +595,18 @@ let add_ind env c ind xs =
   let ast = translate_mind mb in
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
+let dump_rel_env mp env = 
+  let aux (_,t,_) (i,acc) =
+    let lid = lid_of_index (-i) in
+    match t with
+    | None -> (i+1,<:str_item< value $lid:lid$ = mk_rel_accu
+                $int:string_of_int (-i)$ >>::acc)
+    | Some body -> 
+        let (tr, annots) = translate mp env lid body in
+        (i+1,tr@acc)
+  in
+  snd (List.fold_right aux env.env_rel_context (1,[]))
+
 let dump_env mp terms env =
   let vars =
     List.fold_right (add_value env) env.env_named_vals Stringmap.empty
@@ -614,4 +626,5 @@ let dump_env mp terms env =
      <:str_item< open Nativevalues >>]
   in
   let (l,kns) = topological_sort initial_set vars_cons_ind in
-    (header @ l,kns)
+  let rels = dump_rel_env mp env in
+    (header @ rels @ l,kns)
