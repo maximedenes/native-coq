@@ -125,10 +125,10 @@ and rebuild_constr n kns env ty t =
       let c_constr = rebuild_constr n kns env mkSet c in
       let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
         mkCase (ci,p_constr,c_constr,ac_constr)
-  | Prod (dom,codom) ->
+  | Prod (x,dom,codom) ->
       let dom = rebuild_constr n kns env mkSet dom in
       let codom = rebuild_constr (n+1) kns env mkSet codom in
-      mkProd (Name (id_of_string "x"),dom,codom) 
+      mkProd (x,dom,codom) 
 
  (* | Fix of int * lam
 

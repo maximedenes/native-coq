@@ -26,7 +26,7 @@ type atom =
   | Avar of identifier
   | Acase of accumulator * t * (t -> t) * case_annot
   | Afix of t * (t -> t) * rec_pos
-  | Aprod of t * (t -> t)
+  | Aprod of name * t * (t -> t)
 
 type atom_fix = atom
 let dummy_atom_fix f rec_pos (*ntbl ti*)= Afix ((fun x -> x), f, rec_pos(*,ntbl,ti*))
@@ -73,8 +73,8 @@ let mk_var_accu id =
 let mk_sw_accu c p ac annot = 
   mk_accu (Acase(c,p,ac,annot))
 
-let mk_prod_accu dom codom =
-  mk_accu (Aprod (dom,codom))
+let mk_prod_accu s dom codom =
+  mk_accu (Aprod (s,dom,codom))
 
 let atom_of_accu (k:accumulator) =
   (Obj.magic (Obj.field (Obj.magic k) 1) : atom)

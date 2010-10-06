@@ -49,7 +49,8 @@ let compute_loc xs =
 let compile_module ast imports load_paths f =
   let code = expr_of_values ast in
   let code =
-    [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>]
+    [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
+     <:str_item< open Names >>]
     @ code
   in
   let code = compute_loc code in
@@ -73,6 +74,7 @@ let call_compiler env_code terms_code =
   let terms_code =
     [<:str_item< open Nativelib >>;
      <:str_item< open Nativevalues >>;
+     <:str_item< open Names >>;
      <:str_item< open $list: [env_name]$ >>] @ terms_code
   in
   Pcaml.input_file := "/dev/null";
@@ -148,7 +150,7 @@ type lam =
   | Const_int of int
   | Const_block of int * lam array
   | Case of string * int * lam * lam * lam array
-  | Prod of lam * lam
+  | Prod of name * lam * lam
   | Fix of int * lam 
 
 let pp_var fmt x =
@@ -238,9 +240,9 @@ and norm_atom lvl a =
       let lp = norm_val lvl p in
       let lac = Array.map (norm_branch lvl ac) tbl in
       Case(s,i,lp,lc,lac)
-  | Aprod (dom,codom) ->
+  | Aprod (x,dom,codom) ->
       let rel = mk_rel_accu lvl in
-      Prod(norm_val lvl dom, norm_val (lvl+1) (codom rel))
+      Prod(x, norm_val lvl dom, norm_val (lvl+1) (codom rel))
   | Afix(_,f,_) ->
       let fr = mk_rel_accu lvl in
       Fix(lvl, norm_val (lvl+1) (f fr))

@@ -190,6 +190,11 @@ let norm_lid id n i =
 let rec_lid id n i =
   "rec"^fix_lid id n i
 
+let expr_of_name x =
+  match x with
+  | Anonymous -> <:expr< Anonymous >>
+  | Name s -> <:expr< Name (id_of_string $str:string_of_id s$) >>
+
 (* First argument the index of the constructor *)
 let make_constructor_pattern base_mp mp ob i args =
   let uid,_ = construct_uid_patt base_mp (mp,ob.mind_consnames.(i)) in
@@ -284,10 +289,13 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
           let e = <:expr< mk_sort_accu ($str:t_id$,$int:string_of_int i$) >> in
           e, auxdefs, annots
       | Cast (c, _, ty) -> translate auxdefs annots n c
-      | Prod (_, t, c) ->
+      | Prod (x, t, c) ->
           let vt,auxdefs,annots = translate auxdefs annots n t in
           let vc,auxdefs,annots = translate auxdefs annots (n + 1) c in
-          let e = <:expr< mk_prod_accu $vt$ (fun $lid:lid_of_index n$ -> $vc$) >> in
+          let x = expr_of_name x in
+          let e =
+            <:expr< mk_prod_accu $x$ $vt$ (fun $lid:lid_of_index n$ -> $vc$) >>
+          in
             e, auxdefs, annots
       | Lambda (_, t, c) ->
           let v,auxdefs,annots = translate auxdefs annots (n + 1) c in
@@ -623,7 +631,8 @@ let dump_env mp terms env =
   print_endline (String.concat "," initial_set);
   let header =
     [<:str_item< open Nativelib >>;
-     <:str_item< open Nativevalues >>]
+     <:str_item< open Nativevalues >>;
+     <:str_item< open Names >>]
   in
   let (l,kns) = topological_sort initial_set vars_cons_ind in
   let rels = dump_rel_env mp env in
