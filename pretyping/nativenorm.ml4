@@ -11,6 +11,7 @@ open Unix
 open Nativelib
 open Nativecode
 open Inductiveops
+open Closure
 
 exception Find_at of int
 
@@ -28,10 +29,14 @@ let compile env c =
   let res = call_compiler dump code in
     res, kns
 
+let nf_betadeltaiotazeta env t =
+  norm_val (create_clos_infos betadeltaiota env) (inject t)
+
 let decompose_prod env t =
-  let (name,dom,codom as res) = destProd (whd_betadeltaiota env t) in
+  let (name,dom,codom) = destProd (whd_betadeltaiota env t) in
+  let dom = nf_betadeltaiotazeta env dom in
   if name = Anonymous then (Name (id_of_string "x"),dom,codom)
-  else res
+  else (name,dom,codom)
 
 let find_rectype_a env c =
   let (t, l) =
