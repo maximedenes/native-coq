@@ -50,7 +50,7 @@ type lam =
   | Const_int of int
   | Const_block of int * lam array
   | Case of string * int * lam * lam * lam array
-  | Prod of lam * lam
+  | Prod of name * lam * lam
   | Fix of int * lam 
 
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
