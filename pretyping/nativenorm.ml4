@@ -89,6 +89,7 @@ and rebuild_constr n kns env ty t =
   match t with
   | Lam st ->
       let name,dom,codom  = decompose_prod env ty in
+      let env = push_rel (name,None,dom) env in
       let t, _ = rebuild_constr (n+1) kns env codom st in
       mkLambda (name,dom,t),ty
   | Rel i ->
@@ -132,6 +133,7 @@ and rebuild_constr n kns env ty t =
         mkCase (ci,p_constr,c_constr,ac_constr), ty
   | Prod (x,dom,codom) ->
       let dom,_ = rebuild_constr n kns env mkSet dom in
+      let env = push_rel (x,None,dom) env in
       let codom,_ = rebuild_constr (n+1) kns env mkSet codom in
       mkProd (x,dom,codom), ty
   | _ -> assert false

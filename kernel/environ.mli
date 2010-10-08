@@ -198,7 +198,7 @@ val compile_constant_body :
                                  (* boxed *)
 
 val translate :
-  ?annots:Nativelib.NbeAnnotTbl.t -> module_path ->
+  ?annots:Nativelib.NbeAnnotTbl.t -> ?lift:int -> module_path ->
   env -> string -> Term.constr ->
     MLast.str_item list * NbeAnnotTbl.t
 

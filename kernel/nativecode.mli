@@ -12,7 +12,7 @@ val mod_uid_of_dirpath : dir_path -> string
 val relative_mp_of_mp : module_path -> module_path -> MLast.module_expr
 
 val translate :
-  ?annots:Nativelib.NbeAnnotTbl.t -> module_path ->
+  ?annots:Nativelib.NbeAnnotTbl.t -> ?lift : int -> module_path ->
   env -> string -> constr ->
     MLast.str_item list  * NbeAnnotTbl.t
 

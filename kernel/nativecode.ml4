@@ -267,7 +267,7 @@ let rec push_value id body env =
     to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
+and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
@@ -514,7 +514,7 @@ and translate_app auxdefs annots n c args =
         <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
 
   in
-  let tr,auxdefs,annots = translate ~global:true [] annots 0 t in
+  let tr,auxdefs,annots = translate ~global:true [] annots lift t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 let opaque_const mp kn =
@@ -605,16 +605,16 @@ let add_ind env c ind xs =
   Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
 
 let dump_rel_env mp env = 
-  let aux (_,t,_) (i,acc) =
+  let aux (i,acc) (_,t,_) =
     let lid = lid_of_index (-i) in
     match t with
     | None -> (i+1,<:str_item< value $lid:lid$ = mk_rel_accu
                 $int:string_of_int (-i)$ >>::acc)
     | Some body -> 
-        let (tr, annots) = translate mp env lid body in
+        let (tr, annots) = translate (~lift:-i) mp env lid body in
         (i+1,tr@acc)
   in
-  snd (List.fold_right aux env.env_rel_context (1,[]))
+  snd (List.fold_left aux (1,[]) env.env_rel_context)
 
 let dump_env mp terms env =
   let vars =
@@ -637,4 +637,4 @@ let dump_env mp terms env =
   in
   let (l,kns) = topological_sort initial_set vars_cons_ind in
   let rels = dump_rel_env mp env in
-    (header @ rels @ l,kns)
+    (header @ l @ rels,kns)
