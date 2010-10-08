@@ -285,8 +285,10 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
                       push_value id body env; v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
-          let annots,i = NbeAnnotTbl.add (SortAnnot s) annots in
-          let e = <:expr< mk_sort_accu ($str:t_id$,$int:string_of_int i$) >> in
+          let e =
+            <:expr< mk_sort_accu (Marshal.from_string
+               $str:Marshal.to_string s []$ 0) >>
+          in
           e, auxdefs, annots
       | Cast (c, _, ty) -> translate auxdefs annots n c
       | Prod (x, t, c) ->
@@ -310,7 +312,7 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
           let e,_ = const_lid mp c in
           e, auxdefs, annots
       | Ind c ->
-          <:expr< mk_id_accu $str:string_of_mind (fst c)$ >>, auxdefs, annots (* xxx *)
+          <:expr< mk_ind_accu (Marshal.from_string $str:Marshal.to_string c []$ 0) >>, auxdefs, annots
       | Construct cstr ->
           let i = index_of_constructor cstr in
           let ind = inductive_of_constructor cstr in
@@ -410,7 +412,7 @@ and translate ?(annots=NbeAnnotTbl.empty) mp env t_id t =
             let e = <:expr< let $list:atoms$ in $e$ >> in
             <:expr< let $list:norms$ in $e$ >>, auxdefs, annots
       | CoFix(ln, (_, tl, bl)) ->
-          <:expr< mk_id_accu $str:"cofix"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
       | _ -> assert false
 and translate_app auxdefs annots n c args =
   match kind_of_term c with
@@ -467,18 +469,16 @@ and translate_app auxdefs annots n c args =
       let body = apps tr args in
       ((pat1, None, body)::xs1,auxdefs,annots)
     in
-    let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
     let (bodies,auxdefs,annots) =
       array_fold_right_i f branches ([],auxdefs,annots)
     in
+    let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
     let match_lid = match_lid t_id annot_i in
     let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
     let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
-    let annot =
-      <:expr< ($str:t_id$,$int:string_of_int annot_i$,$tbl$) >>
-    in
     let neutral_match =
-      <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $annot$ >>
+      <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $tbl$
+        (Marshal.from_string $str:Marshal.to_string ci []$ 0) >>
     in
     let ind_lid,ind_str = mind_lid mp (mp',ob.mind_typename) in
     let accu_id = id_of_string ind_str in
@@ -519,7 +519,8 @@ and translate_app auxdefs annots n c args =
 
 let opaque_const mp kn =
   let _,lid = const_lid mp kn in
-  [<:str_item< value $lid:lid$ = mk_id_accu $str:lid$ >>]
+  [<:str_item< value $lid:lid$ = mk_constant_accu
+     (Marshal.from_string $str:Marshal.to_string kn []$ 0) >>]
 
 (** Collect all variables and constants in the term. *)
 let assums mp env t =

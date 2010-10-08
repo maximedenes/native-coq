@@ -1,5 +1,6 @@
 open Names
 open Term
+open Nativevalues
 
 exception NotConvertible
 
@@ -44,12 +45,14 @@ type tag
 type lam = 
   | Lam of lam
   | Rel of int
-  | Id of string
+  | Constant of constant
+  | Ind of inductive
+  | Sort of sorts
   | Var of identifier
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of string * int * lam * lam * lam array
+  | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
   | Fix of int * lam 
 

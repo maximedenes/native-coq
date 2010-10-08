@@ -144,12 +144,14 @@ type tag = int
 type lam = 
   | Lam of lam
   | Rel of int
-  | Id of string
+  | Constant of constant
+  | Ind of inductive
+  | Sort of sorts
   | Var of identifier
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of string * int * lam * lam * lam array
+  | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
   | Fix of int * lam 
 
@@ -231,15 +233,19 @@ and norm_atom lvl a =
   match a with
   | Arel i ->
       Rel i
-  | Aid s ->
-      Id s
+  | Aconstant c ->
+      Constant c
+  | Aind ind ->
+      Ind ind
+  | Asort s ->
+      Sort s
   | Avar id ->
       Var id
-  | Acase (c,p,ac,(s,i,tbl)) ->
+  | Acase (c,p,ac,tbl,ci) ->
       let lc = norm_accu lvl c in
       let lp = norm_val lvl p in
       let lac = Array.map (norm_branch lvl ac) tbl in
-      Case(s,i,lp,lc,lac)
+      Case(lp,lc,lac,ci)
   | Aprod (x,dom,codom) ->
       let rel = mk_rel_accu lvl in
       Prod(x, norm_val lvl dom, norm_val (lvl+1) (codom rel))
@@ -293,8 +299,8 @@ and conv_atom lvl a1 a2 =
     match a1, a2 with
     | Arel i1, Arel i2 -> 
 	if i1 <> i2 then raise NotConvertible
-    | Aid s1, Aid s2 ->
-        if s1 <> s2 then raise NotConvertible
+    | Aind ind1, Aind ind2 ->
+        if not (eq_ind ind1 ind2) then raise NotConvertible
 (* TODO    | Aconstruct(_,_,i1), Aconstruct(_,_,i2) -> 
 	if i1 <> i2 then raise NotConvertible*)
 (* TODO    | Acase(k1,f1,tbl1,_,it1), Acase(k2,f2,tbl2,_,it2) ->

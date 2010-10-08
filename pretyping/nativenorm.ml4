@@ -43,7 +43,7 @@ let find_rectype_a env c =
     let t = whd_betadeltaiota env c in
     try destApp t with _ -> (t,[||]) in
   match kind_of_term t with
-  | Ind ind -> (ind, l)
+  | Term.Ind ind -> (ind, l)
   | _ -> raise Not_found
 
 let type_constructor mind mib typ params =
