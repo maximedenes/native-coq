@@ -1,3 +1,4 @@
+open Term
 open Names
 
 type t = t -> t
@@ -9,18 +10,17 @@ type arity = int
 
 type reloc_table = (tag * arity) array
 
-type case_annot = string * int * reloc_table
-
 type sort_annot = string * int
       
 type rec_pos = int
 
 type atom =
   | Arel of int
-  | Aid of string
-  | Asort of sort_annot
+  | Aconstant of constant
+  | Aind of inductive
+  | Asort of sorts
   | Avar of identifier
-  | Acase of accumulator * t * (t -> t) * case_annot
+  | Acase of accumulator * t * (t -> t) * reloc_table * case_info
   | Afix of t * (t -> t) * rec_pos
   | Aprod of name * t * (t -> t)
 
@@ -32,10 +32,11 @@ val upd_fix_atom : atom_fix -> t -> unit
 
 val mk_accu : atom -> t
 val mk_rel_accu : int -> t
-val mk_id_accu : string -> t
-val mk_sort_accu : sort_annot -> t
+val mk_constant_accu : constant -> t
+val mk_ind_accu : inductive -> t
+val mk_sort_accu : sorts -> t
 val mk_var_accu : identifier -> t
-val mk_sw_accu : accumulator -> t -> (t -> t) -> case_annot -> t
+val mk_sw_accu : accumulator -> t -> (t -> t) -> reloc_table -> case_info -> t
 val mk_prod_accu : name -> t -> t -> t
 val mk_fix_accu : atom -> t
 

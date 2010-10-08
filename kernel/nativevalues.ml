@@ -1,3 +1,4 @@
+open Term
 open Names
 
 type t = t -> t
@@ -14,17 +15,17 @@ type reloc_table = (tag * arity) array
   | KOCconst of tag
   | KOCblock of tag * arity*)
     
-type case_annot = string * int * reloc_table
 type sort_annot = string * int
 
 type rec_pos = int
 
 type atom = 
   | Arel of int
-  | Aid of string
-  | Asort of sort_annot
+  | Aconstant of constant
+  | Aind of inductive
+  | Asort of sorts
   | Avar of identifier
-  | Acase of accumulator * t * (t -> t) * case_annot
+  | Acase of accumulator * t * (t -> t) * reloc_table * case_info
   | Afix of t * (t -> t) * rec_pos
   | Aprod of name * t * (t -> t)
 
@@ -61,17 +62,20 @@ let mk_accu (a:atom) = mk_accu_gen raccumulate a
 let mk_rel_accu i = 
   mk_accu (Arel i)
 
-let mk_id_accu s = 
-  mk_accu (Aid s)
+let mk_constant_accu kn = 
+  mk_accu (Aconstant kn)
 
-let mk_sort_accu annot =
-  mk_accu (Asort annot)
+let mk_ind_accu s = 
+  mk_accu (Aind s)
+
+let mk_sort_accu s =
+  mk_accu (Asort s)
 
 let mk_var_accu id = 
   mk_accu (Avar id)
 
-let mk_sw_accu c p ac annot = 
-  mk_accu (Acase(c,p,ac,annot))
+let mk_sw_accu c p ac tbl ci = 
+  mk_accu (Acase(c,p,ac,tbl,ci))
 
 let mk_prod_accu s dom codom =
   mk_accu (Aprod (s,dom,codom))
