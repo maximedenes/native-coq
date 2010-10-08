@@ -79,7 +79,7 @@ let rec app_construct_args n kns env t ty args =
     Array.fold_right
         (fun arg (ty,args) ->
            let _,dom,codom = try decompose_prod env ty with _ -> exit 124 in
-           let t = rebuild_constr (n+1) kns env dom arg in
+           let t,_ = rebuild_constr (n+1) kns env dom arg in
            (subst1 t codom, t::args))
         args (ty,[])
   in
@@ -89,90 +89,52 @@ and rebuild_constr n kns env ty t =
   match t with
   | Lam st ->
       let name,dom,codom  = decompose_prod env ty in
-      mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
+      let t, _ = rebuild_constr (n+1) kns env codom st in
+      mkLambda (name,dom,t),ty
   | Rel i ->
-      mkRel (n-i)
+      let l = n - i in
+      let (_,_,ty) = lookup_rel l env in
+      mkRel l, lift l ty
+  | Constant c ->
+      mkConst c, Typeops.type_of_constant env c
   | App (f,args) ->
-      let f = rebuild_constr n kns env mkSet f in
-      let args = Array.map (rebuild_constr n kns env mkSet) args in
-      mkApp (f,args)
-  (*| App of lam * lam array*)
+      let f,t = rebuild_constr n kns env mkSet f in
+      let aux (args,ty) arg =
+        let _,dom,codom = decompose_prod env ty in
+        let c,_ = rebuild_constr n kns env dom arg in
+        (c::args,subst1 c codom)
+      in
+      let args,ty = Array.fold_left aux ([],t) args in
+      mkApp(f,Array.of_list (List.rev args)), ty
   | Const_int tag ->
-    fst (construct_of_constr true env tag ty)
+    fst (construct_of_constr true env tag ty), ty
   | Const_block (tag,args) ->
       let capp,ctyp = construct_of_constr false env tag ty in
-      app_construct_args n kns env capp ctyp args
-  | Id s ->
-       print_endline ("Rebuilding id: "^s);
-       let (ik,_) = Stringmap.find s kns in
-       print_endline "ok";
-      (match ik with
-        | ConstKey c -> mkConst c
-        | IndKey ind -> mkInd ind
-        (*| VarKey id -> mkVar id*)
-        | _ -> assert false)
+      app_construct_args n kns env capp ctyp args, ctyp
+  | Ind ind ->
+    let ty = type_of_inductive env ind in
+    mkInd ind, ty
+  | Sort s ->
+      mkSort s, ty
   | Var id ->
-      mkVar id
-  
-  | Case (s,i,p,c,ac) ->
-      let (_,annots) = Stringmap.find s kns in
-      let ci = match NbeAnnotTbl.find i annots with
-        | CaseAnnot ci -> ci
-        | _ -> assert false
-      in
-      let (mind,_ as ind),allargs = find_rectype_a env ty in
+      let (_,_,ty) = lookup_named id env in
+      mkVar id, ty
+  | Case (p,c,ac,ci) ->
+      let (mind,_ as ind),allargs = print_endline "Case"; find_rectype_a env ty in
       let (mib,mip) = Inductive.lookup_mind_specif env ind in
       let nparams = mib.mind_nparams in
       let params,realargs = Util.array_chop nparams allargs in
       let ind_family = make_ind_family (ind,Array.to_list params) in
       let pT = arity_of_case_predicate env ind_family true set_sort in 
-      let p_constr = rebuild_constr n kns env pT p in
-      let c_constr = rebuild_constr n kns env mkSet c in
-      let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
-        mkCase (ci,p_constr,c_constr,ac_constr)
+      let p_constr,_ = rebuild_constr n kns env pT p in
+      let c_constr,_ = rebuild_constr n kns env mkSet c in
+      let ac_constr = Array.map (fun x -> fst (rebuild_constr n (**) kns env ty x)) ac in
+        mkCase (ci,p_constr,c_constr,ac_constr), ty
   | Prod (x,dom,codom) ->
-      let dom = rebuild_constr n kns env mkSet dom in
-      let codom = rebuild_constr (n+1) kns env mkSet codom in
-      mkProd (x,dom,codom) 
-
- (* | Fix of int * lam
-
-    | Set -> mkSet
-    | Prop -> mkProp
-    | Type u -> mkType (type1_univ)
-    | Lambda st ->
-        let name,dom,codom  = decompose_prod env ty in
-        mkLambda (name,dom,rebuild_constr (n+1) kns env codom st)
-    | Rel i -> mkRel (i+1)
-    | Var id -> mkVar id
-    | Con s ->
-        let (ik,_) = Stringmap.find s kns in
-        (match ik with
-          | ConstKey c -> mkConst c
-          | _ -> assert false)
-    | App (f::l) ->
-        let ft = rebuild_constr n kns env mkSet f in
-        let lt = List.map (rebuild_constr n kns env mkSet) l in
-          mkApp (ft,Array.of_list lt)
-    | Const (i,args) ->
-      let (mind,_ as ind), allargs = find_rectype_args env ty in
-      let mib,mip = lookup_mind_specif env ind in
-      let nparams = mib.mind_nparams in
-      let params = Array.sub allargs 0 nparams in
-      let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
-      let t = mkApp(mkConstruct(ind,i), params) in
-        app_construct_args n kns env t ctyp args
-    | Match (s,i,pi,c,ac) ->
-      let (_,annots) = Stringmap.find s kns in
-      let ci = match NbeAnnotTbl.find i annots with
-        | CaseAnnot ci -> ci
-        | _ -> assert false
-      in
-      let pi_constr = rebuild_constr n kns env ty pi in
-      let c_constr = rebuild_constr n kns env mkSet c in
-      let ac_constr = Array.map (rebuild_constr n (**) kns env ty) ac in
-        mkCase (ci,pi_constr,c_constr,ac_constr)*)
-    | _ -> assert false
+      let dom,_ = rebuild_constr n kns env mkSet dom in
+      let codom,_ = rebuild_constr (n+1) kns env mkSet codom in
+      mkProd (x,dom,codom), ty
+  | _ -> assert false
 
 let native_norm env c ty =
   let res, kns = compile (pre_env env) c in
@@ -181,5 +143,5 @@ let native_norm env c ty =
       print_endline "Normalizing...";
       let ch_in = open_process_in "./a.out" in
       let nf = Marshal.from_channel ch_in in
-        rebuild_constr 0 kns env ty nf
+        fst (rebuild_constr 0 kns env ty nf)
     | _ -> anomaly "Compilation failure" 
