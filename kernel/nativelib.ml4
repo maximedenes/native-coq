@@ -206,6 +206,9 @@ let mk_block lvl tag arity =
   let ids = Array.init arity (fun i -> lvl + i) in
   ids,Nativevalues.mk_block tag (Array.map mk_rel_accu ids)
 
+let rec push_abstractions n t =
+  if n = 0 then t else Lam (push_abstractions (n-1) t)
+
 let rec norm_val lvl v =
   match Nativevalues.kind_of_value v with
   | Vaccu k ->
@@ -259,7 +262,7 @@ and norm_branch lvl f (tag,arity) =
       norm_val lvl (f (Nativevalues.mk_const tag))
   | _ ->
       let _, v = mk_block lvl tag arity in
-      norm_val (lvl + arity) (f v)
+      push_abstractions arity (norm_val (lvl + arity) (f v))
 
 let lazy_norm lv =
   let v = Lazy.force lv in
