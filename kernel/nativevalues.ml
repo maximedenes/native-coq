@@ -26,11 +26,11 @@ type atom =
   | Asort of sorts
   | Avar of identifier
   | Acase of accumulator * t * (t -> t) * reloc_table * case_info
-  | Afix of t * (t -> t) * rec_pos
+  | Afix of t * (t -> t) * rec_pos * name * t
   | Aprod of name * t * (t -> t)
 
 type atom_fix = atom
-let dummy_atom_fix f rec_pos (*ntbl ti*)= Afix ((fun x -> x), f, rec_pos(*,ntbl,ti*))
+let dummy_atom_fix f rec_pos ls tys = Afix ((fun x -> x), f, rec_pos, ls, tys)
 let upd_fix_atom af frec =
      (Obj.set_field (Obj.magic af) 0 (Obj.magic frec))
 
@@ -97,7 +97,7 @@ let is_accu x =
 
 let accumulate_fix_code (k:accumulator) (a:t) =
   match atom_of_accu k with
-  | Afix(frec,_,rec_pos) ->
+  | Afix(frec,_,rec_pos,_,_) ->
       let nargs = accu_nargs k in
       if nargs <> rec_pos || is_accu a then
 	accumulate_code k a

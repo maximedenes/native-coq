@@ -136,11 +136,16 @@ and rebuild_constr n kns env ty t =
       let ac_constr = Array.mapi aux ac in
         mkCase (ci,p_constr,c_constr,ac_constr), ty
   | Prod (x,dom,codom) ->
+      print_endline "Product in normal form";
       let dom,_ = rebuild_constr n kns env mkSet dom in
       let env = push_rel (x,None,dom) env in
       let codom,_ = rebuild_constr (n+1) kns env mkSet codom in
       mkProd (x,dom,codom), ty
-  | _ -> assert false
+  | Fix (l,rec_pos,ty,t) -> (* TODO : reification of mutual fixpoints *)
+      print_endline "Fix in normal form";
+      let ty,_ = rebuild_constr n kns env mkSet ty in
+      let t,_ = rebuild_constr (n+1) kns env ty t in
+      mkFix (([|rec_pos|],0),([|l|],[|ty|],[|t|])), ty
 
 let native_norm env c ty =
   let res, kns = compile (pre_env env) c in
