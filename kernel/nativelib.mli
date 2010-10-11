@@ -54,7 +54,7 @@ type lam =
   | Const_block of int * lam array
   | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
-  | Fix of int * lam 
+  | Fix of name * rec_pos * lam * lam 
 
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
 val string_of_term : int -> term -> string

@@ -332,7 +332,7 @@ and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
           let u = (ci, p, c, branches) in
           let ast, auxdefs, annots, _ = translate_case auxdefs annots n u None in
             ast, auxdefs, annots
-      | Fix ((recargs, i), (_, _, bodies)) -> (* TODO : compile mutual fixpoints *)
+      | Fix ((recargs, i), (names, types, bodies)) ->
           let m = Array.length bodies in
           let abs_over_bodies e = push_abstractions n m e in
           let rec map_bodies acc i =
@@ -385,7 +385,13 @@ and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
             let tr_norm = abs_over_bodies tr_norm in
             let norms = (<:patt< $lid:norm_lid$>>, tr_norm)::norms in
             let arg_str = string_of_int recargs.(i) in
-            let atom = <:expr< dummy_atom_fix $lid:norm_lid$ $int:arg_str$>> in
+            let name_expr =
+              <:expr< Marshal.from_string $str:Marshal.to_string names.(i) []$ 0 >>
+            in
+            let tr_ty, auxdefs, annots = translate auxdefs annots n types.(i) in
+            let atom =
+              <:expr< dummy_atom_fix $lid:norm_lid$ $int:arg_str$
+                $name_expr$ $tr_ty$ >> in
             let atoms = (<:patt< $lid:atom_lid$ >>, atom)::atoms in
             let upd = <:expr< upd_fix_atom $lid:atom_lid$ $lid:rec_lid$ >> in
             let updates = (<:patt< _ >>, upd)::updates in

@@ -21,11 +21,11 @@ type atom =
   | Asort of sorts
   | Avar of identifier
   | Acase of accumulator * t * (t -> t) * reloc_table * case_info
-  | Afix of t * (t -> t) * rec_pos
+  | Afix of t * (t -> t) * rec_pos * name * t
   | Aprod of name * t * (t -> t)
 
 type atom_fix = atom 
-val dummy_atom_fix : t -> int -> (*int -> int ->*) atom_fix
+val dummy_atom_fix : t -> int -> name -> t -> atom_fix
 val upd_fix_atom : atom_fix -> t -> unit
 
 (* Constructors *)

@@ -153,7 +153,7 @@ type lam =
   | Const_block of int * lam array
   | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
-  | Fix of int * lam 
+  | Fix of name * rec_pos * lam * lam 
 
 let pp_var fmt x =
   Format.fprintf fmt "v%i" x
@@ -252,9 +252,9 @@ and norm_atom lvl a =
   | Aprod (x,dom,codom) ->
       let rel = mk_rel_accu lvl in
       Prod(x, norm_val lvl dom, norm_val (lvl+1) (codom rel))
-  | Afix(_,f,_) ->
+  | Afix(_,f,rec_pos,l,ty) ->
       let fr = mk_rel_accu lvl in
-      Fix(lvl, norm_val (lvl+1) (f fr))
+      Fix (l, rec_pos, norm_val lvl ty, norm_val (lvl+1) (f fr))
 
 and norm_branch lvl f (tag,arity) =
   match arity with
