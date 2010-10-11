@@ -76,14 +76,14 @@ let construct_of_constr const env tag typ =
 
 let rec app_construct_args n kns env t ty args =
   let (_,xs) =
-    Array.fold_right
-        (fun arg (ty,args) ->
+    Array.fold_left
+        (fun (ty,args) arg ->
            let _,dom,codom = try decompose_prod env ty with _ -> exit 124 in
            let t,_ = rebuild_constr (n+1) kns env dom arg in
            (subst1 t codom, t::args))
-        args (ty,[])
+        (ty,[]) args
   in
-    Term.mkApp (t,Array.of_list xs)
+    Term.mkApp (t,Array.of_list (List.rev xs))
 
 and rebuild_constr n kns env ty t =
   match t with
