@@ -111,7 +111,7 @@ and rebuild_constr n kns env ty t =
     fst (construct_of_constr true env tag ty), ty
   | Const_block (tag,args) ->
       let capp,ctyp = construct_of_constr false env tag ty in
-      app_construct_args n kns env capp ctyp args, ctyp
+      app_construct_args n kns env capp ctyp args, ty
   | Ind ind ->
     let ty = type_of_inductive env ind in
     mkInd ind, ty
@@ -129,7 +129,11 @@ and rebuild_constr n kns env ty t =
       let pT = arity_of_case_predicate env ind_family true set_sort in 
       let p_constr,_ = rebuild_constr n kns env pT p in
       let c_constr,_ = rebuild_constr n kns env mkSet c in
-      let ac_constr = Array.map (fun x -> fst (rebuild_constr n (**) kns env ty x)) ac in
+      let aux i x =
+        let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i)) params in
+        fst (rebuild_constr n (* + nparams ? *) kns env ctyp x)
+      in
+      let ac_constr = Array.mapi aux ac in
         mkCase (ci,p_constr,c_constr,ac_constr), ty
   | Prod (x,dom,codom) ->
       let dom,_ = rebuild_constr n kns env mkSet dom in

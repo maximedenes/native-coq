@@ -247,7 +247,7 @@ let free_vars n t = free_vars_acc n [] t
 
 let dump_reloc_tbl tbl =
   let f (tag,arity) =
-    <:expr< ($int:string_of_int tag$,$int:string_of_int arity$) >>
+    <:expr< ($int:string_of_int (tag+1)$,$int:string_of_int arity$) >>
   in
   <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
@@ -476,8 +476,15 @@ and translate_app auxdefs annots n c args =
     let match_lid = match_lid t_id annot_i in
     let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
     let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
+    let fv = free_vars_acc n [] p in
+    let fv = Array.fold_left (free_vars_acc n) fv branches in
+    let fv = List.map (fun i -> lid_of_index i) fv in 
+    let match_app =
+      List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>)
+        fv <:expr< $lid:match_lid$ >>
+    in
     let neutral_match =
-      <:expr< mk_sw_accu (cast_accu c) $p_tr$ $lid:match_lid$ $tbl$
+      <:expr< mk_sw_accu (cast_accu c) $p_tr$ $match_app$ $tbl$
         (Marshal.from_string $str:Marshal.to_string ci []$ 0) >>
     in
     let ind_lid,ind_str = mind_lid mp (mp',ob.mind_typename) in
@@ -485,9 +492,6 @@ and translate_app auxdefs annots n c args =
     let accu_expr,_ = construct_uid_patt ~accu:true mp (mp',accu_id) in
     let default = (<:patt< $accu_expr$ _ >>, None, neutral_match) in
     let (tr,auxdefs,annots) = translate auxdefs annots n c in
-    let fv = free_vars_acc n [] p in
-    let fv = Array.fold_left (free_vars_acc n) fv branches in
-    let fv = List.map (fun i -> lid_of_index i) fv in 
     let match_body =
       <:expr< match (Obj.magic c : $ind_lid$) with
       [$list:default::bodies$] >>
@@ -497,21 +501,17 @@ and translate_app auxdefs annots n c args =
       match_body ("c"::fv)
     in
     let aux_body = match aux_neutral with
-    | Some e ->
+      | Some e ->
         let default = (<:patt< $accu_expr$ _ >>, None, e) in
         <:expr< match (Obj.magic $tr$ : $ind_lid$) with
-        [$list:default::bodies$] >>
+          [$list:default::bodies$] >>
         (*List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>) r fv*)
       | None -> match_body
-        in
-        let auxdefs =
-          <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs
-        in
-        let match_app =
-          List.fold_right (fun arg e -> <:expr< $e$ $lid:arg$ >>)
-          fv <:expr< $lid:match_lid$ >>
-        in
-        <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
+    in
+    let auxdefs =
+      <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs
+    in
+      <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
 
   in
   let tr,auxdefs,annots = translate ~global:true [] annots lift t in
