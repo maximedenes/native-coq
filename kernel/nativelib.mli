@@ -71,3 +71,6 @@ val normalize : int -> term -> term*)
 val print_nf : Nativevalues.t Lazy.t -> unit
 
 val conv_val : int -> Nativevalues.t -> Nativevalues.t -> unit
+
+val str_encode : 'a -> string
+val str_decode : string -> 'a

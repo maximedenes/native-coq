@@ -272,8 +272,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
           end
       | Sort s -> (* TODO: check universe constraints *)
           let e =
-            <:expr< mk_sort_accu (Marshal.from_string
-               $str:Marshal.to_string s []$ 0) >>
+            <:expr< mk_sort_accu (str_decode $str:str_encode s$) >>
           in
           e, auxdefs, annots
       | Cast (c, _, ty) -> translate auxdefs annots n c
@@ -298,7 +297,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
           let e,_ = const_lid mp c in
           e, auxdefs, annots
       | Ind c ->
-          <:expr< mk_ind_accu (Marshal.from_string $str:Marshal.to_string c []$ 0) >>, auxdefs, annots
+          <:expr< mk_ind_accu (str_decode $str:str_encode c$) >>, auxdefs, annots
       | Construct cstr ->
           let i = index_of_constructor cstr in
           let ind = inductive_of_constructor cstr in
@@ -372,7 +371,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
             let norms = (<:patt< $lid:norm_lid$>>, tr_norm)::norms in
             let arg_str = string_of_int recargs.(i) in
             let name_expr =
-              <:expr< Marshal.from_string $str:Marshal.to_string names.(i) []$ 0 >>
+              <:expr< str_decode $str:str_encode names.(i)$ >>
             in
             let tr_ty, auxdefs, annots = translate auxdefs annots n types.(i) in
             let atom =
@@ -477,7 +476,7 @@ and translate_app auxdefs annots n c args =
     in
     let neutral_match =
       <:expr< mk_sw_accu (cast_accu c) $p_tr$ $match_app$ $tbl$
-        (Marshal.from_string $str:Marshal.to_string ci []$ 0) >>
+        (str_decode $str:str_encode ci$) >>
     in
     let ind_lid,ind_str = mind_lid mp (mp',ob.mind_typename) in
     let accu_id = id_of_string ind_str in
@@ -512,7 +511,7 @@ and translate_app auxdefs annots n c args =
 let opaque_const mp kn =
   let _,lid = const_lid mp kn in
   [<:str_item< value $lid:lid$ = mk_constant_accu
-     (Marshal.from_string $str:Marshal.to_string kn []$ 0) >>]
+     (str_decode $str:str_encode kn$) >>]
 
 (** Collect all variables and constants in the term. *)
 let assums mp env t =
