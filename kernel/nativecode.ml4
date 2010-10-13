@@ -251,23 +251,9 @@ let dump_reloc_tbl tbl =
   in
   <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
-(* TODO : rewrite this function for modules *)
-let rec push_value id body env =
-  let kind = lookup_named_val id env in
-    match !kind with
-      | VKvalue (v, _) -> ()
-      | VKnone ->
-          let dummy_mp = MPfile empty_dirpath in
-          let _,id = var_lid id in
-          let (tr, annots) = translate dummy_mp env id body in
-          let v,d = (values tr, Idset.empty) (* TODO : compute actual idset *)
-         in kind := VKvalue (v,d)
-
-(** The side-effect of translate is to add the translated construction
-    to the value environment. *)
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
-and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
+let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
       | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
@@ -282,7 +268,7 @@ and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                       <:expr< mk_var_accu $id_app$>>, auxdefs, annots
 		| Some body ->
 	            let v,_ = var_lid id in
-                      push_value id body env; v, auxdefs, annots
+                    v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
           let e =
@@ -577,19 +563,21 @@ let translate_mind mb =
 
 (* Code dumping functions *)
 (* TODO: rewrite this function for modules *)
-let add_value env (id, value) xs =
-  match !value with
-  | VKvalue (v, _) ->
-      let _,sid = var_lid id in
-      let ast = expr_of_values v in
-      let (_, b, _) = Sign.lookup_named id env.env_named_context in
-      let deps = (match b with
-      | None -> [] 
-      | Some body -> let res = assums (MPfile empty_dirpath) env body in
-      (*print_endline (sid^"(named_val) assums "^String.concat "," res);*)
-      res)
-      in Stringmap.add sid (VarKey id, NbeAnnotTbl.empty, ast, deps) xs
-    | VKnone -> xs
+let add_value env (id, _) xs =
+  let dummy_mp = MPfile empty_dirpath in
+  let (_, b, _) = Sign.lookup_named id env.env_named_context in
+  let _,lid = var_lid id in
+  let ast, annots, deps = match b with
+  | None ->
+      let id_app =
+        <:expr< Names.id_of_string $str:string_of_id id$ >>
+      in
+      [<:str_item< value $lid:lid$ = mk_var_accu $id_app$>>], NbeAnnotTbl.empty, []
+  | Some body ->
+      let (ast,annots) = translate dummy_mp env lid body in
+      ast, annots, assums (MPfile empty_dirpath) env body
+  in
+  Stringmap.add lid (VarKey id, annots, ast, deps) xs
 
 let add_constant mp env kn ck xs =
   match (fst ck).const_opaque, (fst ck).const_body with
