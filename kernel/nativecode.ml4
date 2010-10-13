@@ -374,7 +374,7 @@ and translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                     translate auxdefs annots (n+m+lvl) t
                   in
                   let tr_rec =
-                    <:expr< if is_accu $lid:lid_of_index (n+m)$ then
+                    <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then
                       $atom_app$ else let $list:mappings$ in $tr_norm$ >>
                   in
                   abs tr_rec, abs tr_norm, auxdefs, annots
