@@ -256,13 +256,16 @@ and norm_atom lvl a =
       let fr = mk_rel_accu lvl in
       Fix (l, rec_pos, norm_val lvl ty, norm_val (lvl+1) (f fr))
 
+(** Reifies a branch in a case.                                          **)
+(** Does not build abstractions for binders under construtors, they will **)
+(** be added in the final constr.                                        **)
 and norm_branch lvl f (tag,arity) =
   match arity with
   | 0 ->
       norm_val lvl (f (Nativevalues.mk_const tag))
   | _ ->
       let _, v = mk_block lvl tag arity in
-      push_abstractions arity (norm_val (lvl + arity) (f v))
+      norm_val (lvl + arity) (f v)
 
 let lazy_norm lv =
   let v = Lazy.force lv in
