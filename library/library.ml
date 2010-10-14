@@ -231,8 +231,15 @@ let opened_libraries () =
      be performed first, thus the libraries_loaded_list ... *)
 
 let register_loaded_library m =
+  let link m =
+    let dirname = Filename.dirname (library_full_filename m.library_name) in
+    let f = Nativecode.mod_uid_of_dirpath m.library_name ^ ".cmxs" in
+    print_endline ("Dynlinking: "^(Filename.concat dirname f)) ;
+    try Dynlink.loadfile (Filename.concat dirname f)
+    with Dynlink.Error e -> print_endline (Dynlink.error_message e)
+  in
   let rec aux = function
-    | [] -> [m]
+    | [] -> link m ; [m]
     | m'::_ as l when m'.library_name = m.library_name -> l
     | m'::l' -> m' :: aux l' in
   libraries_loaded_list := aux !libraries_loaded_list;
@@ -626,7 +633,7 @@ let error_recursively_dependent_library dir =
 
 (* Security weakness: file might have been changed on disk between
    writing the content and computing the checksum... *)
-let save_library_to dir f mlf =
+let save_library_to dir f =
   let cenv, seg, (ast, annots), imports = Declaremods.end_library dir in
   let cenv, table = LightenLibrary.save cenv in
   let md = {
@@ -654,8 +661,8 @@ let save_library_to dir f mlf =
     let f s = Nativecode.mod_uid_of_dirpath s in
     let imports = List.map f imports in
     let lp = List.map System.string_of_physical_path (get_load_paths ()) in
-    let mlf = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir^".ml" in
-    match Nativelib.compile_module ast imports lp mlf with
+    let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
+    match Nativelib.compile_module ast imports lp fn with
       | 0 -> ()
       | _ -> anomaly "Library compilation failure"
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e

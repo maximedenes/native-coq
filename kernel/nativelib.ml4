@@ -58,35 +58,28 @@ let compile_module ast imports load_paths f =
     Pcaml.output_file := Some (f^".pr");
     Pcaml.inter_phrases := Some "\n";
     !Pcaml.print_implem code;
-    print_implem f code;
+    print_implem (f^".ml") code;
   let imports = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
-    "ocamlopt.opt -c -rectypes "^include_dirs^imports^include_libs^f
+    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^imports^f^".ml"
   in
   Sys.command comp_cmd
 
 
 let call_compiler env_code terms_code =
-  if Sys.file_exists (env_name^".ml") then
-    anomaly (env_name ^".ml already exists");
   if Sys.file_exists (terms_name^".ml") then
     anomaly (terms_name ^".ml already exists");
   let terms_code =
     [<:str_item< open Nativelib >>;
      <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>;
-     <:str_item< open $list: [env_name]$ >>] @ terms_code
+     <:str_item< open Names >>] @ terms_code
   in
   Pcaml.input_file := "/dev/null";
-  Pcaml.output_file := Some "envpr.ml";
-  Pcaml.inter_phrases := Some "\n";
-  !Pcaml.print_implem (compute_loc env_code);
   Pcaml.output_file := Some "termspr.ml";
+  Pcaml.inter_phrases := Some "\n";
   !Pcaml.print_implem (compute_loc terms_code);
-  print_implem (env_name^".ml") (compute_loc env_code);
   print_implem (terms_name^".ml") (compute_loc terms_code);
-  let file_names = env_name^".ml "^terms_name^".ml" in
-  let _ = Sys.command ("touch "^env_name^".ml") in
+  let file_names = terms_name^".ml" in
   print_endline "Compilation...";
   let include_dirs =
     include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
@@ -94,7 +87,7 @@ let call_compiler env_code terms_code =
   let imports = List.map (fun s -> s^".cmx") !imports in
   let imports = String.concat " " imports ^ " " in
   let comp_cmd =
-    "ocamlopt.opt -rectypes "^include_dirs^include_libs^imports^file_names
+    "ocamlopt.opt -shared -o Coq_conv.cmxs -rectypes "^include_dirs^file_names
   in
   let res = Sys.command comp_cmd in
   let _ = Sys.command ("rm "^file_names) in
@@ -154,6 +147,8 @@ type lam =
   | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
   | Fix of name * rec_pos * lam * lam 
+
+let rnorm = ref (Rel (-1))
 
 let pp_var fmt x =
   Format.fprintf fmt "v%i" x

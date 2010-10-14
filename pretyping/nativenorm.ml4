@@ -24,7 +24,7 @@ let compile env c =
   let (dump,kns) = dump_env mp [c] env in
   let kns = Stringmap.add "t1" (RelKey (-1),annots) kns in
   let code =
-    code @ [<:str_item< value _ = print_nf (lazy $lid:"t1"$) >>]
+    code @ [<:str_item< value _ = rnorm.val := lazy_norm (lazy $lid:"t1"$) >>]
   in
   let res = call_compiler dump code in
     res, kns
@@ -184,7 +184,8 @@ let native_norm env c ty =
   match res with
     | 0 ->
       print_endline "Normalizing...";
-      let ch_in = open_process_in "./a.out" in
-      let nf = Marshal.from_channel ch_in in
-        fst (rebuild_constr 0 kns env ty nf)
+      try Dynlink.loadfile "Coq_conv.cmxs"
+      with Dynlink.Error e -> print_endline (Dynlink.error_message e);
+      print_endline "Dynlink ok";
+        fst (rebuild_constr 0 kns env ty !Nativelib.rnorm)
     | _ -> anomaly "Compilation failure" 

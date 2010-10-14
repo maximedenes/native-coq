@@ -56,6 +56,8 @@ type lam =
   | Prod of name * lam * lam
   | Fix of name * rec_pos * lam * lam 
 
+val rnorm : lam ref
+
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
 val string_of_term : int -> term -> string
 val bug : term -> 'a
@@ -69,6 +71,7 @@ val app : term -> term -> term
 val compare : int -> term -> term -> unit
 val normalize : int -> term -> term*)
 val print_nf : Nativevalues.t Lazy.t -> unit
+val lazy_norm : Nativevalues.t Lazy.t -> lam
 
 val conv_val : int -> Nativevalues.t -> Nativevalues.t -> unit
 
