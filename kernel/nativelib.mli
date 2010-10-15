@@ -77,3 +77,6 @@ val conv_val : int -> Nativevalues.t -> Nativevalues.t -> unit
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a
+
+val extern_state : string -> unit
+val intern_state : string -> unit
