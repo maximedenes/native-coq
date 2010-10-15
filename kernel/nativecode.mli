@@ -23,6 +23,8 @@ val assums : module_path -> env -> constr -> string list
 val translate_mind : 
    mutual_inductive_body -> MLast.str_item list
 
-val dump_env :
-  module_path -> constr list -> env -> MLast.str_item list * 
-      (Names.id_key * NbeAnnotTbl.t) Util.Stringmap.t
+val compile_constant :
+   Names.module_path -> env ->
+   Names.constant -> Declarations.constant_body -> unit
+
+val compile_mind : mutual_inductive_body -> unit

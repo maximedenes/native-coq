@@ -21,13 +21,11 @@ let loc = Ploc.dummy
 let compile env c =
   let mp = fst (Lib.current_prefix ()) in
   let code,annots = translate mp env "t1" c in
-  let (dump,kns) = dump_env mp [c] env in
-  let kns = Stringmap.add "t1" (RelKey (-1),annots) kns in
   let code =
     code @ [<:str_item< value _ = rnorm.val := lazy_norm (lazy $lid:"t1"$) >>]
   in
-  let res = call_compiler dump code in
-    res, kns
+  let res,filename,_ = call_compiler code in
+    res, filename, NbeAnnotTbl.empty
 
 let nf_betadeltaiotazeta env t =
   norm_val (create_clos_infos betadeltaiota env) (inject t)
@@ -180,12 +178,12 @@ and rebuild_constr n kns env ty t =
       mkFix (([|rec_pos|],0),([|l|],[|ty|],[|t|])), ty
 
 let native_norm env c ty =
-  let res, kns = compile (pre_env env) c in
+  let res, filename, kns = compile (pre_env env) c in
   match res with
     | 0 ->
       print_endline "Normalizing...";
-      try Dynlink.loadfile "Coq_conv.cmxs"
-      with Dynlink.Error e -> print_endline (Dynlink.error_message e);
+      (try Dynlink.loadfile filename
+      with Dynlink.Error e -> print_endline (Dynlink.error_message e));
       print_endline "Dynlink ok";
         fst (rebuild_constr 0 kns env ty !Nativelib.rnorm)
     | _ -> anomaly "Compilation failure" 

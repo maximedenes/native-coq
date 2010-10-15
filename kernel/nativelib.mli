@@ -17,11 +17,13 @@ val topological_sort :
   'c list * ('a * 'b) Util.Stringmap.t
 
 val compile_module :
-  values -> string list -> string list -> string -> int
+  values -> string list -> string -> int
 
 val call_compiler :
-  MLast.str_item list -> MLast.str_item list -> int
+  MLast.str_item list -> int * string * string
 
+val call_linker :
+  string -> string -> unit
 
 exception Bug of string
 

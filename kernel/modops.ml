@@ -259,12 +259,14 @@ let strengthen_const env mp_from l cb resolver =
       let con =  constant_of_delta resolver con in
       let const = mkConst con in 
       let const_subs = Def (Declarations.from_val const) in
-      { cb with 
+      let cb = { cb with 
 	const_body = const_subs;
 	const_body_code = Cemitcodes.from_val
 	  (compile_constant_body env const_subs false);
 	const_inline_code = false
       }
+        in
+        Nativecode.compile_constant mp_from (pre_env env) con cb; cb
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then

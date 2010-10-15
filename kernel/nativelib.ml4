@@ -13,13 +13,15 @@ let loc = Ploc.dummy
 let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
 
+let open_header = ref ([] : MLast.str_item list)
+
 (* Global settings and utilies for interface with OCaml *)
 let env_name = "Coq_conv_env"
-let terms_name = "Coq_conv_terms"
 
 let include_dirs =
   "-I "^Coq_config.camllib^"/camlp5 -I "^Coq_config.coqlib^"/config -I "
   ^Coq_config.coqlib^"/lib -I "^Coq_config.coqlib^"/kernel "
+  ^"-I "^Filename.temp_dir_name^" "
 
 let include_libs =
   "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
@@ -46,7 +48,7 @@ let compute_loc xs =
     | str_item :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
   in f 0 xs
 
-let compile_module ast imports load_paths f =
+let compile_module ast load_paths f =
   let code = expr_of_values ast in
   let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
@@ -59,39 +61,41 @@ let compile_module ast imports load_paths f =
     Pcaml.inter_phrases := Some "\n";
     !Pcaml.print_implem code;
     print_implem (f^".ml") code;
-  let imports = "-I " ^ (String.concat " -I " load_paths) ^ " " in
+  let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^imports^f^".ml"
+    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
   in
   Sys.command comp_cmd
 
 
-let call_compiler env_code terms_code =
-  if Sys.file_exists (terms_name^".ml") then
-    anomaly (terms_name ^".ml already exists");
+let call_compiler terms_code =
   let terms_code =
     [<:str_item< open Nativelib >>;
      <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>] @ terms_code
+     <:str_item< open Names >>] @ (List.rev !open_header) @ terms_code
   in
   Pcaml.input_file := "/dev/null";
   Pcaml.output_file := Some "termspr.ml";
   Pcaml.inter_phrases := Some "\n";
   !Pcaml.print_implem (compute_loc terms_code);
-  print_implem (terms_name^".ml") (compute_loc terms_code);
-  let file_names = terms_name^".ml" in
+  let mod_name = Filename.temp_file "Coq_native" ".ml" in
+  print_implem mod_name (compute_loc terms_code);
   print_endline "Compilation...";
   let include_dirs =
     include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
   in
-  let imports = List.map (fun s -> s^".cmx") !imports in
-  let imports = String.concat " " imports ^ " " in
+  let filename = Filename.temp_file "coq_native" ".cmxs" in
   let comp_cmd =
-    "ocamlopt.opt -shared -o Coq_conv.cmxs -rectypes "^include_dirs^file_names
+    "ocamlopt.opt -shared -o "^filename^" -rectypes "^include_dirs^mod_name
   in
   let res = Sys.command comp_cmd in
-  let _ = Sys.command ("rm "^file_names) in
-    res
+  let mod_name = Filename.chop_extension (Filename.basename mod_name) in
+    res, filename, mod_name
+
+let call_linker f mod_name =
+  (try Dynlink.loadfile f
+  with Dynlink.Error e -> print_endline (Dynlink.error_message e));
+  open_header := <:str_item< open $list:[mod_name]$ >>::!open_header
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in

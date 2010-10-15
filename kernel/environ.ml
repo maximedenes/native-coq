@@ -323,7 +323,6 @@ type unsafe_type_judgment = {
 (*s Compilation of global declaration *)
 
 let compile_constant_body = Cbytegen.compile_constant_body
-let translate = Nativecode.translate
 
 
 exception Hyp_not_found

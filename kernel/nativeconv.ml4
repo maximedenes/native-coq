@@ -42,7 +42,6 @@ let compare env t1 t2 cu =
   let mp = env.current_mp in
   let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in
-  let (dump,_) = dump_env mp [t1;t2] env in
   let terms_code =
     code1 @ code2 @ [<:str_item< value _ = (*let t0 = Unix.time () in *)
       (*do {*)try conv_val 0 t1 t2 with _ -> exit 1 (*;
@@ -51,8 +50,8 @@ let compare env t1 t2 cu =
     flush_all() }*)
     >>]
   in
-    match call_compiler dump terms_code with
-    | 0 ->
+    match call_compiler terms_code with
+    | 0,_,_ ->
       begin
         print_endline "Running test...";
         let res = Sys.command "time ./a.out" in
