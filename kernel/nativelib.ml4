@@ -353,3 +353,20 @@ let str_decode s =
     Buffer.add_char mshl_expr (bin_of_hex buf)
   done;
   Marshal.from_string (Buffer.contents mshl_expr) 0
+
+let extern_state s =
+  let f = s^".cmxs" in
+  let include_dirs = "-I " ^ (String.concat " -I " !load_paths) ^ " " in
+  let imports = List.map (fun s -> s^".cmx") !imports in
+  let imports = String.concat " " imports in
+  let comp_cmd =
+    "ocamlopt.opt -shared -o "^f^" -rectypes "^include_dirs^imports
+  in
+  let _ = Sys.command comp_cmd in print_endline comp_cmd
+
+let intern_state s =
+  (** WARNING TODO: if a state with the same file name has already been loaded   **)
+  (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
+(*  let temp = Filename.temp_file s ".cmxs" in*)
+  try Dynlink.loadfile (s^".cmxs")
+  with Dynlink.Error e -> print_endline (Dynlink.error_message e)
