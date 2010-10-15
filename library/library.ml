@@ -634,7 +634,7 @@ let error_recursively_dependent_library dir =
 (* Security weakness: file might have been changed on disk between
    writing the content and computing the checksum... *)
 let save_library_to dir f =
-  let cenv, seg, (ast, annots), imports = Declaremods.end_library dir in
+  let cenv, seg, (ast, annots), _ = Declaremods.end_library dir in
   let cenv, table = LightenLibrary.save cenv in
   let md = {
     md_name = dir;
@@ -657,12 +657,9 @@ let save_library_to dir f =
     System.marshal_out ch di;
     System.marshal_out ch table;
     close_out ch;
-(*    let f s = string_of_id (snd (repr_qualid (qualid_of_dirpath s))) in*)
-    let f s = Nativecode.mod_uid_of_dirpath s in
-    let imports = List.map f imports in
     let lp = List.map System.string_of_physical_path (get_load_paths ()) in
     let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
-    match Nativelib.compile_module ast imports lp fn with
+    match Nativelib.compile_module ast lp fn with
       | 0 -> ()
       | _ -> anomaly "Library compilation failure"
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e

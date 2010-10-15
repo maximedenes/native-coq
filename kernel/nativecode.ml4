@@ -268,6 +268,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                       <:expr< mk_var_accu $id_app$>>, auxdefs, annots
 		| Some body ->
 	            let v,_ = var_lid id in
+                    compile_value mp env id body;
                     v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
@@ -508,12 +509,21 @@ and translate_app auxdefs annots n c args =
   let tr,auxdefs,annots = translate ~global:true [] annots lift t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
+and compile_value mp env id body =
+  let _,lid = var_lid id in
+  let ast = fst (translate mp env lid body) in
+  let res,filename,mod_name = call_compiler ast in
+  assert (res = 0);
+  call_linker filename mod_name
+
+
 let opaque_const mp kn =
   let _,lid = const_lid mp kn in
   [<:str_item< value $lid:lid$ = mk_constant_accu
      (str_decode $str:str_encode kn$) >>]
 
 (** Collect all variables and constants in the term. *)
+(* TODO : vars in fix annotations ? *)
 let assums mp env t =
   let rec aux xs t =
     match kind_of_term t with
@@ -560,42 +570,25 @@ let translate_mind mb =
   in
   Array.fold_left f [] mb.mind_packets
 
-(* Code dumping functions *)
-(* TODO: rewrite this function for modules *)
-let add_value env (id, _) xs =
-  let dummy_mp = MPfile empty_dirpath in
-  let (_, b, _) = Sign.lookup_named id env.env_named_context in
-  let _,lid = var_lid id in
-  let ast, annots, deps = match b with
-  | None ->
-      let id_app =
-        <:expr< Names.id_of_string $str:string_of_id id$ >>
-      in
-      [<:str_item< value $lid:lid$ = mk_var_accu $id_app$>>], NbeAnnotTbl.empty, []
-  | Some body ->
-      let (ast,annots) = translate dummy_mp env lid body in
-      ast, annots, assums (MPfile empty_dirpath) env body
+let compile_constant mp env kn ck =
+  let ast = match ck.const_opaque, ck.const_body with
+    | false, Some cb ->
+        let _,lid = const_lid mp kn in
+        let cb = Declarations.force cb in
+        fst (translate mp env lid cb)
+    | _ ->
+        let _,lid = const_lid mp kn in
+        opaque_const mp kn
   in
-  Stringmap.add lid (VarKey id, annots, ast, deps) xs
+  let res,filename,mod_name = call_compiler ast in
+  assert (res = 0);
+  call_linker filename mod_name
 
-let add_constant mp env kn ck xs =
-  match (fst ck).const_opaque, (fst ck).const_body with
-  | false, Some cb ->
-      let _,lid = const_lid mp kn in
-      let cb = Declarations.force cb in
-      let ast, annots = translate mp env lid cb in
-      let deps = assums mp env cb in
-      Stringmap.add lid (ConstKey kn, annots, ast, deps) xs
-  | _ ->
-      let _,lid = const_lid mp kn in
-      let ast = opaque_const mp kn in
-      let annots = NbeAnnotTbl.empty in
-      Stringmap.add lid (ConstKey kn, annots, ast, []) xs
-
-let add_ind env c ind xs =
-  let mb = lookup_mind c env in
+let compile_mind mb  =
   let ast = translate_mind mb in
-  Stringmap.add (string_of_mind c) (IndKey (c,0), NbeAnnotTbl.empty, ast, []) xs
+  let res,filename,mod_name = call_compiler ast in
+  assert (res = 0);
+  call_linker filename mod_name
 
 let dump_rel_env mp env = 
   let aux (i,acc) (_,t,_) =
@@ -608,26 +601,3 @@ let dump_rel_env mp env =
         (i+1,tr@acc)
   in
   snd (List.fold_left aux (1,[]) env.env_rel_context)
-
-let dump_env mp terms env =
-  let vars =
-    List.fold_right (add_value env) env.env_named_vals Stringmap.empty
-  in
-  let vars_and_cons =
-    Cmap_env.fold (add_constant mp env) env.env_globals.env_constants vars
-  in
-  let vars_cons_ind =
-    Mindmap_env.fold (add_ind env) env.env_globals.env_inductives vars_and_cons
-  in
-  let initial_set =
-    List.fold_left (fun acc t -> assums mp env t @ acc) [] terms
-  in
-  print_endline (String.concat "," initial_set);
-  let header =
-    [<:str_item< open Nativelib >>;
-     <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>]
-  in
-  let (l,kns) = topological_sort initial_set vars_cons_ind in
-  let rels = dump_rel_env mp env in
-    (header @ l @ rels,kns)

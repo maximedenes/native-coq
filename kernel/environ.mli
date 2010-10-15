@@ -197,11 +197,6 @@ val compile_constant_body :
     env -> constr_substituted constant_def -> bool -> Cemitcodes.body_code
                                  (* boxed *)
 
-val translate :
-  ?annots:Nativelib.NbeAnnotTbl.t -> ?lift:int -> module_path ->
-  env -> string -> Term.constr ->
-    MLast.str_item list * NbeAnnotTbl.t
-
 exception Hyp_not_found
 
 (** [apply_to_hyp sign id f] split [sign] into [tail::(id,_,_)::head] and

@@ -135,7 +135,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
   let tps = Cemitcodes.from_val (compile_constant_body env body boxed) in
   in
   let hyps = keep_hyps env ids in
-    { const_hyps = hyps;
+  let cb = { const_hyps = hyps;
       const_body = body;
       const_type = typ;
       const_body_code = tps;
@@ -143,7 +143,8 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
       const_constraints = cst;
       const_inline = inline;
       const_inline_code = inline_code
-    }
+    } in
+  Nativecode.compile_constant (con_modpath kn) (pre_env env) kn cb; cb
 
 (*s Global and local constant declaration. *)
 

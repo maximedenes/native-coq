@@ -274,6 +274,7 @@ let add_mind dir l mie senv =
   let mib = translate_mind senv.env kn mie in
   let senv' = add_constraints mib.mind_constraints senv in
   let env'' = Environ.add_mind kn mib senv'.env in
+  Nativecode.compile_mind mib;
   kn, { old = senv'.old;
 	env = env'';
 	modinfo = senv'.modinfo;
