@@ -19,6 +19,9 @@ val topological_sort :
 val compile_module :
   values -> string list -> string -> int
 
+val push_comp_stack :
+  MLast.str_item list -> unit
+
 val call_compiler :
   MLast.str_item list -> int * string * string
 

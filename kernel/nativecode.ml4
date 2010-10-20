@@ -512,10 +512,7 @@ and translate_app auxdefs annots n c args =
 and compile_value mp env id body =
   let _,lid = var_lid id in
   let ast = fst (translate mp env lid body) in
-  let res,filename,mod_name = call_compiler ast in
-  assert (res = 0);
-  call_linker filename mod_name
-
+  push_comp_stack ast
 
 let opaque_const mp kn =
   let _,lid = const_lid mp kn in
@@ -580,15 +577,11 @@ let compile_constant mp env kn ck =
         let _,lid = const_lid mp kn in
         opaque_const mp kn
   in
-  let res,filename,mod_name = call_compiler ast in
-  assert (res = 0);
-  call_linker filename mod_name
+  push_comp_stack ast 
 
 let compile_mind mb  =
   let ast = translate_mind mb in
-  let res,filename,mod_name = call_compiler ast in
-  assert (res = 0);
-  call_linker filename mod_name
+  push_comp_stack ast
 
 let dump_rel_env mp env = 
   let aux (i,acc) (_,t,_) =

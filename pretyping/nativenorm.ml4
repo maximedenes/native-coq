@@ -24,8 +24,8 @@ let compile env c =
   let code =
     code @ [<:str_item< value _ = rnorm.val := lazy_norm (lazy $lid:"t1"$) >>]
   in
-  let res,filename,_ = call_compiler code in
-    res, filename, NbeAnnotTbl.empty
+  let res,filename,mod_name = call_compiler code in
+    res, filename, mod_name
 
 let nf_betadeltaiotazeta env t =
   norm_val (create_clos_infos betadeltaiota env) (inject t)
@@ -178,12 +178,10 @@ and rebuild_constr n kns env ty t =
       mkFix (([|rec_pos|],0),([|l|],[|ty|],[|t|])), ty
 
 let native_norm env c ty =
-  let res, filename, kns = compile (pre_env env) c in
+  let res, filename, mod_name = compile (pre_env env) c in
   match res with
     | 0 ->
       print_endline "Normalizing...";
-      (try Dynlink.loadfile filename
-      with Dynlink.Error e -> print_endline (Dynlink.error_message e));
-      print_endline "Dynlink ok";
-        fst (rebuild_constr 0 kns env ty !Nativelib.rnorm)
+      call_linker filename mod_name;
+        fst (rebuild_constr 0 NbeAnnotTbl.empty env ty !Nativelib.rnorm)
     | _ -> anomaly "Compilation failure" 
