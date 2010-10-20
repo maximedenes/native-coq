@@ -14,6 +14,7 @@ let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
 
 let open_header = ref ([] : MLast.str_item list)
+let comp_stack = ref ([] : MLast.str_item list)
 
 (* Global settings and utilies for interface with OCaml *)
 let env_name = "Coq_conv_env"
@@ -67,18 +68,25 @@ let compile_module ast load_paths f =
   in
   Sys.command comp_cmd
 
+let push_comp_stack e =
+  comp_stack := !comp_stack@e
+
+let emit_comp_stack () =
+  let res = !comp_stack in
+  comp_stack := []; res
 
 let call_compiler terms_code =
+  let ast = emit_comp_stack () in
   let terms_code =
     [<:str_item< open Nativelib >>;
      <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>] @ (List.rev !open_header) @ terms_code
+     <:str_item< open Names >>] @ (List.rev !open_header) @ ast @ terms_code
   in
+  let mod_name = Filename.temp_file "Coq_native" ".ml" in
   Pcaml.input_file := "/dev/null";
-  Pcaml.output_file := Some "termspr.ml";
+  Pcaml.output_file := Some (mod_name^".pr");
   Pcaml.inter_phrases := Some "\n";
   !Pcaml.print_implem (compute_loc terms_code);
-  let mod_name = Filename.temp_file "Coq_native" ".ml" in
   print_implem mod_name (compute_loc terms_code);
   print_endline "Compilation...";
   let include_dirs =
