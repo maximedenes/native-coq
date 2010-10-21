@@ -221,7 +221,6 @@ let subst_arity sub arity =
     | PolymorphicArity (ctx,s) -> PolymorphicArity (subst_rel_context sub ctx,s)
 	
 (* TODO: should be changed to non-coping after Term.subst_mps *)
-<<<<<<< HEAD
 let subst_constant_def sub d =
   match d with
   | Def cs -> Def (subst_constr_subst sub cs)

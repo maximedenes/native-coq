@@ -133,7 +133,6 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
     | _ -> global_vars_set_constant_type env typ
   in
   let tps = Cemitcodes.from_val (compile_constant_body env body boxed) in
-  in
   let hyps = keep_hyps env ids in
   let cb = { const_hyps = hyps;
       const_body = body;
