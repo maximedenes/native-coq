@@ -45,7 +45,6 @@ type constant_body = {
     const_hyps : section_context; (** New: younger hyp at top *)
     const_body : constr_substituted constant_def;
     const_type : constant_type;
-    const_body_code : Cemitcodes.to_patch_substituted;
     const_body_code : to_patch_substituted;
    (*i const_type_code : to_patch;i*)
     const_constraints : constraints;

@@ -405,6 +405,10 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
             <:expr< let $list:norms$ in $e$ >>, auxdefs, annots
       | CoFix(ln, (_, tl, bl)) ->
           <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+      | NativeInt _ -> 
+          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+      | NativeArr _ ->
+          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
       | _ -> assert false
 and translate_app auxdefs annots n c args =
   match kind_of_term c with
@@ -454,7 +458,7 @@ and translate_app auxdefs annots n c args =
     let ob = mb.mind_packets.(snd ci.ci_ind) in
     let mp' = ind_modpath ci.ci_ind in
     let f i br (xs1,auxdefs,annots) =
-      let args = gen_names n ci.ci_cstr_nargs.(i) in
+      let args = gen_names n ci.ci_cstr_ndecls.(i) in
       let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
       let pat1 = make_constructor_pattern mp mp' ob i args in
       let (tr,auxdefs,annots) = translate auxdefs annots n br in
@@ -568,8 +572,8 @@ let translate_mind mb =
   Array.fold_left f [] mb.mind_packets
 
 let compile_constant mp env kn ck =
-  let ast = match ck.const_opaque, ck.const_body with
-    | false, Some cb ->
+  let ast = match ck.const_body with
+    | Def cb ->
         let _,lid = const_lid mp kn in
         let cb = Declarations.force cb in
         fst (translate mp env lid cb)

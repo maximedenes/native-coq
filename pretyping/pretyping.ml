@@ -629,7 +629,6 @@ module Pretyping_F (Coercion : Coercion.S) = struct
     | RCast (loc,c,k) ->
 	let cj =
 	  match k with
-<<<<<<< HEAD
 	    CastCoerce ->
 	      let cj = pretype empty_tycon env evdref lvar c in
 	      evd_comb1 (Coercion.inh_coerce_to_base loc env) evdref cj
