@@ -374,7 +374,7 @@ let extern_state s =
   let comp_cmd =
     "ocamlopt.opt -shared -o "^f^" -rectypes "^include_dirs^imports
   in
-  let _ = Sys.command comp_cmd in print_endline comp_cmd
+  let _ = Sys.command comp_cmd in ()
 
 let intern_state s =
   (** WARNING TODO: if a state with the same file name has already been loaded   **)

@@ -234,7 +234,6 @@ let register_loaded_library m =
   let link m =
     let dirname = Filename.dirname (library_full_filename m.library_name) in
     let f = Nativecode.mod_uid_of_dirpath m.library_name ^ ".cmxs" in
-    print_endline ("Dynlinking: "^(Filename.concat dirname f)) ;
     try Dynlink.loadfile (Filename.concat dirname f)
     with Dynlink.Error e -> print_endline (Dynlink.error_message e)
   in
