@@ -74,18 +74,7 @@ let rec translate_mod mp env annots mod_expr =
 and translate_fields mp env (l,x) (ast,annots) =
   match x with
   | SFBconst cb ->
-      begin
-        let kn = make_con mp empty_dirpath l in
-        let _,lid = const_lid mp kn in
-        match cb.const_body with
-        | Def t -> 
-            let env = pre_env env in
-            let t = Declarations.force t in
-            let tr,annots = translate ~annots mp env lid t in tr@ast,annots
-        | _ ->
-            let tr = opaque_const mp kn in 
-            tr@ast,annots
-      end
+      let tr,annots = translate_constant (pre_env env) mp l cb in tr@ast, annots
   | SFBmind mb ->
       let tr = translate_mind mb in
       tr@ast,annots

@@ -30,3 +30,8 @@ val compile_constant :
    Names.constant -> Declarations.constant_body -> unit
 
 val compile_mind : mutual_inductive_body -> unit
+
+val translate_constant : env -> module_path -> label ->
+   constant_body -> MLast.str_item list * Nativelib.NbeAnnotTbl.t
+
+

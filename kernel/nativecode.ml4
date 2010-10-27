@@ -405,8 +405,8 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
             <:expr< let $list:norms$ in $e$ >>, auxdefs, annots
       | CoFix(ln, (_, tl, bl)) ->
           <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
-      | NativeInt _ -> 
-          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+      | NativeInt i -> 
+          <:expr< mk_uint $int:Native.Uint31.to_string i$ >>, auxdefs, annots
       | NativeArr _ ->
           <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
       | _ -> assert false
@@ -598,3 +598,25 @@ let dump_rel_env mp env =
         (i+1,tr@acc)
   in
   snd (List.fold_left aux (1,[]) env.env_rel_context)
+
+let native_constant mp kn f =
+  match f with
+    | Native.Oprim Native.Int31add ->
+       let _,lid = const_lid mp kn in
+       [<:str_item< value $lid:lid$ =
+         let add_accu = mk_constant_accu (str_decode $str:str_encode kn$) in
+          Nativevalues.add add_accu>>]
+    | _ -> assert false
+
+let translate_constant env mp l cb =
+  let kn = make_con mp empty_dirpath l in
+  let _,lid = const_lid mp kn in
+  match cb.const_body with
+  | Def t -> 
+      let t = Declarations.force t in
+      translate mp env lid t
+  | Primitive f ->
+      native_constant mp kn f, NbeAnnotTbl.empty
+  | _ ->
+      opaque_const mp kn, NbeAnnotTbl.empty
+
