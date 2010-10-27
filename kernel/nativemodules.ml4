@@ -38,7 +38,7 @@ and translate_fields_type mp env (l,e) =
       let uid = string_of_label l in
       <:sig_item< module $uid:uid$ : $mod_type_expr$ >>
   | SFBmind mb ->
-      let _,lid = mind_lid mp (make_con mp empty_dirpath l) in
+      let _,lid = mind_lid mp (mp,id_of_label l) in
       <:sig_item< value $lid:lid$ : Nativevalues.t >>
 (*  | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in

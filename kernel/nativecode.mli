@@ -7,6 +7,8 @@ open Nativelib
 
 val const_lid : module_path -> constant -> MLast.expr * string
 
+val mind_lid : module_path -> module_path * identifier -> MLast.ctyp * string
+
 val mod_uid_of_dirpath : dir_path -> string
 
 val relative_mp_of_mp : module_path -> module_path -> MLast.module_expr
