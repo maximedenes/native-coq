@@ -83,8 +83,8 @@ Definition sqrtrempos : forall p:positive, sqrt_data (Zpos p).
                 c_sqrt (Zpos (xI (xI p'))) (2 * s') (4 * r' + 3) _ _
             end
         end
-    end); clear sqrtrempos; repeat compute_POS;
- try (try rewrite Heq; ring); try omega.
+    end); clear sqrtrempos; abstract (repeat compute_POS;
+ try (try rewrite Heq; ring); try omega).
 Defined.
 
 (** Define with integer input, but with a strong (readable) specification. *)
@@ -129,8 +129,8 @@ Definition Zsqrt :
             (exist
                (fun r:Z => 0 = 0 * 0 + r /\ 0 * 0 <= 0 < (0 + 1) * (0 + 1)) 0
                _)
-    end); try omega.
- split; [ omega | rewrite Heq; ring_simplify (s*s) ((s + 1) * (s + 1)); omega ].
+    end); try (abstract omega).
+ abstract (split; [ omega | rewrite Heq; ring_simplify (s*s) ((s + 1) * (s + 1)); omega ]).
 Defined.
 
 (** Define a function of type Z->Z that computes the integer square root,
