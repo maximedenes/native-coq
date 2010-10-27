@@ -592,7 +592,7 @@ module RedNative (E:RedNativeEntries) :
       match op with
       | Int31print      -> 
 	  let i = get_int1 args in
-	  Printf.fprintf stderr "%s\n" (Uint31.to_string i);flush stdout;
+	  Printf.fprintf stderr "%s\n" (Uint31.to_string i);flush stderr;
 	  E.mkInt env i
       | ArrayMake       ->
 	  let t = E.get args 0 in
