@@ -203,7 +203,6 @@ type 'a tableKey =
   | ConstKey of constant
   | VarKey of identifier
   | RelKey of 'a
-  | IndKey of inductive
 
 type transparent_state = Idpred.t * Cpred.t
 
