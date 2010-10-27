@@ -36,10 +36,12 @@ let decompose_prod env t =
   if name = Anonymous then (Name (id_of_string "x"),dom,codom)
   else (name,dom,codom)
 
+let app_type env c =
+  let t = whd_betadeltaiota env c in
+  try destApp t with _ -> (t,[||])
+
 let find_rectype_a env c =
-  let (t, l) =
-    let t = whd_betadeltaiota env c in
-    try destApp t with _ -> (t,[||]) in
+  let (t, l) = app_type env c in
   match kind_of_term t with
   | Term.Ind ind -> (ind, l)
   | _ -> raise Not_found
@@ -63,14 +65,23 @@ let invert_tag cst tag reloc_tbl =
     done;raise Not_found
   with Find_at j -> (j+1)
 
-let construct_of_constr const env tag typ =
-  let (mind,_ as ind), allargs = find_rectype_a env typ in
+let construct_of_constr_notnative const env tag (mind,_ as ind) allargs =
     let mib,mip = lookup_mind_specif env ind in
     let nparams = mib.mind_nparams in
     let i = invert_tag const tag mip.mind_reloc_tbl in
     let params = Array.sub allargs 0 nparams in
     let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
       (Term.mkApp(mkConstruct(ind,i), params), ctyp)
+
+let construct_of_constr const env tag typ =
+  let t, l = app_type env typ in
+  match kind_of_term t with
+  | Term.Ind ind -> 
+      construct_of_constr_notnative const env tag ind l
+  | _ ->
+      assert (t = Typeops.type_of_int env);
+      (mkInt (Native.Uint31.of_int tag), t)
+
 
 let build_branch_type env (mind,_ as _ind) mib mip params p i =
   let rtbl = mip.mind_reloc_tbl in

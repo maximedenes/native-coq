@@ -126,6 +126,12 @@ let mk_fix_accu (a:atom) =
 
 let mk_const tag = Obj.magic tag
 
+let mk_uint x = Obj.magic x
+
+let add (add_accu:t) x y =
+  if Obj.is_int (Obj.repr x) && Obj.is_int (Obj.repr y) then Obj.magic (Native.Uint31.add (Obj.magic x) (Obj.magic y))
+  else add_accu x y
+
 let mk_block tag args =
   let nargs = Array.length args in
   let r = Obj.new_block tag nargs in

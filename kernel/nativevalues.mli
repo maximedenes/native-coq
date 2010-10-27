@@ -43,6 +43,10 @@ val mk_fix_accu : atom -> t
 val mk_const : tag -> t
 val mk_block : tag -> t array -> t
 
+val mk_uint : int -> t
+
+val add : t -> t -> t -> t
+
 (* Functions over accumulators *)
 
 val dummy_atom : atom    
