@@ -45,8 +45,6 @@ val mk_block : tag -> t array -> t
 
 val mk_uint : int -> t
 
-val add : t -> t -> t -> t
-
 (* Functions over accumulators *)
 
 val dummy_atom : atom    
@@ -75,3 +73,44 @@ val kind_of_value : t -> kind_of_value
 
 (* *)
 val is_accu : t -> bool
+
+(*** Primitive sur les entiers *)
+
+val head0 : t -> t -> t
+val tail0 : t -> t -> t
+
+val add : t -> t -> t -> t
+val sub : t -> t -> t -> t
+val mul : t -> t -> t -> t
+val div : t -> t -> t -> t
+val rem : t -> t -> t -> t
+
+val l_sr  : t -> t -> t -> t
+val l_sl  : t -> t -> t -> t
+val l_and : t -> t -> t -> t
+val l_xor : t -> t -> t -> t
+val l_or  : t -> t -> t -> t
+
+val addc      : t -> t -> t -> t
+val subc      : t -> t -> t -> t
+val addCarryC : t -> t -> t -> t
+val subCarryC : t -> t -> t -> t
+
+val mulc    : t -> t -> t -> t
+val diveucl : t -> t -> t -> t
+
+val div21     : t -> t -> t -> t -> t
+val addMulDiv : t -> t -> t -> t -> t
+
+val eq      : t -> t -> t -> t
+val lt      : t -> t -> t -> t
+val le      : t -> t -> t -> t
+val compare : t -> t -> t -> t 
+
+val eqb_correct : t -> t -> t -> t -> t
+
+val print : t -> t -> t
+val foldi_cont : t -> t -> t -> t -> t -> t -> t -> t
+val foldi_down_cont : t -> t -> t -> t -> t -> t -> t -> t
+
+

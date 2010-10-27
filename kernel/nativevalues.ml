@@ -126,12 +126,6 @@ let mk_fix_accu (a:atom) =
 
 let mk_const tag = Obj.magic tag
 
-let mk_uint x = Obj.magic x
-
-let add (add_accu:t) x y =
-  if Obj.is_int (Obj.repr x) && Obj.is_int (Obj.repr y) then Obj.magic (Native.Uint31.add (Obj.magic x) (Obj.magic y))
-  else add_accu x y
-
 let mk_block tag args =
   let nargs = Array.length args in
   let r = Obj.new_block tag nargs in
@@ -172,3 +166,234 @@ let kind_of_value (v:t) =
         (* assert (tag = Obj.closure_tag || tag = Obj.infix_tag); 
            or ??? what is 1002*)
         Vfun v
+
+
+
+(*** Operations pour les entiers **)
+
+let mk_uint x = Obj.magic x
+
+let is_int (x:t) = Obj.is_int (Obj.repr x)
+let to_uint (x:t) = (Obj.magic x : Native.Uint31.t)
+let of_uint (x: Native.Uint31.t) = (Obj.magic x : t)
+
+let head0 accu x =
+ if is_int x then  of_uint (Native.Uint31.head0 (to_uint x))
+ else accu x
+
+let tail0 accu x =
+ if is_int x then  of_uint (Native.Uint31.tail0 (to_uint x))
+ else accu x
+
+let add accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.add (to_uint x) (to_uint y))
+  else accu x y
+
+let sub accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.sub (to_uint x) (to_uint y))
+  else accu x y
+
+let mul accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.mul (to_uint x) (to_uint y))
+  else accu x y
+
+let div accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.div (to_uint x) (to_uint y))
+  else accu x y
+
+let rem accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.rem (to_uint x) (to_uint y))
+  else accu x y
+
+let l_sr accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.l_sr (to_uint x) (to_uint y))
+  else accu x y
+
+let l_sl accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.l_sl (to_uint x) (to_uint y))
+  else accu x y
+
+let l_and accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.l_and (to_uint x) (to_uint y))
+  else accu x y
+
+let l_xor accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.l_xor (to_uint x) (to_uint y))
+  else accu x y
+
+let l_or accu x y =
+  if is_int x && is_int y then 
+     of_uint (Native.Uint31.l_or (to_uint x) (to_uint y))
+  else accu x y
+
+type coq_carry = 
+  | Caccu of t
+  | C0 of t
+  | C1 of t
+
+type coq_pair = 
+  | Paccu of t
+  | PPair of t * t
+
+let mkCarry b i =
+  if b then (Obj.magic (C1(of_uint i)):t)
+  else (Obj.magic (C0(of_uint i)):t)
+
+let addc accu x y =
+  if is_int x && is_int y then
+    let s = Native.Uint31.add (to_uint x) (to_uint y) in
+    mkCarry (Native.Uint31.lt s (to_uint x)) s
+  else accu x y
+
+let subc accu x y =
+  if is_int x && is_int y then
+    let s = Native.Uint31.sub (to_uint x) (to_uint y) in
+    mkCarry (Native.Uint31.lt (to_uint x) (to_uint y)) s
+  else accu x y
+
+let addCarryC accu x y =
+  if is_int x && is_int y then
+    let s = 
+      Native.Uint31.add (Native.Uint31.add (to_uint x) (to_uint y))
+	(Native.Uint31.of_int 1) in
+    mkCarry (Native.Uint31.le s (to_uint x)) s
+  else accu x y 
+
+let subCarryC accu x y =
+  if is_int x && is_int y then
+    let s = 
+      Native.Uint31.sub (Native.Uint31.sub (to_uint x) (to_uint y))
+	(Native.Uint31.of_int 1) in
+    mkCarry (Native.Uint31.le (to_uint x) (to_uint y)) s
+  else accu x y 
+
+let of_pair (x, y) =
+  (Obj.magic (PPair(of_uint x, of_uint y)):t)
+
+let mulc accu x y =
+  if is_int x && is_int y then
+    of_pair(Native.Uint31.mulc (to_uint x) (to_uint y))
+  else accu x y
+
+let diveucl accu x y =
+  if is_int x && is_int y then
+    let i1, i2 = to_uint x, to_uint y in
+    of_pair(Native.Uint31.div i1 i2, Native.Uint31.rem i1 i2)
+  else accu x y
+
+let div21 accu x y z =
+  if is_int x && is_int y && is_int z then
+    let i1, i2, i3 = to_uint x, to_uint y, to_uint z in
+    of_pair (Native.Uint31.div21 i1 i2 i3)
+  else accu x y z
+
+let addMulDiv accu x y z =
+  if is_int x && is_int y && is_int z then
+    let p, i, j = to_uint x, to_uint y, to_uint z in
+    let p' = Native.Uint31.to_int p in
+    of_uint (Native.Uint31.l_or 
+	       (Native.Uint31.l_sl i p) 
+	       (Native.Uint31.l_sr j (Native.Uint31.of_int (31 - p'))))
+  else accu x y z
+
+
+type coq_bool =
+  | Baccu of t
+  | Btrue
+  | Bfalse
+
+type coq_cmp =
+  | CmpAccu of t
+  | CmpEq 
+  | CmpLt
+  | CmpGt
+
+let of_bool b = 
+  if b then (Obj.magic Btrue:t)
+  else (Obj.magic Bfalse:t)
+
+let eq accu x y =
+  if is_int x && is_int y then 
+    of_bool (Native.Uint31.eq (to_uint x) (to_uint y))
+  else accu x y
+
+let lt accu x y =
+  if is_int x && is_int y then 
+     of_bool (Native.Uint31.lt (to_uint x) (to_uint y))
+  else accu x y
+ 
+let le accu x y =
+  if is_int x && is_int y then 
+     of_bool (Native.Uint31.le (to_uint x) (to_uint y))
+  else accu x y
+
+let compare accu x y =
+  if is_int x && is_int y then 
+    match Native.Uint31.compare (to_uint x) (to_uint y) with
+    | x when x < 0 -> (Obj.magic CmpLt:t)
+    | 0 -> (Obj.magic CmpEq:t)
+    | _ -> (Obj.magic CmpGt:t)
+  else accu x y
+
+type coq_eq = 
+  | EqAccu of t
+  | EqRefl
+
+let eqb_correct accu x y heq =
+  if is_int x then (Obj.magic EqRefl:t)
+  else accu x y heq
+
+let print accu x = 
+  if is_int x then 
+    begin
+      Printf.fprintf stderr "%s" (Native.Uint31.to_string (to_uint x));
+      flush stderr;
+      x
+    end
+  else accu x 
+
+let foldi_cont accu _A _B f min max cont =
+  if is_int min && is_int max then
+    let imin, imax = to_uint min, to_uint max in
+    if Native.Uint31.le imin imax then
+      let rec aux i a =
+        f (of_uint i) 
+         (if Native.Uint31.lt i imax then
+	   aux (Native.Uint31.add i (Native.Uint31.of_int 1))
+	 else cont) a in
+      aux imin
+    else cont
+  else accu _A _B f min max cont
+
+let foldi_down_cont accu _A _B f max min cont =
+  if is_int max && is_int min then
+    let imax, imin = to_uint max, to_uint min in
+    if Native.Uint31.le imin imax then
+      let rec aux i a =
+        f (of_uint i) 
+         (if Native.Uint31.lt imin i then
+	   aux (Native.Uint31.sub i (Native.Uint31.of_int 1))
+	 else cont) a in
+      aux imax
+    else cont
+  else accu _A _B f max min cont
+
+
+
+ 
+
+
+
+
+
+
+
