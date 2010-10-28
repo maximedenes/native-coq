@@ -316,8 +316,8 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
           else translate_app auxdefs annots n t [||]
       | Case (ci, p, c, branches) ->
           let u = (ci, p, c, branches) in
-          let ast, auxdefs, annots, _ = translate_case auxdefs annots n u None in
-            ast, auxdefs, annots
+          let _, inlined_body, auxdefs, annots, _ = translate_case auxdefs annots n u None in
+            inlined_body, auxdefs, annots
       | Fix ((recargs, i), (names, types, bodies)) ->
           let m = Array.length bodies in
           let abs_over_bodies e = push_abstractions n m e in
@@ -348,7 +348,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
               when kind_of_term c = Rel (lvl-recargs.(i)) ->
                 let u = (ci, p, c, branches) in
                 let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
-                let tr_norm, auxdefs, annots, tr_rec =
+                let tr_norm, _, auxdefs, annots, tr_rec =
                   translate_case auxdefs annots (n+m+lvl) u (Some atom_app)
                 in
                 let tr_rec = <:expr< let $list:mappings$ in $tr_rec$>> in
@@ -493,6 +493,7 @@ and translate_app auxdefs annots n c args =
       <:expr< match (Obj.magic c : $ind_lid$) with
       [$list:default::bodies$] >>
     in
+    let inlined_body = <:expr< let c = $tr$ in $match_body$ >> in
     let match_body =
       List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>)
       match_body ("c"::fv)
@@ -508,7 +509,7 @@ and translate_app auxdefs annots n c args =
     let auxdefs =
       <:str_item< value rec $lid:match_lid$ = $match_body$>>::auxdefs
     in
-      <:expr< $match_app$ $tr$ >>, auxdefs, annots, aux_body
+      <:expr< $match_app$ $tr$ >>, inlined_body, auxdefs, annots, aux_body
 
   in
   let tr,auxdefs,annots = translate ~global:true [] annots lift t in
