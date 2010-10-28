@@ -251,6 +251,52 @@ let dump_reloc_tbl tbl =
   in
   <:expr< [| $list:Array.to_list (Array.map f tbl)$ |] >>
 
+let native_constant_body f mp kn =
+  let op_lid =
+    match f with
+    | Native.Oprim op ->
+      begin match op with
+      | Native.Int31head0 -> "head0"
+      | Native.Int31tail0 -> "tail0"
+      | Native.Int31add -> "add"
+      | Native.Int31sub -> "sub"
+      | Native.Int31mul -> "mul"
+      | Native.Int31div -> "div"
+      | Native.Int31mod -> "rem"
+      | Native.Int31lsr -> "l_sr"
+      | Native.Int31lsl -> "l_sl"
+      | Native.Int31land -> "l_and"
+      | Native.Int31lor -> "l_or"
+      | Native.Int31lxor -> "l_xor"
+      | Native.Int31addc -> "addc"
+      | Native.Int31subc -> "subc"
+      | Native.Int31addCarryC -> "addCarryC"
+      | Native.Int31subCarryC -> "subCarryC"
+      | Native.Int31mulc -> "mulc"
+      | Native.Int31diveucl -> "diveucl"
+      | Native.Int31div21 -> "div21"
+      | Native.Int31addMulDiv -> "addMulDiv"
+      | Native.Int31eq -> "eq"
+      | Native.Int31lt -> "lt"
+      | Native.Int31le -> "le"
+      | Native.Int31compare -> "compare"
+      | Native.Int31eqb_correct -> "eqb_correct"
+      end
+    | Native.Ocaml_prim op ->
+      begin match op with
+      | Native.Int31print -> "print"
+      | _ -> assert false
+      end
+    | Native.Oiterator op -> 
+      begin match op with
+      | Native.Int31foldi -> "foldi_cont"
+      | Native.Int31foldi_down -> "foldi_down_cont"
+      end
+  in
+  let lid,_ = const_lid mp kn in
+  <:expr< Nativevalues.$lid:op_lid$ $lid$ >>
+
+
 (* A simple counter is used for fresh variables. We effectively encode
    de Bruijn indices as de Bruijn levels. *)
 let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
@@ -295,8 +341,18 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
       | App (c, args) ->
           translate_app auxdefs annots n c args
       | Const c ->
-          let e,_ = const_lid mp c in
-          e, auxdefs, annots
+          let cb = lookup_constant c env in
+            begin
+            match cb.const_body with
+              | Def t when cb.const_inline_code -> 
+                  let t = Declarations.force t in
+                  translate auxdefs annots n t
+              | Primitive f ->
+                  let ast = native_constant_body f mp c in ast, auxdefs, annots
+              | _ ->
+                  let e,_ = const_lid mp c in
+                  e, auxdefs, annots
+            end
       | Ind c ->
           <:expr< mk_ind_accu (str_decode $str:str_encode c$) >>, auxdefs, annots
       | Construct cstr ->
@@ -601,53 +657,6 @@ let dump_rel_env mp env =
   in
   snd (List.fold_left aux (1,[]) env.env_rel_context)
 
-
-let native_constant mp kn f =
-  let _,lid = const_lid mp kn in
-  let op_lid =
-    match f with
-    | Native.Oprim op ->
-      begin match op with
-      | Native.Int31head0 -> "head0"
-      | Native.Int31tail0 -> "tail0"
-      | Native.Int31add -> "add"
-      | Native.Int31sub -> "sub"
-      | Native.Int31mul -> "mul"
-      | Native.Int31div -> "div"
-      | Native.Int31mod -> "rem"
-      | Native.Int31lsr -> "l_sr"
-      | Native.Int31lsl -> "l_sl"
-      | Native.Int31land -> "l_and"
-      | Native.Int31lor -> "l_or"
-      | Native.Int31lxor -> "l_xor"
-      | Native.Int31addc -> "addc"
-      | Native.Int31subc -> "subc"
-      | Native.Int31addCarryC -> "addCarryC"
-      | Native.Int31subCarryC -> "subCarryC"
-      | Native.Int31mulc -> "mulc"
-      | Native.Int31diveucl -> "diveucl"
-      | Native.Int31div21 -> "div21"
-      | Native.Int31addMulDiv -> "addMulDiv"
-      | Native.Int31eq -> "eq"
-      | Native.Int31lt -> "lt"
-      | Native.Int31le -> "le"
-      | Native.Int31compare -> "compare"
-      | Native.Int31eqb_correct -> "eqb_correct"
-      end
-    | Native.Ocaml_prim op ->
-      begin match op with
-      | Native.Int31print -> "print"
-      | _ -> assert false
-      end
-    | Native.Oiterator op -> 
-      begin match op with
-      | Native.Int31foldi -> "foldi_cont"
-      | Native.Int31foldi_down -> "foldi_down_cont"
-      end in
-  [<:str_item< value $lid:lid$ =
-      let accu = mk_constant_accu (str_decode $str:str_encode kn$) in
-      Nativevalues.$lid:op_lid$ accu>>]
-
 let translate_constant env mp l cb =
   let kn = make_con mp empty_dirpath l in
   let _,lid = const_lid mp kn in
@@ -655,8 +664,6 @@ let translate_constant env mp l cb =
   | Def t -> 
       let t = Declarations.force t in
       translate mp env lid t
-  | Primitive f ->
-      native_constant mp kn f, NbeAnnotTbl.empty
   | _ ->
       opaque_const mp kn, NbeAnnotTbl.empty
 
