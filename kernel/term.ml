@@ -1028,10 +1028,6 @@ let mkArray = mkArray
 (* Other term constructors *)
 (***************************)
 
-let abs_implicit c = mkLambda (Anonymous, mkImplicit, c)
-let lambda_implicit a = mkLambda (Name(id_of_string"y"), mkImplicit, a)
-let lambda_implicit_lift n a = iterate lambda_implicit n (lift n a)
-
 (* prodn n [xn:Tn;..;x1:T1;Gamma] b = (x1:T1)..(xn:Tn)b *)
 let prodn n env b =
   let rec prodrec = function
