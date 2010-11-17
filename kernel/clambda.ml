@@ -103,8 +103,8 @@ type lambda =
   | Lapp          of lambda * lambda array
   | Lconst        of constant
   | Lprim         of constant option * Native.prim_op * lambda array
-  | Lcprim        of constant * Native.caml_prim * lambda array
 	(* No check if None *)
+  | Lcprim        of constant * Native.caml_prim * lambda array
   | Lcase         of annot_sw * lambda * lambda * lam_branches 
   | Lareint       of lambda array 
   | Lif           of lambda * lambda * lambda
