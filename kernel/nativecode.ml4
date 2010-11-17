@@ -159,6 +159,12 @@ let mind_lid base_mp (mp,id) =
   let short_name = prefix^string_of_id id in
   relative_type_of_mp base_mp (mp,lid), short_name
 
+let mind_accu_lid base_mp (mp,id) =
+  let prefix = "mindaccu_" in
+  let lid = <:expr< $lid:prefix^string_of_id id$>> in
+  let short_name = prefix^string_of_id id in
+  relative_id_of_mp base_mp (mp,lid), short_name
+
 let construct_uid ?(accu=false) base_mp (mp,id) =
   let prefix = if accu then "Accu_" else "Construct_" in
   let uid = <:expr< $uid:prefix^string_of_id id$>> in
@@ -364,7 +370,8 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                   e, e, auxdefs, annots
             end
       | Ind c ->
-          let tr = <:expr< mk_ind_accu (str_decode $str:str_encode c$) >> in
+          let (ind_mp,_,l) = repr_mind (fst c) in
+          let tr,_ = mind_accu_lid mp (ind_mp,id_of_label l) in
           tr, tr, auxdefs, annots
       | Construct cstr ->
           let i = index_of_constructor cstr in
@@ -634,7 +641,7 @@ let assums mp env t =
       | _ -> fold_constr aux xs t
   in aux [] t
 
-let translate_mind mb =
+let translate_mind mb kn =
   let rec build_const_sig acc n = match n with
   | 0 -> acc
   | _ -> build_const_sig (<:ctyp< Nativevalues.t >>::acc) (n-1)
@@ -644,15 +651,17 @@ let translate_mind mb =
     let _,s = construct_uid dummy_mp (dummy_mp,x) in
     let const_sig = build_const_sig [] n in (loc,s,const_sig)
   in
-  let f acc ob =
+  let f i acc ob =
     let _,type_str = mind_lid dummy_mp (dummy_mp,ob.mind_typename) in
+    let _,accu_str = mind_accu_lid dummy_mp (dummy_mp,ob.mind_typename) in
       let const_ids =
         Array.to_list (array_map2 aux ob.mind_consnames ob.mind_consnrealdecls)
       in
       let const_ids = (loc,"Accu_"^type_str,[<:ctyp< Nativevalues.t >>])::const_ids in
-      <:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>::acc
+      let accu_def = <:str_item< value $lid:accu_str$ = mk_ind_accu (str_decode $str:str_encode (kn,i)$) >> in
+      <:str_item< type $lid:type_str$ = [ $list:const_ids$ ] >>::accu_def::acc
   in
-  Array.fold_left f [] mb.mind_packets
+  array_fold_left_i f [] mb.mind_packets
 
 let compile_constant mp env kn ck =
   let ast = match ck.const_body with
@@ -666,8 +675,8 @@ let compile_constant mp env kn ck =
   in
   push_comp_stack ast 
 
-let compile_mind mb  =
-  let ast = translate_mind mb in
+let compile_mind mb kn =
+  let ast = translate_mind mb kn in
   push_comp_stack ast
 
 let dump_rel_env mp env = 
