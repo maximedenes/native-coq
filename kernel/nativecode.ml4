@@ -302,7 +302,9 @@ let native_constant_body f mp kn =
 let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
   (let rec translate ?(global=false) auxdefs annots n t =
     match kind_of_term t with
-      | Rel x -> <:expr< $lid:lid_of_index (n-x)$ >>, auxdefs, annots
+      | Rel x ->
+          let tr = <:expr< $lid:lid_of_index (n-x)$ >> in
+          tr, tr, auxdefs, annots
       | Var id ->
           begin
           let (_, b, _) = Sign.lookup_named id env.env_named_context in
@@ -311,50 +313,59 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                     let id_app =
                       <:expr< Names.id_of_string $str:string_of_id id$ >>
                     in
-                      <:expr< mk_var_accu $id_app$>>, auxdefs, annots
+                    let tr = <:expr< mk_var_accu $id_app$>> in
+                    tr, tr, auxdefs, annots
 		| Some body ->
 	            let v,_ = var_lid id in
                     compile_value mp env id body;
-                    v, auxdefs, annots
+                    v, v, auxdefs, annots
           end
       | Sort s -> (* TODO: check universe constraints *)
           let e =
             <:expr< mk_sort_accu (str_decode $str:str_encode s$) >>
           in
-          e, auxdefs, annots
-      | Cast (c, _, ty) -> translate auxdefs annots n c
+          e, e, auxdefs, annots
+      | Cast (c, _, ty) -> translate ~global auxdefs annots n c
       | Prod (x, t, c) ->
-          let vt,auxdefs,annots = translate auxdefs annots n t in
-          let vc,auxdefs,annots = translate auxdefs annots (n + 1) c in
+          let vt,inlined_vt,auxdefs,annots = translate ~global auxdefs annots n t in
+          let vc,inlined_vc,auxdefs,annots = translate ~global auxdefs annots (n + 1) c in
           let x = expr_of_name x in
           let e =
             <:expr< mk_prod_accu $x$ $vt$ (fun $lid:lid_of_index n$ -> $vc$) >>
           in
-            e, auxdefs, annots
+          let inlined_e =
+            <:expr< mk_prod_accu $x$ $inlined_vt$ (fun $lid:lid_of_index n$ -> $inlined_vc$) >>
+          in
+            e, inlined_e, auxdefs, annots
       | Lambda (_, t, c) ->
-          let v,auxdefs,annots = translate auxdefs annots (n + 1) c in
-	  <:expr< fun ($lid:lid_of_index n$ : Nativevalues.t) -> $v$ >>, auxdefs, annots
+          let v,inlined_v,auxdefs,annots = translate ~global auxdefs annots (n + 1) c in
+	  let tr = <:expr< fun ($lid:lid_of_index n$ : Nativevalues.t) -> $v$ >> in
+	  let inlined_tr = <:expr< fun ($lid:lid_of_index n$ : Nativevalues.t) -> $inlined_v$ >> in
+          tr, inlined_tr, auxdefs, annots
       | LetIn (_, b, t, c) ->
-          let vb,auxdefs,annots = translate auxdefs annots n b in
-          let vc,auxdefs,annots = translate auxdefs annots (n + 1) c in
-	  <:expr< let $lid:lid_of_index n$ = $vb$ in $vc$ >>, auxdefs, annots
+          let vb,inlined_vb,auxdefs,annots = translate ~global auxdefs annots n b in
+          let vc,inlined_vc,auxdefs,annots = translate ~global auxdefs annots (n + 1) c in
+	  let tr = <:expr< let $lid:lid_of_index n$ = $vb$ in $vc$ >> in
+	  let inlined_tr = <:expr< let $lid:lid_of_index n$ = $inlined_vb$ in $inlined_vc$ >> in
+          tr, inlined_tr, auxdefs, annots
       | App (c, args) ->
-          translate_app auxdefs annots n c args
+          translate_app ~global auxdefs annots n c args
       | Const c ->
           let cb = lookup_constant c env in
             begin
             match cb.const_body with
               | Def t when cb.const_inline_code -> 
                   let t = Declarations.force t in
-                  translate auxdefs annots n t
+                  translate ~global auxdefs annots n t
               | Primitive f ->
-                  let ast = native_constant_body f mp c in ast, auxdefs, annots
+                  let ast = native_constant_body f mp c in ast, ast, auxdefs, annots
               | _ ->
                   let e,_ = const_lid mp c in
-                  e, auxdefs, annots
+                  e, e, auxdefs, annots
             end
       | Ind c ->
-          <:expr< mk_ind_accu (str_decode $str:str_encode c$) >>, auxdefs, annots
+          let tr = <:expr< mk_ind_accu (str_decode $str:str_encode c$) >> in
+          tr, tr, auxdefs, annots
       | Construct cstr ->
           let i = index_of_constructor cstr in
           let ind = inductive_of_constructor cstr in
@@ -368,12 +379,13 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
               construct_uid mp (mp',ob.mind_consnames.(i-1))
             in
             let e = <:expr< (Obj.magic $cons_expr$ : Nativevalues.t) >> in
-            e, auxdefs, annots
-          else translate_app auxdefs annots n t [||]
+            e, e, auxdefs, annots
+          else translate_app ~global auxdefs annots n t [||]
       | Case (ci, p, c, branches) ->
           let u = (ci, p, c, branches) in
-          let _, inlined_body, auxdefs, annots, _ = translate_case auxdefs annots n u None in
-            inlined_body, auxdefs, annots
+          let body, inlined_body, auxdefs, annots, _ = translate_case ~global auxdefs annots n u None in
+          if global then inlined_body, inlined_body, auxdefs, annots
+          else body, inlined_body, auxdefs, annots
       | Fix ((recargs, i), (names, types, bodies)) ->
           let m = Array.length bodies in
           let abs_over_bodies e = push_abstractions n m e in
@@ -405,15 +417,15 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
                 let u = (ci, p, c, branches) in
                 let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
                 let tr_norm, _, auxdefs, annots, tr_rec =
-                  translate_case auxdefs annots (n+m+lvl) u (Some atom_app)
+                  translate_case ~global auxdefs annots (n+m+lvl) u (Some atom_app)
                 in
                 let tr_rec = <:expr< let $list:mappings$ in $tr_rec$>> in
                   abs tr_rec, abs tr_norm, auxdefs, annots
               | _ ->
                   let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
                   let norm_app = app <:expr< $lid:norm_lid$ $lid:rec_lid$>> in
-                  let tr_norm, auxdefs, annots =
-                    translate auxdefs annots (n+m+lvl) t
+                  let tr_norm, _, auxdefs, annots =
+                    translate ~global auxdefs annots (n+m+lvl) t
                   in
                   let tr_rec =
                     <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then
@@ -430,7 +442,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
             let name_expr =
               <:expr< str_decode $str:str_encode names.(i)$ >>
             in
-            let tr_ty, auxdefs, annots = translate auxdefs annots n types.(i) in
+            let tr_ty, _, auxdefs, annots = translate ~global auxdefs annots n types.(i) in
             let atom =
               <:expr< dummy_atom_fix $lid:norm_lid$ $int:arg_str$
                 $name_expr$ $tr_ty$ >> in
@@ -443,13 +455,13 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
           let recs,norms,atoms,updates,auxdefs,annots =
             Array.fold_right f (Array.init m (fun i -> i)) ([],[],[],[],auxdefs,annots)
           in
-          if global then
+          if global && n = lift then
             let atoms = <:str_item< value $list:atoms$ >> in
             let norms = <:str_item< value $list:norms$ >> in
             let updates = <:str_item< value $list:updates$ >> in
             let recs = <:str_item< value rec $list:recs$ >> in
             let e = <:expr< mk_fix_accu $lid:atom_lid t_id n i$ >> in
-            e, updates::recs::atoms::norms::auxdefs, annots
+            e, e, updates::recs::atoms::norms::auxdefs, annots
           else
             let e = <:expr< $lid:lid_of_index (n+i)$ >> in
             let e = <:expr< let $list:updates$ in $e$ >> in
@@ -458,76 +470,85 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
               mk_fix_accu $lid:atom_lid t_id n i$ in $e$ >>
             in
             let e = <:expr< let $list:atoms$ in $e$ >> in
-            <:expr< let $list:norms$ in $e$ >>, auxdefs, annots
+            let tr = <:expr< let $list:norms$ in $e$ >> in
+            tr, tr, auxdefs, annots
       | CoFix(ln, (_, tl, bl)) ->
-          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+          let tr = <:expr< mk_rel_accu $int:"-1"$ >> in
+          tr, tr, auxdefs, annots(* invalid_arg "translate"*)
       | NativeInt i -> 
-          <:expr< mk_uint $int:string_of_int (Native.Uint31.to_int i)$ >>,
-	   auxdefs, annots
+          let tr = <:expr< mk_uint $int:string_of_int (Native.Uint31.to_int i)$ >> in
+	  tr, tr, auxdefs, annots
       | NativeArr _ ->
-          <:expr< mk_rel_accu $int:"-1"$ >>, auxdefs, annots(* invalid_arg "translate"*)
+          let tr = <:expr< mk_rel_accu $int:"-1"$ >> in
+          tr, tr, auxdefs, annots(* invalid_arg "translate"*)
       | _ -> assert false
-and translate_app auxdefs annots n c args =
+and translate_app ~global auxdefs annots n c args =
   match kind_of_term c with
      | Construct cstr ->
-	 let f arg (vs,auxdefs,annots) = 
-           let v,auxdefs,annots = translate auxdefs annots n arg in
-             (v :: vs),auxdefs,annots
+	 let f arg (vs,vs2,auxdefs,annots) = 
+           let v,inlined_v,auxdefs,annots = translate ~global auxdefs annots n arg in
+             (v :: vs),inlined_v::vs2,auxdefs,annots
          in
 	 let i = index_of_constructor cstr in
 	 let ind = inductive_of_constructor cstr in
-     let mp' = ind_modpath ind in
+         let mp' = ind_modpath ind in
 	 let mb = lookup_mind (fst ind) env in
 	 let ob = mb.mind_packets.(snd ind) in
 	 let nparams = mb.mind_nparams in
 	 let nargs = Array.length args in
-         let vs,auxdefs,annots = Array.fold_right f args ([],auxdefs,annots) in
+         let vs,inlined_vs,auxdefs,annots = Array.fold_right f args ([],[],auxdefs,annots) in
 	 let vs = list_skipn (min nparams nargs) vs in
+	 let inlined_vs = list_skipn (min nparams nargs) inlined_vs in
          let _,arity = ob.mind_reloc_tbl.(i-1) in
 	 let missing = arity + nparams - nargs in
 	 let underscores = max (nparams - nargs) 0 in
 	 let names = gen_names n (missing - underscores) in
 	 let pad = List.map (fun x -> <:expr< $lid:x$ >>) names in
 	 let prefix =
-	   let rec aux n z =
+	   let rec aux n (z1,z2) =
 	     if n = 0
-	     then z
-	     else aux (n - 1) <:expr< fun _ -> $z$ >>
+	     then (z1,z2)
+	     else aux (n - 1) (<:expr< fun _ -> $z1$ >>, <:expr< fun _ -> $z2$ >>)
 	   in
        let tr_constr,_ = construct_uid mp (mp',ob.mind_consnames.(i-1)) in
        let apps =
-         List.fold_left (fun e x -> <:expr< $e$ $x$ >>) tr_constr (vs@pad)
+         List.fold_left2 (fun (e1,e2) x1 x2 -> (<:expr< $e1$ $x1$ >>, <:expr< $e2$ $x2$ >>)) (tr_constr,tr_constr) (vs@pad) (inlined_vs@pad)
        in
        aux underscores
-       (List.fold_right (fun x e -> <:expr< fun $lid:x$ -> $e$ >>)
+       (List.fold_right (fun x (e1,e2) -> <:expr< fun $lid:x$ -> $e1$ >>,<:expr< fun $lid:x$ -> $e2$ >>)
        names apps)
      in
-     <:expr< (Obj.magic $prefix$ : Nativevalues.t) >>, auxdefs, annots
+     let tr = <:expr< (Obj.magic $fst prefix$ : Nativevalues.t) >> in
+     let inlined_tr = <:expr< (Obj.magic $snd prefix$ : Nativevalues.t) >> in
+     tr, inlined_tr, auxdefs, annots
      | _ ->
-         let zero = translate auxdefs annots n c in
-         let f (apps,auxdefs,annots) x =
-           let tr,auxdefs,annots = translate auxdefs annots n x in
-           <:expr< $apps$ $tr$ >>, auxdefs, annots
+         let zero = translate ~global auxdefs annots n c in
+         let f (apps,inlined_apps,auxdefs,annots) x =
+           let tr,inlined_tr,auxdefs,annots = translate ~global auxdefs annots n x in
+           let tr_app = <:expr< $apps$ $tr$ >> in
+           let inlined_tr_app = <:expr< $inlined_apps$ $inlined_tr$ >> in
+           tr_app, inlined_tr_app, auxdefs, annots
          in
          Array.fold_left f zero args
-  and translate_case auxdefs annots n (ci,p,c,branches) aux_neutral =
+  and translate_case ~global auxdefs annots n (ci,p,c,branches) aux_neutral =
     let mb = lookup_mind (fst ci.ci_ind) env in
     let ob = mb.mind_packets.(snd ci.ci_ind) in
     let mp' = ind_modpath ci.ci_ind in
-    let f i br (xs1,auxdefs,annots) =
+    let f inline i br (xs1,xs2,auxdefs,annots) =
       let args = gen_names n ci.ci_cstr_ndecls.(i) in
       let apps = List.fold_left (fun e arg -> <:expr< $e$ $lid:arg$ >>) in
       let pat1 = make_constructor_pattern mp mp' ob i args in
-      let (tr,auxdefs,annots) = translate auxdefs annots n br in
+      let (tr,tr_inlined,auxdefs,annots) = translate ~global:inline auxdefs annots n br in
       let body = apps tr args in
-      ((pat1, None, body)::xs1,auxdefs,annots)
+      let inlined_body = apps tr_inlined args in
+      ((pat1, None, body)::xs1,(pat1, None, inlined_body)::xs2,auxdefs,annots)
     in
-    let (bodies,auxdefs,annots) =
-      array_fold_right_i f branches ([],auxdefs,annots)
+    let (bodies,inlined_bodies,auxdefs,annots) =
+      array_fold_right_i (f false) branches ([],[],auxdefs,annots)
     in
     let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
     let match_lid = match_lid t_id annot_i in
-    let (p_tr, auxdefs, annots) = translate auxdefs annots n p in
+    let (p_tr, _, auxdefs, annots) = translate ~global auxdefs annots n p in
     let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
     let fv = free_vars_acc n [] p in
     let fv = Array.fold_left (free_vars_acc n) fv branches in
@@ -544,12 +565,16 @@ and translate_app auxdefs annots n c args =
     let accu_id = id_of_string ind_str in
     let accu_expr,_ = construct_uid_patt ~accu:true mp (mp',accu_id) in
     let default = (<:patt< $accu_expr$ _ >>, None, neutral_match) in
-    let (tr,auxdefs,annots) = translate auxdefs annots n c in
+    let (tr,inlined_tr,auxdefs,annots) = translate ~global auxdefs annots n c in
     let match_body =
       <:expr< match (Obj.magic c : $ind_lid$) with
       [$list:default::bodies$] >>
     in
-    let inlined_body = <:expr< let c = $tr$ in $match_body$ >> in
+    let inlined_match_body =
+      <:expr< match (Obj.magic c : $ind_lid$) with
+      [$list:default::inlined_bodies$] >>
+    in
+    let inlined_body = <:expr< let c = $inlined_tr$ in $inlined_match_body$ >> in
     let match_body =
       List.fold_left (fun e arg -> <:expr< fun $lid:arg$ -> $e$ >>)
       match_body ("c"::fv)
@@ -568,7 +593,7 @@ and translate_app auxdefs annots n c args =
       <:expr< $match_app$ $tr$ >>, inlined_body, auxdefs, annots, aux_body
 
   in
-  let tr,auxdefs,annots = translate ~global:true [] annots lift t in
+  let tr,_,auxdefs,annots = translate ~global:true [] annots lift t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 and compile_value mp env id body =
