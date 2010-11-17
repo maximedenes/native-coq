@@ -391,8 +391,7 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
       | Case (ci, p, c, branches) ->
           let u = (ci, p, c, branches) in
           let body, inlined_body, auxdefs, annots, _ = translate_case ~global auxdefs annots n u None in
-          if global then inlined_body, inlined_body, auxdefs, annots
-          else body, inlined_body, auxdefs, annots
+          body, inlined_body, auxdefs, annots
       | Fix ((recargs, i), (names, types, bodies)) ->
           let m = Array.length bodies in
           let abs_over_bodies e = push_abstractions n m e in
@@ -431,12 +430,12 @@ let rec translate ?(annots=NbeAnnotTbl.empty) ?(lift=0) mp env t_id t =
               | _ ->
                   let atom_app = app <:expr< mk_accu $lid:atom_lid$ >> in
                   let norm_app = app <:expr< $lid:norm_lid$ $lid:rec_lid$>> in
-                  let tr_norm, _, auxdefs, annots =
+                  let tr_norm, tr_rec, auxdefs, annots =
                     translate ~global auxdefs annots (n+m+lvl) t
                   in
                   let tr_rec =
                     <:expr< if is_accu $lid:lid_of_index (n+m+recargs.(i))$ then
-                      $atom_app$ else let $list:mappings$ in $tr_norm$ >>
+                      $atom_app$ else let $list:mappings$ in $tr_rec$ >>
                   in
                   abs tr_rec, abs tr_norm, auxdefs, annots
             in
@@ -600,7 +599,7 @@ and translate_app ~global auxdefs annots n c args =
       <:expr< $match_app$ $tr$ >>, inlined_body, auxdefs, annots, aux_body
 
   in
-  let tr,_,auxdefs,annots = translate ~global:true [] annots lift t in
+  let _,tr,auxdefs,annots = translate ~global:true [] annots lift t in
     List.rev (<:str_item< value $lid:t_id$ = $tr$ >>::auxdefs), annots)
 
 and compile_value mp env id body =
