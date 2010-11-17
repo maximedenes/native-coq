@@ -548,7 +548,7 @@ and translate_app ~global auxdefs annots n c args =
     in
     let annots,annot_i = NbeAnnotTbl.add (CaseAnnot ci) annots in
     let match_lid = match_lid t_id annot_i in
-    let (p_tr, _, auxdefs, annots) = translate ~global auxdefs annots n p in
+    let (p_tr, _, auxdefs, annots) = translate ~global:false auxdefs annots n p in
     let tbl = dump_reloc_tbl ob.mind_reloc_tbl in
     let fv = free_vars_acc n [] p in
     let fv = Array.fold_left (free_vars_acc n) fv branches in
