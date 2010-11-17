@@ -60,6 +60,7 @@ type lam =
   | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
   | Fix of name * rec_pos * lam * lam 
+  | Array of lam array
 
 val rnorm : lam ref
 

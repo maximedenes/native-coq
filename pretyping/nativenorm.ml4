@@ -187,6 +187,12 @@ and rebuild_constr n kns env ty t =
       let env = push_rel (l,None,ty) env in
       let t,_ = rebuild_constr (n+1) kns env ty t in
       mkFix (([|rec_pos|],0),([|l|],[|ty|],[|t|])), ty
+  | Array t ->
+      let (_, tA) = app_type env ty in
+      let tA = assert (Array.length tA = 1);tA.(0) in
+      let t = Array.map (fun t -> fst (rebuild_constr n kns env tA t)) t in
+      mkArray (tA, t), ty
+
 
 let native_norm env c ty =
   let res, filename, mod_name = compile (pre_env env) c in

@@ -153,13 +153,16 @@ type kind_of_value =
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
+  | Varray of t Native.Parray.t 
 	
 let kind_of_value (v:t) =
   let o = Obj.repr v in
   if Obj.is_int o then Vconst (Obj.magic v)
   else
     let tag = Obj.tag o in
-    if tag = accumulate_tag then Vaccu (Obj.magic v)
+    if tag = accumulate_tag then 
+      if Obj.size o = 1 then Varray (Obj.magic v)
+      else Vaccu (Obj.magic v)
     else 
       if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
       else
@@ -387,6 +390,47 @@ let foldi_down_cont accu _A _B f max min cont =
     else cont
   else accu _A _B f max min cont
 
+let is_parray t =
+  let t = Obj.magic t in
+  Obj.is_block t && Obj.size t = 1
+
+let to_parray t = Obj.magic t
+let of_parray t = Obj.magic t
+
+let arraymake accu vA n def = 
+  if is_int n then 
+    of_parray (Native.Parray.make (to_uint n) def)
+  else accu vA n def
+
+let arrayget accu vA t n =
+  if is_parray t && is_int n then
+    Native.Parray.get (to_parray t) (to_uint n)
+  else accu vA t n
+
+let arraydefault accu vA t =
+  if is_parray t then  
+    Native.Parray.default (to_parray t) 
+  else accu vA t 
+
+let arrayset accu vA t n v =
+  if is_parray t && is_int n then
+    of_parray (Native.Parray.set (to_parray t) (to_uint n) v)
+  else accu vA t n v
+
+let arraycopy accu vA t = 
+  if is_parray t then
+    of_parray (Native.Parray.copy (to_parray t))
+  else accu vA t 
+
+let arrayreroot accu vA t =
+  if is_parray t then
+    of_parray (Native.Parray.reroot (to_parray t))
+  else accu vA t 
+
+let arraylength accu vA t =
+  if is_parray t then
+    of_uint (Native.Parray.length (to_parray t))
+  else accu vA t
 
 
  

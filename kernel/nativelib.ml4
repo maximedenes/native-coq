@@ -164,6 +164,7 @@ type lam =
   | Case of lam * lam * lam array * case_info
   | Prod of name * lam * lam
   | Fix of name * rec_pos * lam * lam 
+  | Array of lam array
 
 let rnorm = ref (Rel (-1))
 
@@ -236,6 +237,15 @@ let rec norm_val lvl v =
       let args =
 	Array.init nargs (fun i -> norm_val lvl (Nativevalues.block_field b i)) in
       Const_block(tag,args)
+  | Varray t ->
+      let len = Native.Parray.length t in
+      let def = norm_val lvl (Native.Parray.default t) in
+      let lt = Array.make (Native.Uint31.to_int len + 1) def in 
+      for i = 0 to Native.Uint31.to_int len - 1 do
+        lt.(i) <- norm_val lvl (Native.Parray.get t (Native.Uint31.of_int i))
+      done;
+      Array lt
+      
 
 and norm_accu lvl k =
   let a = Nativevalues.atom_of_accu k in
@@ -302,6 +312,15 @@ let rec conv_val lvl v1 v2 =
         for i = 0 to n1 - 1 do 
 	  conv_val lvl (block_field b1 i) (block_field b2 i) 
 	done
+    | Varray t1, Varray t2 ->
+      let len = Native.Parray.length t1 in
+      if len <> Native.Parray.length t2 then
+      raise NotConvertible;
+      for i = 0 to Native.Uint31.to_int len - 1 do
+        conv_val lvl (Native.Parray.get t1 (Native.Uint31.of_int i))
+           (Native.Parray.get t2 (Native.Uint31.of_int i))
+      done;
+      conv_val lvl (Native.Parray.default t1) (Native.Parray.default t2)   
     | _, _ -> raise NotConvertible
 and conv_accu lvl k1 k2 = 
   let n1 = accu_nargs k1 in
