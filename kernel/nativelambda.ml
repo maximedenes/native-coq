@@ -1,19 +1,22 @@
-type constr_name = ...
+open Term
+open Names
 
-type lname = ...
+type constr_name = string
 
-type global_name = ...
+type lname = string
+
+type global_name = string
 
 (* **)
 
-type primitive
+type primitive =
   | Mk_prod of name
-  | Mk_sort of sort
+  | Mk_sort of sorts
   | Is_accu
   | Is_int
 
 type lambda =
-  | Lrel          of lname * int 
+  | Lrel          of (lname * int )
   | Lglobal       of global_name 
   | Lprimitive    of primitive
   | Llam          of lname array * lambda 
@@ -36,13 +39,21 @@ type global =
 
 (* *)
 
-type comp = list global
+type comp = global list
 
-let global = ref []
+let globals = ref []
 
 let rec lambda_of_constr cenv c =
   match c with
   | Rel i -> Lrel (mk_rel cenv i)
+  | Lambda _ ->
+      let params, body = decompose_lam c in
+      let ids = get_names (List.rev params) in
+      let ln,cenv = push_rels ids cenv in
+      let lb = lambda_of_constr cenv body in
+      mkLlam ids lb
+  | App(f, args) -> lambda_of_app cenv f args
+(*
   | Var id -> Lglobal (get_var cenv id)
   | Sort s -> Lprimitive (Mk_sort s)
   | Ind ind -> Lglobal (get_ind cenv ind)
@@ -51,20 +62,12 @@ let rec lambda_of_constr cenv c =
       let lx, cenv = push_rel x cenv in
       let lc = lambda_of_constr cenv codom in
       Lapp(Lprimitive (Mk_prod x), [|ld; Llam([|lx|],lc)|])
-  | Lambda _ ->
-      let params, body = decompose_lam c in
-      let ids = get_names (List.rev params) in
-      let ln,cenv = push_rels ids cenv in
-      let lb = lambda_of_constr cenv body in
-      mkLlam ids lb
 	
   | LetIn(x, def, _, body) ->
       let ld = lambda_of_constr cenv def in
       let lx,cenv = push_rel x cenv in 
       let lb = lambda_of_constr cenv body in
       Llet(lx, ld, lb)
-
-  | App(f, args) -> lambda_of_app cenv f args
 
   | Const _ -> lambda_of_app cenv c empty_args
 
@@ -117,4 +120,5 @@ let rec lambda_of_constr cenv c =
 Prod(x,dom,codom) -->
   mkprodaccu "x" dom (fun x -> codom)
 
+*)
 *)
