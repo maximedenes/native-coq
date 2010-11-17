@@ -298,7 +298,7 @@ module Uint31 : UINT31 =
     let rem_32 x y = 
       if y = 0 then 0 
       else Int32.to_int (Int32.rem (uint_32 x) (uint_32 y))
-    let rem_64 x y = if y = 0 then 0 else x / y
+    let rem_64 x y = if y = 0 then 0 else x mod y
     let rem = select rem_32 rem_64
 
     (* division of two numbers by one *)
