@@ -64,10 +64,11 @@ val block_tag : block -> int
 (* kind_of_value *)
 
 type kind_of_value =
-    Vaccu of accumulator
+  | Vaccu of accumulator
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
+  | Varray of t Native.Parray.t 
 
 val kind_of_value : t -> kind_of_value
 
@@ -113,4 +114,10 @@ val print : t -> t -> t
 val foldi_cont : t -> t -> t -> t -> t -> t -> t -> t
 val foldi_down_cont : t -> t -> t -> t -> t -> t -> t -> t
 
-
+val arraymake    : t -> t -> t -> t -> t      (* accu A n def *)
+val arrayget     : t -> t -> t -> t -> t      (* accu A t n *)
+val arraydefault : t -> t -> t -> t           (* accu A t *)
+val arrayset     : t -> t -> t -> t -> t -> t (* accu A t n v *)
+val arraycopy    : t -> t -> t -> t           (* accu A t *)
+val arrayreroot  : t -> t -> t -> t           (* accu A t *)
+val arraylength  : t -> t -> t -> t           (* accu A t *)

@@ -291,7 +291,13 @@ let native_constant_body f mp kn =
     | Native.Ocaml_prim op ->
       begin match op with
       | Native.Int31print -> "print"
-      | _ -> assert false
+      | Native.ArrayMake -> "arraymake"
+      | Native.ArrayGet -> "arrayget"
+      | Native.ArrayGetdefault -> "arraydefault"
+      | Native.ArraySet -> "arrayset"
+      | Native.ArrayCopy -> "arraycopy"
+      | Native.ArrayReroot -> "arrayreroot"
+      | Native.ArrayLength -> "arraylength"
       end
     | Native.Oiterator op -> 
       begin match op with
