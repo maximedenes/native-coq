@@ -76,7 +76,8 @@ and translate_fields mp env (l,x) (ast,annots) =
   | SFBconst cb ->
       let tr,annots = translate_constant (pre_env env) mp l cb in tr@ast, annots
   | SFBmind mb ->
-      let tr = translate_mind mb in
+      let kn = make_mind mp empty_dirpath l in
+      let tr = translate_mind mb kn in
       tr@ast,annots
   | SFBmodule md ->
       begin

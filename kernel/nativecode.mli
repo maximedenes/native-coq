@@ -23,13 +23,13 @@ val opaque_const : module_path -> constant -> MLast.str_item list
 val assums : module_path -> env -> constr -> string list
 
 val translate_mind : 
-   mutual_inductive_body -> MLast.str_item list
+   mutual_inductive_body -> mutual_inductive -> MLast.str_item list
 
 val compile_constant :
    Names.module_path -> env ->
    Names.constant -> Declarations.constant_body -> unit
 
-val compile_mind : mutual_inductive_body -> unit
+val compile_mind : mutual_inductive_body -> mutual_inductive -> unit
 
 val translate_constant : env -> module_path -> label ->
    constant_body -> MLast.str_item list * Nativelib.NbeAnnotTbl.t
