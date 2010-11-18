@@ -1,5 +1,3 @@
-(*i camlp4use: "q_MLast.cmo" i*)
-
 open Names
 open Term
 open Pre_env
@@ -7,7 +5,7 @@ open Pcaml
 open Nativelib
 open Declarations
 open Util
-open Nativecode
+open Nativelambda
 (*open Reduction*)
 
 exception NotConvertible
@@ -40,17 +38,19 @@ let env_updated = ref false
 
 let compare env t1 t2 cu =
   let mp = env.current_mp in
-  let (code1,_) = translate mp env "t1" t1 in
-  let (code2,_) = translate mp env "t2" t2 in
+  let code1 = lambda_of_constr env t1 in
+  let code2 = lambda_of_constr env t2 in
+(*  let (code1,_) = translate mp env "t1" t1 in
+  let (code2,_) = translate mp env "t2" t2 in *)
   let terms_code =
-    code1 @ code2 @ [<:str_item< value _ = (*let t0 = Unix.time () in *)
+      [code1;code2] (*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
       (*do {*)try conv_val 0 t1 t2 with _ -> exit 1 (*;
     Format.fprintf Format.std_formatter
     "Test running time: %.5fs\n" (Unix.time() -. t0);
     flush_all() }*)
-    >>]
+    >>] *)
   in
-    match call_compiler terms_code with
+    match compile_terms terms_code with
     | 0,_,_ ->
       begin
         print_endline "Running test...";

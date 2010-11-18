@@ -12,7 +12,6 @@ open Term
 open Cemitcodes
 open Sign
 open Mod_subst
-open Nativelib
 
 (** This module defines the internal representation of global
    declarations. This includes global constants/axioms, mutual

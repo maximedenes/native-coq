@@ -27,7 +27,6 @@ open Univ
 open Term
 open Sign
 open Mod_subst
-open Nativelib
 
 type engagement = ImpredicativeSet
 

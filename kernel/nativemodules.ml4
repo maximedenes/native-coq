@@ -97,7 +97,9 @@ and translate_fields mp env (l,x) (ast,annots) =
       <:str_item< module type $uid:string_of_label l$ = $tr$ >>::ast, annots
 
 let dump_library mp env mod_expr =
+  print_endline "Compiling library...";
   let mod_ast,annots = translate_mod mp env NbeAnnotTbl.empty mod_expr in
+  print_endline "Compiled library.";
   match mod_ast with
   | <:module_expr< struct $list:ast$ end >> -> ast, annots
   | _ -> assert false
