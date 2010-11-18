@@ -1,15 +1,12 @@
 open Names
 open Term
 open Nativevalues
+open Nativecode
 
 exception NotConvertible
 
 val load_paths : string list ref
 val imports : string list ref
-
-(* Global utilies for interface with OCaml *)
-val print_implem :
-  string -> (MLast.str_item * MLast.loc) list -> unit
 
 val topological_sort :
   Util.Stringset.elt list ->
@@ -20,10 +17,10 @@ val compile_module :
   values -> string list -> string -> int
 
 val push_comp_stack :
-  MLast.str_item list -> unit
+  mllambda list -> unit
 
-val call_compiler :
-  MLast.str_item list -> int * string * string
+val compile_terms :
+  mllambda list -> int * string * string
 
 val call_linker :
   string -> string -> unit
@@ -86,3 +83,5 @@ val str_decode : string -> 'a
 
 val extern_state : string -> unit
 val intern_state : string -> unit
+
+val compile_constant : 'a -> 'b -> 'c -> Declarations.constant_body -> unit

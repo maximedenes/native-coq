@@ -2,17 +2,16 @@ open Names
 open Term
 open Util
 open Nativevalues
+open Declarations
+open Nativecode
 
 exception NotConvertible
-
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
 
 let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
 
-let open_header = ref ([] : MLast.str_item list)
-let comp_stack = ref ([] : MLast.str_item list)
+let open_header = ref ([] : mllambda list)
+let comp_stack = ref ([] : mllambda list)
 
 (* Global settings and utilies for interface with OCaml *)
 let env_name = "Coq_conv_env"
@@ -25,32 +24,7 @@ let include_dirs =
 let include_libs =
   "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
 
-let ocaml_version = "3.12.0"
-let ast_impl_magic_number = "Caml1999M013"
-let ast_intf_magic_number = "Caml1999N012"
-
-(*let ocaml_version = "3.11.1"
-let ast_impl_magic_number = "Caml1999M012"
-let ast_intf_magic_number = "Caml1999N011"*)
-
-let ocaml_version = "3.11.0"
-let ast_impl_magic_number = "Caml1999M012"
-let ast_intf_magic_number = "Caml1999N011"
-
-
-let print_implem fname ast =
-  let pt = Ast2pt.implem fname (List.map fst ast) in
-  let oc = open_out_bin fname in
-  output_string oc ast_impl_magic_number;
-  output_value oc fname;
-  output_value oc pt;
-  close_out oc
-
-let compute_loc xs =
-  let rec f n = function
-    | [] -> []
-    | str_item :: xs -> (str_item, Ploc.make n 0 (0, 0)) :: f (n + 1) xs
-  in f 0 xs
+let pp_mllambda f t = assert false
 
 let compile_module ast load_paths f =
   let code = expr_of_values ast in
@@ -59,14 +33,7 @@ let compile_module ast load_paths f =
      <:str_item< open Names >>]
     @ code
   in*)
-  let code = compute_loc code in
-    Pcaml.input_file := "/dev/null";
-    Pcaml.output_file := Some (f^".pr");
-    Pcaml.inter_phrases := Some "\n";
-    print_endline "Dumping pretty-printed AST...";
-    !Pcaml.print_implem code;
-    print_endline "Dumping binary AST...";
-    print_implem (f^".ml") code;
+  pp_mllambda (f^".ml") code;
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
     "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
@@ -81,7 +48,7 @@ let emit_comp_stack () =
   let res = !comp_stack in
   comp_stack := []; res
 
-let call_compiler terms_code =
+let compile_terms terms_code =
   let ast = emit_comp_stack () in
 (*  let terms_code =
     [<:str_item< open Nativelib >>;
@@ -89,11 +56,7 @@ let call_compiler terms_code =
      <:str_item< open Names >>] @ (List.rev !open_header) @ ast @ terms_code
   in*)
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
-  Pcaml.input_file := "/dev/null";
-  Pcaml.output_file := Some (mod_name^".pr");
-  Pcaml.inter_phrases := Some "\n";
-  !Pcaml.print_implem (compute_loc terms_code);
-  print_implem mod_name (compute_loc terms_code);
+  pp_mllambda mod_name terms_code;
   print_endline "Compilation...";
   let include_dirs =
     include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
@@ -407,3 +370,16 @@ let intern_state s =
 (*  let temp = Filename.temp_file s ".cmxs" in*)
   try Dynlink.loadfile (s^".cmxs")
   with Dynlink.Error e -> print_endline (Dynlink.error_message e)
+
+let compile_constant mp env kn ck =
+  let ast = match ck.const_body with
+    | Def cb -> assert false
+(*      let _,lid = const_lid mp kn in
+      let cb = Declarations.force cb in
+        fst (translate mp env lid cb)
+        *)
+    | _ -> assert false
+(*      let _,lid = const_lid mp kn in
+      opaque_const mp kn*)
+  in
+  push_comp_stack ast

@@ -9,12 +9,13 @@ Cbytecodes
 Copcodes
 Cemitcodes
 Nativevalues
-Nativelib
 Declarations
 Pre_env
 Clambda
 Cbytegen
+Nativelambda
 Nativecode
+Nativelib
 Environ
 Conv_oracle
 Closure
