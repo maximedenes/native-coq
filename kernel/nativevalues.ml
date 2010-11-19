@@ -138,6 +138,8 @@ let dummy_atom = Arel (-1)
 
 let cast_accu v = (Obj.magic v:accumulator)
 
+let mk_int x = Obj.magic x
+
 type block
 
 let block_size (b:block) =
@@ -175,6 +177,7 @@ let kind_of_value (v:t) =
 (*** Operations pour les entiers **)
 
 let mk_uint x = Obj.magic x
+
 
 let is_int (x:t) = Obj.is_int (Obj.repr x)
 let to_uint (x:t) = (Obj.magic x : Native.Uint31.t)
@@ -432,7 +435,8 @@ let arraylength accu vA t =
     of_uint (Native.Parray.length (to_parray t))
   else accu vA t
 
-
+let parray_of_array t =
+  (Obj.magic (Native.Parray.of_array t) : t)
  
 
 
