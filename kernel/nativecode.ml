@@ -1,70 +1,150 @@
 open Term
 open Names
+open Nativelambda
 
-type constr_name = string
+(*s Local names *)
 
-type lname = string
+type lname = { lname : name; luid : int }
 
-type global_name = string
+let lname_ctr = ref (-1)
 
-(* **)
+let reset_lname = lname_ctr := -1
 
+let fresh_lname n = 
+  incr lname_ctr;
+  { lname = n; luid = !lname_ctr }
+
+(*s Global names *)
+type gname = 
+  | Gind of inductive
+  | Gconstruct of constructor
+  | Gconstant of constant
+  | Gcase of int
+
+let case_ctr = ref (-1)
+
+let reset_gcase = case_ctr := -1
+
+let fresh_gcase () =
+  incr case_ctr;
+  Gcase !case_ctr
+
+(*s Mllambda *)
+  
 type primitive =
-  | Mk_prod of lname
+  | Mk_prod of name
   | Mk_sort of sorts
   | Is_accu
   | Is_int
 
 type mllambda =
-  | Lrel          of (lname * int)
-  | Lglobal       of global_name 
-  | Lprimitive    of primitive
-  | Llam          of lname array * mllambda 
-  | Lletrec       of (lname * lname array * mllambda) array * mllambda
-  | Llet          of lname * mllambda * mllambda
-  | Lapp          of mllambda * mllambda array
-  | Lif           of mllambda * mllambda * mllambda
-  | Lmatch        of mllambda * (constr_name * lname array * mllambda) array
-  | Lconstruct    of constr_name * mllambda array
-  | Lint          of int
-  | Lparray       of mllambda array
+  | MLlocal        of lname 
+  | MLglobal       of gname 
+  | MLprimitive    of primitive
+  | MLlam          of lname array * mllambda 
+  | MLletrec       of (lname * lname array * mllambda) array * mllambda
+  | MLlet          of lname * mllambda * mllambda
+  | MLapp          of mllambda * mllambda array
+  | MLif           of mllambda * mllambda * mllambda
+  | MLmatch        of mllambda * (constructor * lname array * mllambda) array
+  | MLconstruct    of constructor * mllambda array
+  | MLint          of int
+  | MLparray       of mllambda array
+  | MLval          of Nativevalues.t
 
 type global =
 (*  | Gmatch of ...
   | Gtblname of global_name * lname array
   | Gtblfixtype of global_name * lamba array (* add Lazy for ocaml *)
   | Gtblnorm of global_name * mllambda array *)
-  | Glet of global_name * mllambda
+  | Glet of gname * mllambda
   
+(*s Compilation environment *)
 
-(* Compilation environment *)
-type cenv = 
-  { cenv_rel  : lname list;
-    cenv_size : int (* the lenght of cenv_rel *)
-  }
+type env =
+    { env_rel : mllambda list; (* (MLlocal lname) list *)
+      env_bound : int; (* length of env_rel *)
+      (* free variables *)
+      env_urel : (int * mllambda) list ref; (* list of unbound rel *)
+      env_named : (identifier * mllambda) list ref }
 
-let empty_cenv = { cenv_rel = []; cenv_size = 0 }
+let push_rel env id = 
+  let local = fresh_lname id in
+  local, { env with 
+	   env_rel = MLlocal local :: env.env_rel;
+	   env_bound = env.env_bound + 1
+	 }
 
+let push_rels env ids =
+  let lnames, env_rel = 
+    Array.fold_left (fun (names,env_rel) id ->
+      let local = fresh_lname id in
+      (local::names, MLlocal local::env_rel)) ([],env.env_rel) ids in
+  Array.of_list lnames, { env with 
+			  env_rel = env_rel;
+			  env_bound = env.env_bound + Array.length ids
+			}
 
-(* functions used for printing *)
-let push_lname cenv id = 
-  { cenv_rel = id::cenv.cenv_rel;
-    cenv_size = cenv.cenv_size + 1 }
+let get_rel env i = assert false
 
-let push_lnames = Array.fold_left push_lname 
+let get_var env id = assert false
 
-(* functions used for mllambda_of_constr *)
-let lname_of_name x = 
-  match x with
-  | Name id -> Names.string_of_id id
-  | Anonymous -> "__"
   
-let push_rel cenv x = push_lname cenv (lname_of_name x)
+   
+(*s Traduction of lambda to mllambda *)
 
-let push_rels = List.fold_left push_rel 
+let get_prod_name codom = 
+  match codom with
+  | MLlam(ids,_) -> ids.(0).lname
+  | _ -> assert false
+
+let rec mllambda_of_lambda env l =
+  match l with
+  | Lrel(_,i) -> get_rel env i
+  | Lvar id -> get_var env id
+  | Lprod(dom,codom) ->
+      let dom = mllambda_of_lambda env dom in
+      let codom = mllambda_of_lambda env codom in
+      let n = get_prod_name codom in
+      MLapp(MLprimitive(Mk_prod n), [|dom;codom|])
+  | Llam(ids,body) ->
+    let lnames,env = push_rels env ids in
+    MLlam(lnames, mllambda_of_lambda env body)
+  | Lrec(id,body) ->
+      let ids,body = decompose_Llam body in
+      let lname, env = push_rel env id in
+      let lnames, env = push_rels env ids in
+      MLletrec([|lname, lnames, mllambda_of_lambda env body|], MLlocal lname)
+  | Llet(id,def,body) ->
+      let def = mllambda_of_lambda env def in
+      let lname, env = push_rel env id in
+      let body = mllambda_of_lambda env body in
+      MLlet(lname,def,body)
+  | Lapp(f,args) ->
+      MLapp(mllambda_of_lambda env f, Array.map (mllambda_of_lambda env) args)
+  | Lconst c -> MLglobal(Gconstant c)
+  | Lprim _ | Lcprim _ -> assert false
+  | Lcase _ -> assert false
+  | Lareint _ -> assert false
+  | Lif(t,bt,bf) -> 
+      MLif(mllambda_of_lambda env t, mllambda_of_lambda env bt,
+           mllambda_of_lambda env bf)
+  | Lfix _ -> assert false
+  | Lcofix _ -> assert false
+  | Lmakeblock (cn,_,args) ->
+      MLconstruct(cn,Array.map (mllambda_of_lambda env) args)
+  | Lconstruct cn ->
+      MLglobal (Gconstruct cn)
+  | Lint i -> MLint i
+  | Lparray t -> MLparray(Array.map (mllambda_of_lambda env) t)
+  | Lval v -> MLval v
+  | Lsort s -> MLprimitive(Mk_sort s)
+  | Lind i -> MLglobal (Gind i)
+
 
 (** Printing to ocaml **)
 
+(*
 let pp_global fmt g = Format.fprintf fmt "%s" g
 
 let pp_rel cenv id fmt i =
@@ -172,12 +252,12 @@ and pp_branches cenv fmt bs =
   Array.iter pp_branch bs
 
 
-      
+      *)
     
   
 
 (* *)
-
+(*
 type comp = global list
 
 let globals = ref ([] : comp)
@@ -261,5 +341,6 @@ let rec mllambda_of_constr cenv c =
 Prod(x,dom,codom) -->
   mkprodaccu "x" dom (fun x -> codom)
 
+*)
 *)
 *)

@@ -44,7 +44,7 @@ val mk_const : tag -> t
 val mk_block : tag -> t array -> t
 
 val mk_uint : int -> t
-
+val mk_int : int -> t
 (* Functions over accumulators *)
 
 val dummy_atom : atom    
@@ -60,6 +60,8 @@ type block
 val block_size : block -> int
 val block_field : block -> int -> t
 val block_tag : block -> int
+
+val mk_block : int -> t array -> t
 
 (* kind_of_value *)
 
@@ -114,6 +116,7 @@ val print : t -> t -> t
 val foldi_cont : t -> t -> t -> t -> t -> t -> t -> t
 val foldi_down_cont : t -> t -> t -> t -> t -> t -> t -> t
 
+val parray_of_array : t array -> t
 val arraymake    : t -> t -> t -> t -> t      (* accu A n def *)
 val arrayget     : t -> t -> t -> t -> t      (* accu A t n *)
 val arraydefault : t -> t -> t -> t           (* accu A t *)
