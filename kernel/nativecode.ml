@@ -52,6 +52,11 @@ type mllambda =
   | MLparray       of mllambda array
   | MLval          of Nativevalues.t
 
+let mkMLlam params body =
+  match body with
+  | MLlam (params', body) -> MLlam(Array.append params params', body)
+  | _ -> MLlam(params,body)
+
 type global =
 (*  | Gmatch of ...
   | Gtblname of global_name * lname array
@@ -67,6 +72,13 @@ type env =
       (* free variables *)
       env_urel : (int * mllambda) list ref; (* list of unbound rel *)
       env_named : (identifier * mllambda) list ref }
+
+let empty_env () =
+  { env_rel = [];
+    env_bound = 0;
+    env_urel = ref [];
+    env_named = ref []
+  }
 
 let push_rel env id = 
   let local = fresh_lname id in
@@ -85,11 +97,23 @@ let push_rels env ids =
 			  env_bound = env.env_bound + Array.length ids
 			}
 
-let get_rel env i = assert false
+let get_rel env id i =
+  if i <= env.env_bound then
+    List.nth env.env_rel (i-1)
+  else 
+    let i = i - env.env_bound in
+    try List.assoc i !(env.env_urel)
+    with Not_found ->
+      let local = MLlocal (fresh_lname id) in
+      env.env_urel := (i,local) :: !(env.env_urel);
+      local
 
-let get_var env id = assert false
-
-  
+let get_var env id =
+  try List.assoc id !(env.env_named)
+  with Not_found ->
+    let local = MLlocal (fresh_lname (Name id)) in
+    env.env_named := (id, local)::!(env.env_named);
+    local
    
 (*s Traduction of lambda to mllambda *)
 
@@ -98,48 +122,62 @@ let get_prod_name codom =
   | MLlam(ids,_) -> ids.(0).lname
   | _ -> assert false
 
-let rec mllambda_of_lambda env l =
+let rec ml_of_lam env l =
   match l with
-  | Lrel(_,i) -> get_rel env i
+  | Lrel(id ,i) -> get_rel env id i
   | Lvar id -> get_var env id
   | Lprod(dom,codom) ->
-      let dom = mllambda_of_lambda env dom in
-      let codom = mllambda_of_lambda env codom in
+      let dom = ml_of_lam env dom in
+      let codom = ml_of_lam env codom in
       let n = get_prod_name codom in
       MLapp(MLprimitive(Mk_prod n), [|dom;codom|])
   | Llam(ids,body) ->
     let lnames,env = push_rels env ids in
-    MLlam(lnames, mllambda_of_lambda env body)
+    MLlam(lnames, ml_of_lam env body)
   | Lrec(id,body) ->
       let ids,body = decompose_Llam body in
       let lname, env = push_rel env id in
       let lnames, env = push_rels env ids in
-      MLletrec([|lname, lnames, mllambda_of_lambda env body|], MLlocal lname)
+      MLletrec([|lname, lnames, ml_of_lam env body|], MLlocal lname)
   | Llet(id,def,body) ->
-      let def = mllambda_of_lambda env def in
+      let def = ml_of_lam env def in
       let lname, env = push_rel env id in
-      let body = mllambda_of_lambda env body in
+      let body = ml_of_lam env body in
       MLlet(lname,def,body)
   | Lapp(f,args) ->
-      MLapp(mllambda_of_lambda env f, Array.map (mllambda_of_lambda env) args)
+      MLapp(ml_of_lam env f, Array.map (ml_of_lam env) args)
   | Lconst c -> MLglobal(Gconstant c)
   | Lprim _ | Lcprim _ -> assert false
   | Lcase _ -> assert false
   | Lareint _ -> assert false
   | Lif(t,bt,bf) -> 
-      MLif(mllambda_of_lambda env t, mllambda_of_lambda env bt,
-           mllambda_of_lambda env bf)
+      MLif(ml_of_lam env t, ml_of_lam env bt, ml_of_lam env bf)
   | Lfix _ -> assert false
   | Lcofix _ -> assert false
   | Lmakeblock (cn,_,args) ->
-      MLconstruct(cn,Array.map (mllambda_of_lambda env) args)
+      MLconstruct(cn,Array.map (ml_of_lam env) args)
   | Lconstruct cn ->
       MLglobal (Gconstruct cn)
   | Lint i -> MLint i
-  | Lparray t -> MLparray(Array.map (mllambda_of_lambda env) t)
+  | Lparray t -> MLparray(Array.map (ml_of_lam env) t)
   | Lval v -> MLval v
   | Lsort s -> MLprimitive(Mk_sort s)
   | Lind i -> MLglobal (Gind i)
+
+let mllambda_of_lambda l =
+  let env = empty_env () in
+  let ml = ml_of_lam env l in
+  let fv_rel = !(env.env_urel) in
+  let fv_named = !(env.env_named) in
+  (* build the free variables *)
+  let get_name (_,l) = 
+   match l with
+   | MLlocal x -> x
+   | _ -> assert false in
+  let params = 
+    List.append (List.map get_name fv_rel) (List.map get_name fv_named) in
+  (* final result : global list, fv, ml *)
+  (([]:global list), (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
 
 
 (** Printing to ocaml **)
