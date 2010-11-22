@@ -260,6 +260,7 @@ STRUCTURESVO:=$(call cat_vo_itarget, theories/Structures)
 ARITHVO:=$(call cat_vo_itarget, theories/Arith)
 SORTINGVO:=$(call cat_vo_itarget, theories/Sorting)
 BOOLVO:=$(call cat_vo_itarget, theories/Bool)
+PARITHVO:=$(call cat_vo_itarget, theories/PArith)
 NARITHVO:=$(call cat_vo_itarget, theories/NArith)
 ZARITHVO:=$(call cat_vo_itarget, theories/ZArith)
 QARITHVO:=$(call cat_vo_itarget, theories/QArith)
@@ -272,17 +273,16 @@ RELATIONSVO:=$(call cat_vo_itarget, theories/Relations)
 WELLFOUNDEDVO:=$(call cat_vo_itarget, theories/Wellfounded)
 REALSVO:=$(call cat_vo_itarget, theories/Reals)
 NUMBERSVO:=$(call cat_vo_itarget, theories/Numbers)
-ARRAYVO:=$(call cat_vo_itarget, theories/Array)
 SETOIDSVO:=$(call cat_vo_itarget, theories/Setoids)
 UNICODEVO:=$(call cat_vo_itarget, theories/Unicode)
 CLASSESVO:=$(call cat_vo_itarget, theories/Classes)
 PROGRAMVO:=$(call cat_vo_itarget, theories/Program)
 
 THEORIESVO:=\
-  $(INITVO) $(LOGICVO) $(ARITHVO) $(BOOLVO) $(NARITHVO) $(ZARITHVO) \
+  $(INITVO) $(LOGICVO) $(ARITHVO) $(BOOLVO) $(PARITHVO) $(NARITHVO) $(ZARITHVO) \
   $(SETOIDSVO) $(LISTSVO) $(STRINGSVO) $(SETSVO) $(FSETSVO) $(MSETSVO) \
   $(RELATIONSVO) $(WELLFOUNDEDVO) $(REALSVO)  $(SORTINGVO) $(QARITHVO) \
-  $(NUMBERSVO) $(ARRAYVO) $(UNICODEVO) $(CLASSESVO) $(PROGRAMVO) $(STRUCTURESVO)
+  $(NUMBERSVO) $(UNICODEVO) $(CLASSESVO) $(PROGRAMVO) $(STRUCTURESVO)
 
 THEORIESLIGHTVO:= $(INITVO) $(LOGICVO) $(ARITHVO)
 

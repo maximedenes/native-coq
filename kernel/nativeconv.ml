@@ -6,7 +6,7 @@ open Nativelib
 open Declarations
 open Util
 open Nativelambda
-(*open Reduction*)
+open Nativecode 
 
 exception NotConvertible
 
@@ -40,6 +40,8 @@ let compare env t1 t2 cu =
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
+  let code1 = mllambda_of_lambda code1 in
+  let code2 = mllambda_of_lambda code2 in
 (*  let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in *)
   let terms_code =
@@ -50,7 +52,8 @@ let compare env t1 t2 cu =
     flush_all() }*)
     >>] *)
   in
-    match compile_terms terms_code with
+    assert false
+(*    match compile_terms terms_code with
     | 0,_,_ ->
       begin
         print_endline "Running test...";
@@ -80,3 +83,4 @@ let compare env t1 t2 cu =
         | _ -> (print_endline "Conversion test failure"; raise NotConvertible)
       end
     | _ -> (print_endline "Compilation failure"; raise NotConvertible)*)
+  *)

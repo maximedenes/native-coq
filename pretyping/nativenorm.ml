@@ -19,13 +19,14 @@ exception Find_at of int
 let loc = Ploc.dummy
 
 let compile env c =
-  let mp = fst (Lib.current_prefix ()) in
+  assert false
+(*  let mp = fst (Lib.current_prefix ()) in
   let code,annots = translate mp env "t1" c in
   let code =
     code @ [<:str_item< value _ = rnorm.val := lazy_norm (lazy $lid:"t1"$) >>]
   in
   let res,filename,mod_name = call_compiler code in
-    res, filename, mod_name
+    res, filename, mod_name*)
 
 let nf_betadeltaiotazeta env t =
   norm_val (create_clos_infos betadeltaiota env) (inject t)
@@ -115,7 +116,8 @@ let rec app_construct_args n kns env t ty args =
     Term.mkApp (t,Array.of_list (List.rev xs))
 
 and rebuild_constr n kns env ty t =
-  match t with
+  assert false
+(*  match t with
   | Lam st ->
       let name,dom,codom  = decompose_prod env ty in
       let env = push_rel (name,None,dom) env in
@@ -192,7 +194,7 @@ and rebuild_constr n kns env ty t =
       let tA = assert (Array.length tA = 1);tA.(0) in
       let t = Array.map (fun t -> fst (rebuild_constr n kns env tA t)) t in
       mkArray (tA, t), ty
-
+*)
 
 let native_norm env c ty =
   let res, filename, mod_name = compile (pre_env env) c in

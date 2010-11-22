@@ -143,7 +143,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
       const_inline = inline;
       const_inline_code = inline_code
     } in
-  Nativecode.compile_constant (con_modpath kn) (pre_env env) kn cb; cb
+  Nativelib.compile_constant (con_modpath kn) (pre_env env) kn cb; cb
 
 (*s Global and local constant declaration. *)
 

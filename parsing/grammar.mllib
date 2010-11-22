@@ -32,6 +32,7 @@ Nativelib
 Declarations
 Pre_env
 Clambda
+Nativelambda
 Nativecode
 Cbytegen
 Environ
