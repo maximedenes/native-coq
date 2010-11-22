@@ -169,7 +169,7 @@ let empty_params = [||]
 let get_name (_,l) = 
   match l with
   | MLlocal id -> id
-  | _ -> raise (Invalid_argument "Nativecode.get_name") in
+  | _ -> raise (Invalid_argument "Nativecode.get_name")
 
 let fv_params env = 
   let fvn, fvr = !(env.env_named), !(env.env_urel) in 
@@ -191,6 +191,7 @@ let fv_params env =
       incr i
     done;
     params
+  end
 
 let generalize_fv env body = 
   mkMLlam (fv_params env) body
@@ -275,7 +276,7 @@ let rec ml_of_lam env l =
       (* Compilation of accu branch *)
       let pred = MLapp(MLglobal pn, fv_args env_c pfvn pfvr) in  
       let (fvn, fvr) = !(env_c.env_named), !(env_c.env_urel) in
-      let cn_fv = mkMLapp(MLglobal cn, fv_args env_c fvn fvr) in
+      let cn_fv = mkMLapp (MLglobal cn) (fv_args env_c fvn fvr) in
          (* remark : the call to fv_args does not add free variables in env_c *)
       let accu = MLapp(MLprimitive (Mk_sw annot), [| pred; cn_fv; la_uid |]) in
       let body = MLlam([|a_uid|], MLmatch(annot, la_uid, accu, bs)) in
@@ -580,3 +581,11 @@ Prod(x,dom,codom) -->
 *)
 *)
 *)
+
+(* Redefine a bunch of functions in module Names to generate names
+   acceptable to OCaml. *)
+let string_of_dirpath = function
+  | [] -> "_"
+  | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
+
+let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)

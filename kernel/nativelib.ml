@@ -383,3 +383,8 @@ let compile_constant mp env kn ck =
       opaque_const mp kn*)
   in
   push_comp_stack ast
+
+let compile_mind mb kn =
+  assert false
+(*  let ast = translate_mind mb kn in
+  push_comp_stack ast *)

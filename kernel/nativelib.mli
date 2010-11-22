@@ -85,3 +85,4 @@ val extern_state : string -> unit
 val intern_state : string -> unit
 
 val compile_constant : 'a -> 'b -> 'c -> Declarations.constant_body -> unit
+val compile_mind : 'a -> 'b -> 'c

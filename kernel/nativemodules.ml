@@ -13,7 +13,8 @@ let loc = Ploc.dummy
 
 
 let rec translate_mod_type mp env typ_expr =
-  match typ_expr with
+  assert false
+(*  match typ_expr with
   | SEBident mp ->
       <:module_type< $uid:string_of_mp mp$ >>
   | SEBstruct expr_list ->
@@ -26,10 +27,11 @@ let rec translate_mod_type mp env typ_expr =
       let ast = translate_mod_type mp env' mtb' in
       let typ_ast = translate_mod_type mp' env mtb.typ_expr in
       <:module_type< functor ($uid:mbid$ : $typ_ast$) -> $ast$ >>
-  | _ -> assert false
+  | _ -> assert false*)
 
 and translate_fields_type mp env (l,e) =
-  match e with
+  assert false
+(*  match e with
   | SFBconst cb ->
       let _,lid = const_lid mp (make_con mp empty_dirpath l) in
       <:sig_item< value $lid:lid$ : Nativevalues.t >>
@@ -43,11 +45,12 @@ and translate_fields_type mp env (l,e) =
 (*  | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in
       <:str_item< module type $uid:string_of_label l$ = $tr$ >>*)
-  | _ -> assert false
+  | _ -> assert false*)
 
 
 let rec translate_mod mp env annots mod_expr =
-  match mod_expr with
+  assert false
+(*  match mod_expr with
   | SEBident mp' ->
       let uid = relative_mp_of_mp mp mp' in
       <:module_expr< $uid$ >>, annots
@@ -70,9 +73,10 @@ let rec translate_mod mp env annots mod_expr =
       let tr_f, annots = translate_mod mp env annots f in
       let tr_x, annots = translate_mod mp env annots x in
       <:module_expr< $tr_f$ $tr_x$ >>, annots
-  | SEBwith _ -> assert false
+  | SEBwith _ -> assert false*)
 and translate_fields mp env (l,x) (ast,annots) =
-  match x with
+  assert false
+(*  match x with
   | SFBconst cb ->
       let tr,annots = translate_constant (pre_env env) mp l cb in tr@ast, annots
   | SFBmind mb ->
@@ -94,12 +98,13 @@ and translate_fields mp env (l,x) (ast,annots) =
       end
   | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in
-      <:str_item< module type $uid:string_of_label l$ = $tr$ >>::ast, annots
+      <:str_item< module type $uid:string_of_label l$ = $tr$ >>::ast, annots*)
 
 let dump_library mp env mod_expr =
   print_endline "Compiling library...";
   let mod_ast,annots = translate_mod mp env NbeAnnotTbl.empty mod_expr in
-  print_endline "Compiled library.";
-  match mod_ast with
+  print_endline "Compiled library."; assert false
+(*  match mod_ast with
   | <:module_expr< struct $list:ast$ end >> -> ast, annots
   | _ -> assert false
+  *)
