@@ -6,6 +6,8 @@ open Nativelambda
 
 type lname = { lname : name; luid : int }
 
+let dummy_lname = { lname = Anonymous; luid = -1 }
+
 let lname_ctr = ref (-1)
 
 let reset_lname = lname_ctr := -1
@@ -20,20 +22,40 @@ type gname =
   | Gconstruct of constructor
   | Gconstant of constant
   | Gcase of int
+  | Gpred of int
+  | Gfixtype of int
+  | Gnorm of int
 
 let case_ctr = ref (-1)
 
-let reset_gcase = case_ctr := -1
+let reset_gcase () = case_ctr := -1
 
 let fresh_gcase () =
   incr case_ctr;
   Gcase !case_ctr
+
+let pred_ctr = ref (-1)
+
+let reset_gpred () = pred_ctr := -1
+
+let fresh_gpred () = 
+  incr pred_ctr;
+  Gpred !pred_ctr
+
+let fixtype_ctr = ref (-1)
+
+let reset_gfixtype () = fixtype_ctr := -1
+
+let fresh_gfixtype () =
+  incr fixtype_ctr;
+  Gfixtype !fixtype_ctr
 
 (*s Mllambda *)
   
 type primitive =
   | Mk_prod of name
   | Mk_sort of sorts
+  | Mk_sw of annot_sw
   | Is_accu
   | Is_int
 
@@ -46,24 +68,44 @@ type mllambda =
   | MLlet          of lname * mllambda * mllambda
   | MLapp          of mllambda * mllambda array
   | MLif           of mllambda * mllambda * mllambda
-  | MLmatch        of mllambda * (constructor * lname array * mllambda) array
+  | MLmatch        of annot_sw * mllambda * mllambda * mllam_branches
+                               (* argument, accu branch, branches *)
   | MLconstruct    of constructor * mllambda array
   | MLint          of int
   | MLparray       of mllambda array
   | MLval          of Nativevalues.t
 
-let mkMLlam params body =
-  match body with
-  | MLlam (params', body) -> MLlam(Array.append params params', body)
-  | _ -> MLlam(params,body)
+and mllam_branches = (constructor * lname array * mllambda) array
 
+let mkMLlam params body =
+  if Array.length params = 0 then body 
+  else
+    match body with
+    | MLlam (params', body) -> MLlam(Array.append params params', body)
+    | _ -> MLlam(params,body)
+
+let mkMLapp f args =
+  if Array.length args = 0 then f
+  else
+    match f with
+    | MLapp(f,args') -> MLapp(f,Array.append args' args)
+    | _ -> MLapp(f,args)
+
+(*s Global declaration *)
 type global =
-(*  | Gmatch of ...
-  | Gtblname of global_name * lname array
-  | Gtblfixtype of global_name * lamba array (* add Lazy for ocaml *)
-  | Gtblnorm of global_name * mllambda array *)
+  | Gtblname of gname * identifier array
+  | Gtblnorm of gname * lname array * mllambda array 
+  | Gtblfixtype of gname * lname array * mllambda array
   | Glet of gname * mllambda
   
+let global_stack = ref [] 
+
+let push_global_let gn body =
+  global_stack := Glet(gn,body) :: !global_stack
+
+let push_global_fixtype gn params body =
+  global_stack := Gtblfixtype(gn,params,body) :: !global_stack
+
 (*s Compilation environment *)
 
 type env =
@@ -122,6 +164,61 @@ let get_prod_name codom =
   | MLlam(ids,_) -> ids.(0).lname
   | _ -> assert false
 
+let empty_params = [||]
+
+let get_name (_,l) = 
+  match l with
+  | MLlocal id -> id
+  | _ -> raise (Invalid_argument "Nativecode.get_name") in
+
+let fv_params env = 
+  let fvn, fvr = !(env.env_named), !(env.env_urel) in 
+  let size = List.length fvn + List.length fvr in
+  if size = 0 then empty_params 
+  else begin
+    let params = Array.make size dummy_lname in
+    let fvn = ref fvn in
+    let i = ref 0 in
+    while !fvn <> [] do
+      params.(!i) <- get_name (List.hd !fvn);
+      fvn := List.tl !fvn;
+      incr i
+    done;
+    let fvr = ref fvr in
+    while !fvr <> [] do
+      params.(!i) <- get_name (List.hd !fvr);
+      fvr := List.tl !fvr;
+      incr i
+    done;
+    params
+
+let generalize_fv env body = 
+  mkMLlam (fv_params env) body
+
+let empty_args = [||]
+
+let fv_args env fvn fvr =
+  let size = List.length fvn + List.length fvr in
+  if size = 0 then empty_args 
+  else 
+    begin
+      let args = Array.make size (MLint 0) in
+      let fvn = ref fvn in
+      let i = ref 0 in
+      while !fvn <> [] do
+	args.(!i) <- get_var env (fst (List.hd !fvn));
+	fvn := List.tl !fvn;
+	incr i
+      done;
+      let fvr = ref fvr in
+      while !fvr <> [] do
+	args.(!i) <- get_rel env Anonymous (fst (List.hd !fvr));
+	fvr := List.tl !fvr;
+	incr i
+      done;
+      args
+    end
+
 let rec ml_of_lam env l =
   match l with
   | Lrel(id ,i) -> get_rel env id i
@@ -148,11 +245,112 @@ let rec ml_of_lam env l =
       MLapp(ml_of_lam env f, Array.map (ml_of_lam env) args)
   | Lconst c -> MLglobal(Gconstant c)
   | Lprim _ | Lcprim _ -> assert false
-  | Lcase _ -> assert false
+  | Lcase (annot,p,a,bs) ->
+      (* let predicate_uid fv_pred = compilation of p 
+         let rec case_uid fv a_uid = 
+           match a_uid with
+           | Accu _ => mk_sw (predicate_uid fv_pred) (case_uid fv) a_uid
+           | Ci argsi => compilation of branches 
+         compile case = case_uid fv (compilation of a) *)
+      (* Compilation of the predicate *)
+         (* Remark: if we do not want to compile the predicate we 
+            should a least compute the fv, then store the lambda representation
+            of the predicate (not the mllambda) *)
+      let env_p = empty_env () in
+      let pn = fresh_gpred () in
+      let mlp = ml_of_lam env_p p in
+      let mlp = generalize_fv env_p mlp in
+      let (pfvn,pfvr) = !(env_p.env_named), !(env_p.env_urel) in
+      push_global_let pn mlp; 
+      (* Compilation of the case *)
+      let env_c = empty_env () in
+      let a_uid = fresh_lname Anonymous in
+      let la_uid = MLlocal a_uid in
+      (* compilation of branches *)
+      let ml_br (c,params, body) = 
+	let lnames, env = push_rels env_c params in
+	(c,lnames, ml_of_lam env body) in
+      let bs = Array.map ml_br bs in
+      let cn = fresh_gcase () in
+      (* Compilation of accu branch *)
+      let pred = MLapp(MLglobal pn, fv_args env_c pfvn pfvr) in  
+      let (fvn, fvr) = !(env_c.env_named), !(env_c.env_urel) in
+      let cn_fv = mkMLapp(MLglobal cn, fv_args env_c fvn fvr) in
+         (* remark : the call to fv_args does not add free variables in env_c *)
+      let accu = MLapp(MLprimitive (Mk_sw annot), [| pred; cn_fv; la_uid |]) in
+      let body = MLlam([|a_uid|], MLmatch(annot, la_uid, accu, bs)) in
+      let case = generalize_fv env_c body in
+      push_global_let cn case;
+      (* Final result *)
+      mkMLapp cn_fv [|ml_of_lam env a|]
   | Lareint _ -> assert false
   | Lif(t,bt,bf) -> 
       MLif(ml_of_lam env t, ml_of_lam env bt, ml_of_lam env bf)
-  | Lfix _ -> assert false
+  | Lfix ((rec_pos,start), fdecl) -> assert false
+      (* let type_f fvt = [| type fix |] 
+         let norm_f1 fv f1 .. fn params1 = body1
+	 ..
+         let norm_fn fv f1 .. fn paramsn = bodyn
+         let norm fv f1 .. fn = 
+	    [|norm_f1 fv f1 .. fn; ..; norm_fn fv f1 .. fn|]
+         compile fix = 
+	   let rec f1 params1 = 
+             if is_accu rec_pos.(1) then mk_fix (type_f fvt) (norm fv) params1
+	     else norm_f1 fv f1 .. fn params1
+           and .. and fn paramsn = 
+	     if is_accu rec_pos.(n) then mk_fix (type_f fvt) (norm fv) paramsn
+             else norm_fn fv f1 .. fv paramsn in
+	   start
+      *)
+      (* Compilation of type *)
+    (*  let env_t = empty_env () in
+      let ml_t = Array.map (fun (_,t,_) -> ml_of_lam env_t t) fdecl in
+      let params_t = fv_params env_t in
+      let args_t = fv_args env !(env_t.env_named) !(env_t.env_urel) in
+      let gft = fresh_gfixtype () in
+      push_global_fixtype gft params_t ml_t;
+      (* Compilation of norm_i *)
+      let ids = Array.map (fun (id,_,_) -> id) fdecl in
+      let lf,env_n = push_rels (fresh_env ()) ids in
+      let t_params = Array.make (Array.length fdecl) [||] in
+      let t_norm_f = Array.make (Array.length fdecl) (Gnorm (-1)) in
+      let ml_of_fix i (_,_,body) =
+	let idsi,bodyi = decompose_Llam body in
+	let paramsi, envi = push_rels env_n idsi in
+	let norm_fi = fresh_gnorm () in
+	t_norm_f.(i) <- norm_fi;
+	let bodyi = ml_of_lam envi bodyi in
+	t_params.(i) <- paramsi;
+	mkMLlam paramsi bodyi in
+      let tnorm = Array.mapi ml_of_fix fdecl in
+      let fvn,fvr = !(env_n.env_named), !(env_n.env_urel) in
+      let fv_params = fv_params env_n in
+      let fv_args = fv_args env_n fvn fvr in
+      let norm_params = Array.append fv_params lf in
+      let norm_args = 
+        Array.append fv_args (Array.map (fun id -> MLlocal id) lf) in
+      Array.iteri (fun i body ->
+	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body));
+      let norm = fresh_gtblnorm () in
+      push_global_tbl norm norm_params 
+         (Array.map (fun g -> mkMLapp (MLglobal g) norm_args) t_norm_f);
+      let mkrec i lname = 
+	let paramsi = t_params.(i) in
+	let reci = t_paramsi.(rec_pos.(i)) in
+	let body = 
+	  MLif(MLapp(MLprimitive Is_accu,[|reci|]),
+	       MLapp(MLprimitve Mk_fix, [|MLapp(MLglobal gft, args_t);
+					  MLapp(MLglobal norm, fv_args);
+					  
+      MLletrec(,) *)
+
+      
+      
+      
+
+      
+
+
   | Lcofix _ -> assert false
   | Lmakeblock (cn,_,args) ->
       MLconstruct(cn,Array.map (ml_of_lam env) args)
