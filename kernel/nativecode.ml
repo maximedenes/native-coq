@@ -25,6 +25,7 @@ type gname =
   | Gpred of int
   | Gfixtype of int
   | Gnorm of int
+  | Ginternal of string
 
 let case_ctr = ref (-1)
 
@@ -380,71 +381,128 @@ let mllambda_of_lambda l =
 
 
 (** Printing to ocaml **)
+(* Redefine a bunch of functions in module Names to generate names
+   acceptable to OCaml. *)
+let string_of_dirpath = function
+  | [] -> "_"
+  | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
 
-(*
-let pp_global fmt g = Format.fprintf fmt "%s" g
+let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
-let pp_rel cenv id fmt i =
+let string_of_kn kn =
+  let (mp,dp,l) = repr_kn kn in
+  (*string_of_dirpath dp ^*) string_of_label l
+
+
+let string_of_name x =
+  match x with
+    | Anonymous -> "anonymous" (* assert false *)
+    | Name id -> string_of_id id
+
+let pp_gname fmt g =
+  match g with
+  | Gind (mind,i) ->
+      Format.fprintf fmt "ind_%s_%i" (string_of_kn (canonical_mind mind)) i
+  | Gconstruct _ -> assert false
+  | Gconstant c ->
+      Format.fprintf fmt "const_%s" (string_of_kn (canonical_con c))
+  | Gcase _ -> assert false
+  | Gpred _ -> assert false
+  | Gfixtype _ -> assert false
+  | Gnorm _ -> assert false
+  | Ginternal s -> Format.fprintf fmt "%s" s
+
+(*let pp_rel cenv id fmt i =
   assert (i>0);
-  let lvl = cenv.cenv_size - i in
-  let id' = List.nth cenv.cenv_rel (i-1) in
-  assert (id == id');
-  Format.fprintf fmt "r_%i_%s" lvl id'
+  let lvl = cenv.env_bound - i in
+  match List.nth cenv.env_rel (i-1) with
+    | MLlocal id' ->
+      assert (id == id');
+      let s = string_of_name id.lname in
+      Format.fprintf fmt "r_%i_%s" lvl s
+    | _ -> assert false*)
 
-(** TODO move to lib *)
-let str_encode s = assert false 
+let hobcnv = Array.init 256 (fun i -> Printf.sprintf "%.2x" i)
+let bohcnv = Array.init 256 (fun i -> i -
+                                      (if 0x30 <= i then 0x30 else 0) -
+                                      (if 0x41 <= i then 0x7 else 0) -
+                                      (if 0x61 <= i then 0x20 else 0))
+
+let hex_of_bin ch = hobcnv.(int_of_char ch)
+let bin_of_hex s = char_of_int (bohcnv.(int_of_char s.[0]) * 16 + bohcnv.(int_of_char s.[1]))
+
+let str_encode expr =
+  let mshl_expr = Marshal.to_string expr [] in
+  let payload = Buffer.create (String.length mshl_expr * 2) in
+  String.iter (fun c -> Buffer.add_string payload (hex_of_bin c)) mshl_expr;
+  Buffer.contents payload
+
+let str_decode s =
+  let mshl_expr_len = String.length s / 2 in
+  let mshl_expr = Buffer.create mshl_expr_len in
+  let buf = String.create 2 in
+  for i = 0 to mshl_expr_len - 1 do
+    String.blit s (2*i) buf 0 2;
+    Buffer.add_char mshl_expr (bin_of_hex buf)
+  done;
+  Marshal.from_string (Buffer.contents mshl_expr) 0
+
+let pp_lname fmt ln =
+  Format.fprintf fmt "%s%i" (string_of_name ln.lname) ln.luid
 
 let pp_primitive fmt = function
-  | Mk_prod id -> Format.fprintf fmt "mk_prod_accu %s" id
+  | Mk_prod id -> Format.fprintf fmt "mk_prod_accu %s" (string_of_name id)
   | Mk_sort s -> 
       Format.fprintf fmt "mk_sort_accu (str_decode %s)" (str_encode s)
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
 
-let pp_ldecls cenv fmt ids =
+let pp_ldecls fmt ids =
   let len = Array.length ids in
   for i = 0 to len - 1 do
-    Format.fprintf fmt " %a" (pp_rel cenv ids.(i)) (len - i)
+    Format.fprintf fmt " %a" pp_lname ids.(i)
   done
 
-let rec pp_lam cenv fmt l =
+let rec pp_mllam fmt l =
   match l with
-  | Lrel(id,i) -> pp_rel cenv id fmt i 
-  | Lglobal g -> pp_global fmt g
-  | Lprimitive p -> pp_primitive fmt p
-  | Llam(ids,body) -> 
-      let cenv = push_lnames cenv ids in
-      Format.fprintf fmt "@[fun%a ->@\n  %a@]"
-	(pp_ldecls cenv) ids (pp_lam cenv) body
-  | Lletrec(defs,body) ->
-      let cenv_rec = push_lnames cenv (Array.map (fun (id,_,_) -> id) defs) in
-      Format.fprintf fmt "@[%a in@\n%a@]" (pp_letrec cenv_rec) defs 
-      (pp_lam cenv_rec) body
-  | Llet(id,def,body) ->
-      let cenv' = push_lname cenv id in
-      Format.fprintf fmt "@[let %a =@\n  %a in@\n%a@]"
-         (pp_rel cenv' id) 1 (pp_lam cenv) def (pp_lam cenv') body
-  | Lapp(f, args) ->
-      Format.fprintf fmt "@[%a %a@]" (pp_lam cenv) f (pp_args cenv true) args
-  | Lif(t,l1,l2) ->
+  | MLlocal ln -> Format.fprintf fmt "@[%a@]" pp_lname ln
+  | MLglobal g -> Format.fprintf fmt "@[%a@]" pp_gname g
+  | MLprimitive p -> Format.fprintf fmt "@[%a@]" pp_primitive p
+  | MLlam(ids,body) ->
+    Format.fprintf fmt "@[(fun%a@ ->@\n %a)@]"
+      pp_ldecls ids pp_mllam body
+  | MLletrec(defs, body) ->
+      Format.fprintf fmt "@[%a@ in@\n%a@]" pp_letrec defs 
+      pp_mllam body
+  | MLlet(id,def,body) ->
+      Format.fprintf fmt "@[let@ %a@ =@\n %a@ in@\n%a@]"
+         pp_lname id pp_mllam def pp_mllam body
+  | MLapp(f, args) ->
+      Format.fprintf fmt "@[%a@ %a@]" pp_mllam f (pp_args true) args
+  | MLif(t,l1,l2) ->
       Format.fprintf fmt "@[if %a then@\n  %a@\nelse@\n  %a@]"
-	(pp_lam cenv) t (pp_lam cenv) l1 (pp_lam cenv) l2 
-  | Lmatch(a,bs) ->
-      Format.fprintf fmt "@[begin match %a with%a@\nend@]"
-	(pp_lam cenv) a (pp_branches cenv) bs
-  | Lconstruct(cn,args) ->
-      Format.fprintf fmt "@[%s%a@]" cn (pp_cargs cenv) args
-  | Lint i -> Format.fprintf fmt "%i" i
-  | Lparray _ -> assert false
+	pp_mllam t pp_mllam l1 pp_mllam l2 
+  | MLmatch _ -> assert false        (* of annot_sw * mllambda * mllambda *
+  mllam_branches *)
+                               (* argument, accu branch, branches *)
+  | MLconstruct(cn,args) -> assert false
+(*      Format.fprintf fmt "@[%s%a@]" cn (pp_cargs cenv) args *)
+  | MLint i -> Format.fprintf fmt "%i" i
+  | MLparray _ -> assert false
+  | MLval _ -> assert false 
 
-and pp_letrec cenv fmt defs =
+(*  | Lmatch(a,bs) ->
+      Format.fprintf fmt "@[begin match %a with%a@\nend@]"
+	(pp_mllam cenv) a (pp_branches cenv) bs
+  *)
+
+and pp_letrec fmt defs =
   let len = Array.length defs in
   let pp_one_rec i (fn, argsn, body) =
     let len' = Array.length argsn in
-    let cenv = push_lnames cenv argsn in
     Format.fprintf fmt "%a%a =@\n  %a"
-      (pp_rel cenv fn) (len - i + len') 
-      (pp_ldecls cenv) argsn (pp_lam cenv) body in
+      pp_lname fn 
+      pp_ldecls argsn pp_mllam body in
   Format.fprintf fmt "letrec ";
   pp_one_rec 0 defs.(0);
   for i = 1 to len - 1 do
@@ -452,48 +510,43 @@ and pp_letrec cenv fmt defs =
     pp_one_rec i defs.(i)
   done
 
-and pp_blam cenv fmt l =
+and pp_blam fmt l =
   match l with
-  | Lprimitive (Mk_prod _ | Mk_sort _) 
-  | Llam _ | Lletrec _ | Llet _ | Lapp _ | Lif _ ->
-      Format.fprintf fmt "(%a)" (pp_lam cenv) l
-  | Lconstruct(_,args) when Array.length args > 0 ->
-      Format.fprintf fmt "(%a)" (pp_lam cenv) l
-  | _ -> pp_lam cenv fmt l
+  | MLprimitive (Mk_prod _ | Mk_sort _) 
+  | MLlam _ | MLletrec _ | MLlet _ | MLapp _ | MLif _ ->
+      Format.fprintf fmt "(%a)" pp_mllam l
+  | MLconstruct(_,args) when Array.length args > 0 ->
+      Format.fprintf fmt "(%a)" pp_mllam l
+  | _ -> pp_mllam fmt l
 
-and pp_args cenv sep fmt args =
-  let pp_lam = if sep then pp_blam else pp_lam in
+and pp_args sep fmt args =
+  let pp_mllam = if sep then pp_blam else pp_mllam in
   let sep = if sep then " " else "," in
   let len = Array.length args in
   if len > 0 then begin
-    Format.fprintf fmt "%a" (pp_lam cenv) args.(0);
+    Format.fprintf fmt "%a" pp_mllam args.(0);
     for i = 1 to len - 1 do
-      Format.fprintf fmt "%s%a" sep (pp_lam cenv) args.(i)
+      Format.fprintf fmt "%s%a" sep pp_mllam args.(i)
     done
   end 
 
-and pp_cargs cenv fmt args =
+and pp_cargs fmt args =
   let len = Array.length args in
   match len with
   | 0 -> ()
-  | 1 -> Format.fprintf fmt " %a" (pp_blam cenv) args.(0)
-  | _ -> Format.fprintf fmt "(%a)" (pp_args cenv false) args
+  | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
+  | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
   
-and pp_branches cenv fmt bs =
+(*and pp_branches cenv fmt bs =
   let pp_branch (cn,argsn,body) =
-    let cenv = push_lnames cenv argsn in
+(*    let cenv = push_rels cenv argsn in*)
     let len = Array.length argsn in
-    let args = Array.mapi (fun i id -> Lrel(id,len-i)) argsn in
+    let args = Array.mapi (fun i id -> MLrel(id,len-i)) argsn in
     Format.fprintf fmt "@\n| %s%a ->@\n  %a" 
-	cn (pp_cargs cenv) args (pp_lam cenv) body in
-  Array.iter pp_branch bs
+	cn (pp_cargs cenv) args (pp_mllam cenv) body in
+  Array.iter pp_branch bs*)
 
 
-      *)
-    
-  
-
-(* *)
 (*
 type comp = global list
 
@@ -582,10 +635,16 @@ Prod(x,dom,codom) -->
 *)
 *)
 
-(* Redefine a bunch of functions in module Names to generate names
-   acceptable to OCaml. *)
-let string_of_dirpath = function
-  | [] -> "_"
-  | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
+let pp_global fmt g =
+  match g with
+(*  | Gtblname of gname * identifier array
+  | Gtblnorm of gname * lname array * mllambda array 
+  | Gtblfixtype of gname * lname array * mllambda array*)
+  | Glet (gn, c) ->
+      Format.fprintf fmt "@[let %a = %a@]@." pp_gname gn pp_mllam c
+  | _ -> assert false
 
-let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
+(* Opens a global box and flushes output *)
+let pp_mllam fmt l = Format.fprintf fmt "@[%a@]@." pp_mllam l
+
+let pp_globals fmt l = List.iter (pp_global fmt) l
