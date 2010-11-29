@@ -14,13 +14,13 @@ val topological_sort :
   'c list * ('a * 'b) Util.Stringmap.t
 
 val compile_module :
-  values -> string list -> string -> int
+  mllambda -> string list -> string -> int
 
 val push_comp_stack :
   mllambda list -> unit
 
 val compile_terms :
-  mllambda list -> int * string * string
+  global list -> int * string * string
 
 val call_linker :
   string -> string -> unit
@@ -76,13 +76,7 @@ val normalize : int -> term -> term*)
 val print_nf : Nativevalues.t Lazy.t -> unit
 val lazy_norm : Nativevalues.t Lazy.t -> lam
 
-val conv_val : int -> Nativevalues.t -> Nativevalues.t -> unit
-
-val str_encode : 'a -> string
-val str_decode : string -> 'a
-
 val extern_state : string -> unit
 val intern_state : string -> unit
 
-val compile_constant : 'a -> 'b -> 'c -> Declarations.constant_body -> unit
 val compile_mind : 'a -> 'b -> 'c
