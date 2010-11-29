@@ -274,7 +274,6 @@ let add_mind dir l mie senv =
   let mib = translate_mind senv.env kn mie in
   let senv' = add_constraints mib.mind_constraints senv in
   let env'' = Environ.add_mind kn mib senv'.env in
-  Nativelib.compile_mind mib kn;
   kn, { old = senv'.old;
 	env = env'';
 	modinfo = senv'.modinfo;
@@ -702,7 +701,7 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option
 
-type native_library = values * NbeAnnotTbl.t
+type native_library = Nativecode.mllambda
 
 (* We check that only initial state Require's were performed before
    [start_library] was called *)
@@ -775,8 +774,8 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast,annots = Nativemodules.dump_library mp senv.env str in
-   mp, (dir,mb,senv.imports,engagement senv.env), (values ast, annots), List.map fst senv.imports
+  (* let ast,annots = Nativemodules.dump_library mp senv.env str in *)
+   mp, (dir,mb,senv.imports,engagement senv.env), Nativecode.MLint 0, List.map fst senv.imports
 
 
 let check_imports senv needed =
