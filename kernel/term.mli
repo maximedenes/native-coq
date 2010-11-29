@@ -639,6 +639,3 @@ val hcons1_types : types -> types
 (**************************************)
 
 type values
-
-val expr_of_values : values -> MLast.str_item list
-val values : MLast.str_item list -> values

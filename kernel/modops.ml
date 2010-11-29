@@ -265,8 +265,7 @@ let strengthen_const env mp_from l cb resolver =
 	  (compile_constant_body env const_subs false);
 	const_inline_code = false
       }
-        in
-        Nativelib.compile_constant mp_from (pre_env env) con cb; cb
+        in cb
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then
