@@ -5,55 +5,106 @@ open Pcaml
 open Nativelib
 open Declarations
 open Util
+open Nativevalues
 open Nativelambda
 open Nativecode 
 
 exception NotConvertible
 
-(** One of the optimizations performed on the target code is
-    uncurrying, meaning collapsing functions into n-ary functions and
-    introducing a family of application operators that apply an n-ary
-    function to m arguments in one go. This constant defines the
-    maximum arity of functions, hence bounding the number of
-    application operators required.
+let rec conv_val lvl v1 v2 = 
+  if not (v1 == v2) then 
+    match kind_of_value v1, kind_of_value v2 with
+    | Vaccu k1, Vaccu k2 ->
+	conv_accu lvl k1 k2
+    | Vfun f1, Vfun f2 -> 
+	conv_fun lvl f1 f2
+    | Vconst i1, Vconst i2 -> 
+(*        print_endline ("Vconst: "^string_of_int i1);*)
+	if i1 <> i2 then raise NotConvertible
+    | Vblock b1, Vblock b2 ->
+	let n1 = block_size b1 in
+	if block_tag b1 <> block_tag b2 || n1 <> block_size b2 then
+	  raise NotConvertible;
+        for i = 0 to n1 - 1 do 
+	  conv_val lvl (block_field b1 i) (block_field b2 i) 
+	done
+    | Varray t1, Varray t2 ->
+      let len = Native.Parray.length t1 in
+      if len <> Native.Parray.length t2 then
+      raise NotConvertible;
+      for i = 0 to Native.Uint31.to_int len - 1 do
+        conv_val lvl (Native.Parray.get t1 (Native.Uint31.of_int i))
+           (Native.Parray.get t2 (Native.Uint31.of_int i))
+      done;
+      conv_val lvl (Native.Parray.default t1) (Native.Parray.default t2)   
+    | _, _ -> raise NotConvertible
+and conv_accu lvl k1 k2 = 
+  let n1 = accu_nargs k1 in
+  if n1 <> accu_nargs k2 then raise NotConvertible;
+(*  print_endline ("nargs: "^string_of_int n1);*)
+  conv_atom lvl (atom_of_accu k1) (atom_of_accu k2);
+  for i = 0 to n1 - 1 do
+    conv_val lvl (arg_of_accu k1 i) (arg_of_accu k2 i) 
+  done
 
-    BEWARE: changing the value of this constant requires changing
-    nbe.ml accordingly to have at least as many abstraction
-    constructors and application operators. *)
+and conv_atom lvl a1 a2 =
+  if not (a1 == a2) then
+    match a1, a2 with
+    | Arel i1, Arel i2 -> 
+	if i1 <> i2 then raise NotConvertible
+    | Aind ind1, Aind ind2 ->
+        if not (eq_ind ind1 ind2) then raise NotConvertible
+(* TODO    | Aconstruct(_,_,i1), Aconstruct(_,_,i2) -> 
+	if i1 <> i2 then raise NotConvertible*)
+(* TODO    | Acase(k1,f1,tbl1,_,it1), Acase(k2,f2,tbl2,_,it2) ->
+	let t1,t2 = get_type_of_index it1, get_type_of_index it2 in
+        if not (eq_type t1 t2) then raise NotConvertible;
+	conv_accu lvl k1 k2;
+	assert (tbl1==tbl2);
+	for i = 0 to Array.length tbl1 - 1 do
+	  let (tag,arity) = tbl1.(i) in
+	  let ci =
+ 	    if arity = 0 then mk_const tag 
+	    else 
+	      let args = Array.init arity (fun i -> mk_rel_accu (lvl+i)) in
+	      mk_block tag args in
+	  conv_val (lvl+arity) (f1 ci) (f2 ci)
+	done*)
+(* TODO    | Afix(_,f1,rp1,_,it1), Afix(_,f2,rp2,_,it2) ->
+	let t1, t2= get_type_of_index it1, get_type_of_index it2 in
+	if not (eq_type t1 t2) then raise NotConvertible;
+	if rp1 <> rp2 then raise NotConvertible;
+	conv_fun lvl f1 f2 *)
+    | _, _ -> raise NotConvertible
 
-let max_arity = 6
+and conv_fun lvl f1 f2 = 
+  let x = mk_rel_accu lvl in
+  conv_val (lvl+1) (f1 x) (f2 x)
 
-let uniq = ref 256
-
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
-
-(* Flag to signal whether recompilation is needed. *)
-
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
-
-(* Flag to signal whether recompilation is needed. *)
-let env_updated = ref false
 
 let compare env t1 t2 cu =
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
-  let code1 = mllambda_of_lambda code1 in
-  let code2 = mllambda_of_lambda code2 in
+  let (gl1,_,code1) = mllambda_of_lambda code1 in
+  let (gl2,_,code2) = mllambda_of_lambda code2 in
+  let g1 = MLglobal (Ginternal "t1") in
+  let g2 = MLglobal (Ginternal "t2") in
+  let conv_val = MLglobal (Ginternal "conv_val") in
+  let main = Glet(Ginternal "_", MLapp(conv_val,[|g1;g2|])) in
+  let code = gl1@gl2@[Glet(Ginternal "t1", code1);Glet(Ginternal "t2", code2);main] in
 (*  let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in *)
-  let terms_code =
-      [code1;code2] (*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
+(*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
       (*do {*)try conv_val 0 t1 t2 with _ -> exit 1 (*;
     Format.fprintf Format.std_formatter
     "Test running time: %.5fs\n" (Unix.time() -. t0);
     flush_all() }*)
     >>] *)
-  in
-    assert false
-(*    match compile_terms terms_code with
+  print_endline "code:" ;
+  Nativecode.pp_globals Format.std_formatter code;
+  print_newline ();
+  match compile_terms code with
     | 0,_,_ ->
       begin
         print_endline "Running test...";
@@ -83,4 +134,4 @@ let compare env t1 t2 cu =
         | _ -> (print_endline "Conversion test failure"; raise NotConvertible)
       end
     | _ -> (print_endline "Compilation failure"; raise NotConvertible)*)
-  *)
+  
