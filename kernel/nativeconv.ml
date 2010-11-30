@@ -81,6 +81,8 @@ and conv_fun lvl f1 f2 =
   let x = mk_rel_accu lvl in
   conv_val (lvl+1) (f1 x) (f2 x)
 
+let conv_val t1 t2 = conv_val 0 t1 t2
+
 
 let compare env t1 t2 cu =
   let mp = env.current_mp in
@@ -91,8 +93,9 @@ let compare env t1 t2 cu =
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
   let conv_val = MLglobal (Ginternal "conv_val") in
+  let header = [Gopen "Nativevalues";Gopen "Nativecode"; Gopen "Nativeconv"] in
   let main = Glet(Ginternal "_", MLapp(conv_val,[|g1;g2|])) in
-  let code = gl1@gl2@[Glet(Ginternal "t1", code1);Glet(Ginternal "t2", code2);main] in
+  let code = header@gl1@gl2@[Glet(Ginternal "t1", code1);Glet(Ginternal "t2", code2);main] in
 (*  let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in *)
 (*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
