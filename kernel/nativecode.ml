@@ -454,7 +454,7 @@ let pp_lname fmt ln =
 let pp_primitive fmt = function
   | Mk_prod id -> Format.fprintf fmt "mk_prod_accu %s" (string_of_name id)
   | Mk_sort s -> 
-      Format.fprintf fmt "mk_sort_accu (str_decode %s)" (str_encode s)
+      Format.fprintf fmt "mk_sort_accu (str_decode \"%s\")" (str_encode s)
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
 
