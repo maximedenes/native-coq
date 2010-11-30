@@ -98,6 +98,7 @@ type global =
   | Gtblnorm of gname * lname array * mllambda array 
   | Gtblfixtype of gname * lname array * mllambda array
   | Glet of gname * mllambda
+  | Gopen of string
   
 let global_stack = ref [] 
 
@@ -642,6 +643,8 @@ let pp_global fmt g =
   | Gtblfixtype of gname * lname array * mllambda array*)
   | Glet (gn, c) ->
       Format.fprintf fmt "@[let %a = %a@]@." pp_gname gn pp_mllam c
+  | Gopen s ->
+      Format.fprintf fmt "@[open %s@]@." s
   | _ -> assert false
 
 (* Opens a global box and flushes output *)
