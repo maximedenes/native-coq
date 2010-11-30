@@ -108,12 +108,10 @@ let compare env t1 t2 cu =
   Nativecode.pp_globals Format.std_formatter code;
   print_newline ();
   match compile_terms code with
-    | 0,_,_ ->
+    | 0,fn,modname ->
       begin
         print_endline "Running test...";
-        let res = Sys.command "time ./a.out" in
-        match res with
-          | 0 -> cu
+        try call_linker fn modname; cu with
           | _ -> raise NotConvertible
       end
     | _ -> anomaly "Compilation failure" 
