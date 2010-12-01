@@ -32,7 +32,7 @@ let compile_module code load_paths f =
   in*)
   let ch_out = open_out (f^".ml") in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_mllam fmt code;
+  pp_mllam (MPfile empty_dirpath) fmt code;
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
@@ -48,7 +48,7 @@ let emit_comp_stack () =
   let res = !comp_stack in
   comp_stack := []; res
 
-let compile_terms terms_code =
+let compile_terms base_mp terms_code =
   let ast = emit_comp_stack () in
 (*  let terms_code =
     [<:str_item< open Nativelib >>;
@@ -58,7 +58,7 @@ let compile_terms terms_code =
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals fmt terms_code;
+  pp_globals base_mp fmt terms_code;
   close_out ch_out;
   print_endline "Compilation...";
   let include_dirs =

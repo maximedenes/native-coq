@@ -20,7 +20,7 @@ val push_comp_stack :
   mllambda list -> unit
 
 val compile_terms :
-  global list -> int * string * string
+  module_path -> global list -> int * string * string
 
 val call_linker :
   string -> string -> unit
