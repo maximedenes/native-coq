@@ -32,7 +32,7 @@ let compile_module code load_paths f =
   in*)
   let ch_out = open_out (f^".ml") in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_mllam (MPfile empty_dirpath) fmt code;
+  pp_globals (MPfile empty_dirpath) fmt code;
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
@@ -134,6 +134,8 @@ type lam =
   | Array of lam array
 
 let rnorm = ref (Rel (-1))
+let rt1 = ref (mk_accu dummy_atom)
+let rt2 = ref (mk_accu dummy_atom)
 
 let pp_var fmt x =
   Format.fprintf fmt "v%i" x

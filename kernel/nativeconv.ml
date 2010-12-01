@@ -90,12 +90,9 @@ let compare env t1 t2 cu =
   let code2 = lambda_of_constr env t2 in
   let (gl1,_,code1) = mllambda_of_lambda code1 in
   let (gl2,_,code2) = mllambda_of_lambda code2 in
-  let g1 = MLglobal (Ginternal "t1") in
-  let g2 = MLglobal (Ginternal "t2") in
-  let conv_val = MLglobal (Ginternal "conv_val") in
-  let header = [Gopen "Nativevalues";Gopen "Nativecode"; Gopen "Nativeconv"] in
-  let main = Glet(Ginternal "_", MLapp(conv_val,[|g1;g2|])) in
-  let code = header@gl1@gl2@[Glet(Ginternal "t1", code1);Glet(Ginternal "t2", code2);main] in
+  let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
+  let code = header@gl1@gl2@[mk_internal_let "t1" code1;mk_internal_let "t2"
+  code2]@conv_main_code in
 (*  let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in *)
 (*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
@@ -111,7 +108,7 @@ let compare env t1 t2 cu =
     | 0,fn,modname ->
       begin
         print_endline "Running test...";
-        try call_linker fn modname; cu with
+        try call_linker fn modname; conv_val !rt1 !rt2; cu with
           | _ -> raise NotConvertible
       end
     | _ -> anomaly "Compilation failure" 
