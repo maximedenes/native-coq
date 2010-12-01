@@ -105,9 +105,9 @@ let compare env t1 t2 cu =
     flush_all() }*)
     >>] *)
   print_endline "code:" ;
-  Nativecode.pp_globals Format.std_formatter code;
+  Nativecode.pp_globals mp Format.std_formatter code;
   print_newline ();
-  match compile_terms code with
+  match compile_terms mp code with
     | 0,fn,modname ->
       begin
         print_endline "Running test...";

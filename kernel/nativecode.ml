@@ -400,10 +400,39 @@ let string_of_name x =
     | Anonymous -> "anonymous" (* assert false *)
     | Name id -> string_of_id id
 
-let pp_gname fmt g =
+(* Relativization of module paths *)
+let rec list_of_mp acc = function
+  | MPdot (mp,l) -> list_of_mp (string_of_label l::acc) mp
+  | MPfile dp ->
+      let dp = repr_dirpath dp in
+      string_of_dirpath dp :: acc
+  | MPbound mbid -> string_of_label (label_of_mbid mbid)::acc
+
+let list_of_mp mp = list_of_mp [] mp
+
+let rec strip_common_prefix l1 l2 =
+  match l1, l2 with
+  | [], _
+  | _, [] -> l1, l2
+  | hd1::tl1, hd2::tl2 ->
+      if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
+
+let mk_relative_id base_mp (mp,id) =
+  let base_l = list_of_mp base_mp in
+  let l = list_of_mp mp in
+  let _,l = strip_common_prefix base_l l in
+  match l with
+  | [] -> id
+  | hd1::tl1 ->
+      let s = List.fold_left (fun acc x -> acc^"."^x) hd1 tl1 in
+      s^"."^id
+
+let pp_gname base_mp fmt g =
   match g with
   | Gind (mind,i) ->
-      Format.fprintf fmt "ind_%s_%i" (string_of_kn (canonical_mind mind)) i
+      let (mp,dp,l) = repr_kn (canonical_mind mind) in
+      let id = Format.sprintf "ind_%s_%i" (string_of_label l) i in
+      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
   | Gconstruct _ -> assert false
   | Gconstant c ->
       Format.fprintf fmt "const_%s" (string_of_kn (canonical_con c))
@@ -464,10 +493,11 @@ let pp_ldecls fmt ids =
     Format.fprintf fmt " %a" pp_lname ids.(i)
   done
 
+let pp_mllam base_mp fmt l =
 let rec pp_mllam fmt l =
   match l with
   | MLlocal ln -> Format.fprintf fmt "@[%a@]" pp_lname ln
-  | MLglobal g -> Format.fprintf fmt "@[%a@]" pp_gname g
+  | MLglobal g -> Format.fprintf fmt "@[%a@]" (pp_gname base_mp) g
   | MLprimitive p -> Format.fprintf fmt "@[%a@]" pp_primitive p
   | MLlam(ids,body) ->
     Format.fprintf fmt "@[(fun%a@ ->@\n %a)@]"
@@ -537,6 +567,10 @@ and pp_cargs fmt args =
   | 0 -> ()
   | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
   | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
+
+in
+  (* Opens a global box and flushes output *)
+  Format.fprintf fmt "@[%a@]@." pp_mllam l
   
 (*and pp_branches cenv fmt bs =
   let pp_branch (cn,argsn,body) =
@@ -636,18 +670,17 @@ Prod(x,dom,codom) -->
 *)
 *)
 
-let pp_global fmt g =
+let pp_global base_mp fmt g =
   match g with
 (*  | Gtblname of gname * identifier array
   | Gtblnorm of gname * lname array * mllambda array 
   | Gtblfixtype of gname * lname array * mllambda array*)
   | Glet (gn, c) ->
-      Format.fprintf fmt "@[let %a = %a@]@." pp_gname gn pp_mllam c
+      Format.fprintf fmt "@[let %a = %a@]@." (pp_gname base_mp) gn (pp_mllam
+      base_mp) c
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
   | _ -> assert false
 
-(* Opens a global box and flushes output *)
-let pp_mllam fmt l = Format.fprintf fmt "@[%a@]@." pp_mllam l
 
-let pp_globals fmt l = List.iter (pp_global fmt) l
+let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
