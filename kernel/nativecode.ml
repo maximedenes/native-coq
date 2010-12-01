@@ -1,5 +1,6 @@
 open Term
 open Names
+open Declarations
 open Nativelambda
 
 (*s Local names *)
@@ -56,6 +57,8 @@ let fresh_gfixtype () =
 type primitive =
   | Mk_prod of name
   | Mk_sort of sorts
+  | Mk_ind of mutual_inductive
+  | Mk_const of constant
   | Mk_sw of annot_sw
   | Is_accu
   | Is_int
@@ -75,6 +78,7 @@ type mllambda =
   | MLint          of int
   | MLparray       of mllambda array
   | MLval          of Nativevalues.t
+  | MLsetref       of string * mllambda
 
 and mllam_branches = (constructor * lname array * mllambda) array
 
@@ -484,6 +488,10 @@ let pp_primitive fmt = function
   | Mk_prod id -> Format.fprintf fmt "mk_prod_accu %s" (string_of_name id)
   | Mk_sort s -> 
       Format.fprintf fmt "mk_sort_accu (str_decode \"%s\")" (str_encode s)
+  | Mk_ind ind -> 
+      Format.fprintf fmt "mk_ind_accu (str_decode \"%s\")" (str_encode ind)
+  | Mk_const kn -> 
+      Format.fprintf fmt "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
 
@@ -521,6 +529,8 @@ let rec pp_mllam fmt l =
   | MLint i -> Format.fprintf fmt "%i" i
   | MLparray _ -> assert false
   | MLval _ -> assert false 
+  | MLsetref (s, body) ->
+      Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
 
 (*  | Lmatch(a,bs) ->
       Format.fprintf fmt "@[begin match %a with%a@\nend@]"
@@ -684,3 +694,33 @@ let pp_global base_mp fmt g =
 
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
+
+(* Compilation of elements in environment *)
+let compile_constant env mp l cb =
+  match cb.const_body with
+  | Def t ->
+      let t = Declarations.force t in
+      let code = lambda_of_constr env t in
+      let _,_,code = mllambda_of_lambda code in
+      Glet(Gconstant (make_con mp empty_dirpath l),code)
+  | _ -> 
+      let kn = make_con mp empty_dirpath l in
+      Glet(Gconstant kn, MLprimitive (Mk_const kn))
+
+
+let compile_mind mb mind =
+  Glet(Gind (mind,0), MLprimitive(Mk_ind mind))
+
+let mk_opens l =
+  List.map (fun s -> Gopen s) l
+
+let mk_internal_let s code =
+  Glet(Ginternal s, code)
+
+
+(* ML Code for conversion function *)
+let conv_main_code =
+  let g1 = MLglobal (Ginternal "t1") in
+  let g2 = MLglobal (Ginternal "t2") in
+  [Glet(Ginternal "_", MLsetref("rt1",g1));
+  Glet(Ginternal "_", MLsetref("rt2",g2));]

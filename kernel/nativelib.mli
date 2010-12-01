@@ -14,7 +14,7 @@ val topological_sort :
   'c list * ('a * 'b) Util.Stringmap.t
 
 val compile_module :
-  mllambda -> string list -> string -> int
+  global list -> string list -> string -> int
 
 val push_comp_stack :
   mllambda list -> unit
@@ -60,6 +60,9 @@ type lam =
   | Array of lam array
 
 val rnorm : lam ref
+val rt1 : Nativevalues.t ref
+val rt2 : Nativevalues.t ref
+
 
 (*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
 val string_of_term : int -> term -> string

@@ -5,7 +5,6 @@ open Declarations
 open Environ
 open Mod_subst
 open Modops
-open Nativelib
 open Nativecode
 
 (* Required to make camlp5 happy. *)
@@ -74,16 +73,15 @@ let rec translate_mod mp env annots mod_expr =
       let tr_x, annots = translate_mod mp env annots x in
       <:module_expr< $tr_f$ $tr_x$ >>, annots
   | SEBwith _ -> assert false*)
-and translate_fields mp env (l,x) (ast,annots) =
-  assert false
-(*  match x with
+and translate_fields mp env (l,x) mlcode =
+  match x with
   | SFBconst cb ->
-      let tr,annots = translate_constant (pre_env env) mp l cb in tr@ast, annots
+      let tr = compile_constant (pre_env env) mp l cb in tr::mlcode
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
-      let tr = translate_mind mb kn in
-      tr@ast,annots
-  | SFBmodule md ->
+      let tr = compile_mind mb kn in
+      tr::mlcode
+(*  | SFBmodule md ->
       begin
         match md.mod_expr with
         | Some e ->
@@ -102,9 +100,9 @@ and translate_fields mp env (l,x) (ast,annots) =
 
 let dump_library mp env mod_expr =
   print_endline "Compiling library...";
-  let mod_ast,annots = translate_mod mp env NbeAnnotTbl.empty mod_expr in
-  print_endline "Compiled library."; assert false
-(*  match mod_ast with
-  | <:module_expr< struct $list:ast$ end >> -> ast, annots
+  match mod_expr with
+  | SEBstruct msb ->
+      let env = add_signature mp msb empty_delta_resolver env in
+      let mlcode = List.fold_right (translate_fields mp env) msb [] in
+      print_endline "Compiled library."; mlcode
   | _ -> assert false
-  *)
