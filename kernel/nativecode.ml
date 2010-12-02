@@ -1,6 +1,7 @@
 open Term
 open Names
 open Declarations
+open Nativevalues
 open Nativelambda
 
 (*s Local names *)
@@ -104,7 +105,7 @@ type global =
   | Glet of gname * mllambda
   | Gopen of string
   
-let global_stack = ref [] 
+let global_stack = ref ([] : global list)
 
 let push_global_let gn body =
   global_stack := Glet(gn,body) :: !global_stack
@@ -369,8 +370,9 @@ let rec ml_of_lam env l =
   | Lsort s -> MLprimitive(Mk_sort s)
   | Lind i -> MLglobal (Gind i)
 
-let mllambda_of_lambda l =
+let mllambda_of_lambda auxdefs l =
   let env = empty_env () in
+  global_stack := auxdefs;
   let ml = ml_of_lam env l in
   let fv_rel = !(env.env_urel) in
   let fv_named = !(env.env_named) in
@@ -382,7 +384,7 @@ let mllambda_of_lambda l =
   let params = 
     List.append (List.map get_name fv_rel) (List.map get_name fv_named) in
   (* final result : global list, fv, ml *)
-  (([]:global list), (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
+  (!global_stack, (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
 
 
 (** Printing to ocaml **)
@@ -437,11 +439,16 @@ let pp_gname base_mp fmt g =
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
       let id = Format.sprintf "ind_%s_%i" (string_of_label l) i in
       Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
-  | Gconstruct _ -> assert false
+  | Gconstruct ((mind,i),j) ->
+      let (mp,dp,l) = repr_kn (canonical_mind mind) in
+      let id = Format.sprintf "Construct_%s_%i_%i" (string_of_label l) i j in
+      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
   | Gconstant c ->
       Format.fprintf fmt "const_%s" (string_of_kn (canonical_con c))
-  | Gcase _ -> assert false
-  | Gpred _ -> assert false
+  | Gcase i ->
+      Format.fprintf fmt "case_%i" i
+  | Gpred i ->
+      Format.fprintf fmt "pred_%i" i
   | Gfixtype _ -> assert false
   | Gnorm _ -> assert false
   | Ginternal s -> Format.fprintf fmt "%s" s
@@ -456,33 +463,8 @@ let pp_gname base_mp fmt g =
       Format.fprintf fmt "r_%i_%s" lvl s
     | _ -> assert false*)
 
-let hobcnv = Array.init 256 (fun i -> Printf.sprintf "%.2x" i)
-let bohcnv = Array.init 256 (fun i -> i -
-                                      (if 0x30 <= i then 0x30 else 0) -
-                                      (if 0x41 <= i then 0x7 else 0) -
-                                      (if 0x61 <= i then 0x20 else 0))
-
-let hex_of_bin ch = hobcnv.(int_of_char ch)
-let bin_of_hex s = char_of_int (bohcnv.(int_of_char s.[0]) * 16 + bohcnv.(int_of_char s.[1]))
-
-let str_encode expr =
-  let mshl_expr = Marshal.to_string expr [] in
-  let payload = Buffer.create (String.length mshl_expr * 2) in
-  String.iter (fun c -> Buffer.add_string payload (hex_of_bin c)) mshl_expr;
-  Buffer.contents payload
-
-let str_decode s =
-  let mshl_expr_len = String.length s / 2 in
-  let mshl_expr = Buffer.create mshl_expr_len in
-  let buf = String.create 2 in
-  for i = 0 to mshl_expr_len - 1 do
-    String.blit s (2*i) buf 0 2;
-    Buffer.add_char mshl_expr (bin_of_hex buf)
-  done;
-  Marshal.from_string (Buffer.contents mshl_expr) 0
-
 let pp_lname fmt ln =
-  Format.fprintf fmt "%s%i" (string_of_name ln.lname) ln.luid
+  Format.fprintf fmt "x%s%i" (string_of_name ln.lname) ln.luid
 
 let pp_primitive fmt = function
   | Mk_prod id -> Format.fprintf fmt "mk_prod_accu %s" (string_of_name id)
@@ -492,6 +474,8 @@ let pp_primitive fmt = function
       Format.fprintf fmt "mk_ind_accu (str_decode \"%s\")" (str_encode ind)
   | Mk_const kn -> 
       Format.fprintf fmt "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
+  | Mk_sw asw -> 
+      Format.fprintf fmt "mk_sw_accu"
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
 
@@ -521,7 +505,15 @@ let rec pp_mllam fmt l =
   | MLif(t,l1,l2) ->
       Format.fprintf fmt "@[if %a then@\n  %a@\nelse@\n  %a@]"
 	pp_mllam t pp_mllam l1 pp_mllam l2 
-  | MLmatch _ -> assert false        (* of annot_sw * mllambda * mllambda *
+  | MLmatch (asw, c, accu_br, br) ->
+      let mind,i = asw.asw_ind in
+      let (mp,dp,l) = repr_kn (canonical_mind mind) in
+      let accu = Format.sprintf "Accu_%s_%i" (string_of_label l) i in
+      let accu = mk_relative_id base_mp (mp,accu) in
+      Format.fprintf fmt "@[begin match %a with |%s -> %a %a@\nend@]"
+	pp_mllam c accu pp_mllam accu_br pp_branches br
+
+     (* of annot_sw * mllambda * mllambda *
   mllam_branches *)
                                (* argument, accu branch, branches *)
   | MLconstruct(cn,args) -> assert false
@@ -578,18 +570,20 @@ and pp_cargs fmt args =
   | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
   | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
 
+and pp_branches fmt bs =
+  let pp_branch (cn,args,body) =
+(*    let cenv = push_rels cenv argsn in*)
+    (* let args = Array.mapi (fun i id -> MLrel(id,len-i)) argsn in *)
+    let args = Array.map (fun ln -> MLlocal ln) args in
+    Format.fprintf fmt "@\n| %a%a ->@\n  %a" 
+	(pp_gname base_mp) (Gconstruct cn) pp_cargs args pp_mllam body
+  in
+  Array.iter pp_branch bs
+
 in
   (* Opens a global box and flushes output *)
   Format.fprintf fmt "@[%a@]@." pp_mllam l
   
-(*and pp_branches cenv fmt bs =
-  let pp_branch (cn,argsn,body) =
-(*    let cenv = push_rels cenv argsn in*)
-    let len = Array.length argsn in
-    let args = Array.mapi (fun i id -> MLrel(id,len-i)) argsn in
-    Format.fprintf fmt "@\n| %s%a ->@\n  %a" 
-	cn (pp_cargs cenv) args (pp_mllam cenv) body in
-  Array.iter pp_branch bs*)
 
 
 (*
@@ -696,16 +690,16 @@ let pp_global base_mp fmt g =
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
 (* Compilation of elements in environment *)
-let compile_constant env mp l cb =
+let compile_constant env auxdefs mp l cb =
   match cb.const_body with
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr env t in
-      let _,_,code = mllambda_of_lambda code in
-      Glet(Gconstant (make_con mp empty_dirpath l),code)
+      let auxdefs,_,code = mllambda_of_lambda auxdefs code in
+      Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
   | _ -> 
       let kn = make_con mp empty_dirpath l in
-      Glet(Gconstant kn, MLprimitive (Mk_const kn))
+      Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
 
 
 let compile_mind mb mind =

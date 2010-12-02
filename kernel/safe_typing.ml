@@ -701,7 +701,7 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option
 
-type native_library = Nativecode.global list
+type native_library = Nativecode.global list * module_path
 
 (* We check that only initial state Require's were performed before
    [start_library] was called *)
@@ -775,7 +775,7 @@ let export senv dir =
     }
   in
   let ast = Nativemodules.dump_library mp senv.env str in
-   mp, (dir,mb,senv.imports,engagement senv.env), ast, List.map fst senv.imports
+   mp, (dir,mb,senv.imports,engagement senv.env), (ast, mp), List.map fst senv.imports
 
 
 let check_imports senv needed =

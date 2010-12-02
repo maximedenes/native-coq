@@ -24,7 +24,8 @@ let include_dirs =
 let include_libs =
   "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
 
-let compile_module code load_paths f =
+let compile_module code mp load_paths f =
+  let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
 (*  let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
      <:str_item< open Names >>]
@@ -32,7 +33,7 @@ let compile_module code load_paths f =
   in*)
   let ch_out = open_out (f^".ml") in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals (MPfile empty_dirpath) fmt code;
+  pp_globals mp fmt (header@code);
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
