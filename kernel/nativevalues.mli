@@ -124,3 +124,6 @@ val arrayset     : t -> t -> t -> t -> t -> t (* accu A t n v *)
 val arraycopy    : t -> t -> t -> t           (* accu A t *)
 val arrayreroot  : t -> t -> t -> t           (* accu A t *)
 val arraylength  : t -> t -> t -> t           (* accu A t *)
+
+val str_encode : 'a -> string
+val str_decode : string -> 'a

@@ -7,10 +7,6 @@ open Mod_subst
 open Modops
 open Nativecode
 
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
-
-
 let rec translate_mod_type mp env typ_expr =
   assert false
 (*  match typ_expr with
@@ -73,10 +69,11 @@ let rec translate_mod mp env annots mod_expr =
       let tr_x, annots = translate_mod mp env annots x in
       <:module_expr< $tr_f$ $tr_x$ >>, annots
   | SEBwith _ -> assert false*)
-and translate_fields mp env (l,x) mlcode =
+and translate_fields mp env mlcode (l,x) =
   match x with
   | SFBconst cb ->
-      let tr = compile_constant (pre_env env) mp l cb in tr::mlcode
+      let tr,mlcode = compile_constant (pre_env env) mlcode mp l cb in
+      tr::mlcode
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
       let tr = compile_mind mb kn in
@@ -103,6 +100,6 @@ let dump_library mp env mod_expr =
   match mod_expr with
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
-      let mlcode = List.fold_right (translate_fields mp env) msb [] in
-      print_endline "Compiled library."; mlcode
+      let mlcode = List.fold_left (translate_fields mp env) [] msb in
+      print_endline "Compiled library."; List.rev mlcode
   | _ -> assert false

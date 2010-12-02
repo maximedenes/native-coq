@@ -438,10 +438,29 @@ let arraylength accu vA t =
 let parray_of_array t =
   (Obj.magic (Native.Parray.of_array t) : t)
  
+let hobcnv = Array.init 256 (fun i -> Printf.sprintf "%.2x" i)
+let bohcnv = Array.init 256 (fun i -> i -
+                                      (if 0x30 <= i then 0x30 else 0) -
+                                      (if 0x41 <= i then 0x7 else 0) -
+                                      (if 0x61 <= i then 0x20 else 0))
 
+let hex_of_bin ch = hobcnv.(int_of_char ch)
+let bin_of_hex s = char_of_int (bohcnv.(int_of_char s.[0]) * 16 + bohcnv.(int_of_char s.[1]))
 
+let str_encode expr =
+  let mshl_expr = Marshal.to_string expr [] in
+  let payload = Buffer.create (String.length mshl_expr * 2) in
+  String.iter (fun c -> Buffer.add_string payload (hex_of_bin c)) mshl_expr;
+  Buffer.contents payload
 
-
-
+let str_decode s =
+  let mshl_expr_len = String.length s / 2 in
+  let mshl_expr = Buffer.create mshl_expr_len in
+  let buf = String.create 2 in
+  for i = 0 to mshl_expr_len - 1 do
+    String.blit s (2*i) buf 0 2;
+    Buffer.add_char mshl_expr (bin_of_hex buf)
+  done;
+  Marshal.from_string (Buffer.contents mshl_expr) 0
 
 
