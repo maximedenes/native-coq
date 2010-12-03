@@ -118,7 +118,7 @@ let mkMLapp f args =
 
 (*s Global declaration *)
 type global =
-  | Gtblname of gname * identifier array
+(*  | Gtblname of gname * identifier array *)
   | Gtblnorm of gname * lname array * mllambda array 
   | Gtblfixtype of gname * lname array * mllambda array
   | Glet of gname * mllambda
@@ -473,10 +473,13 @@ let pp_gname base_mp fmt g =
       Format.fprintf fmt "case_%i" i
   | Gpred i ->
       Format.fprintf fmt "pred_%i" i
-  | Gfixtype _ -> assert false
-  | Gnorm _ -> assert false
+  | Gfixtype i ->
+      Format.fprintf fmt "fixtype_%i" i
+  | Gnorm i ->
+      Format.fprintf fmt "norm_%i" i
   | Ginternal s -> Format.fprintf fmt "%s" s
-  | Gnormtbl _ -> assert false
+  | Gnormtbl i -> 
+      Format.fprintf fmt "normtbl_%i" i
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -559,11 +562,10 @@ let rec pp_mllam fmt l =
 and pp_letrec fmt defs =
   let len = Array.length defs in
   let pp_one_rec i (fn, argsn, body) =
-    let len' = Array.length argsn in
     Format.fprintf fmt "%a%a =@\n  %a"
       pp_lname fn 
       pp_ldecls argsn pp_mllam body in
-  Format.fprintf fmt "letrec ";
+  Format.fprintf fmt "let rec ";
   pp_one_rec 0 defs.(0);
   for i = 1 to len - 1 do
     Format.fprintf fmt "and ";
@@ -612,100 +614,18 @@ in
   Format.fprintf fmt "@[%a@]@." pp_mllam l
   
 
-
-(*
-type comp = global list
-
-let globals = ref ([] : comp)
-
-let mk_rel cenv i = assert false
-
-let rec mllambda_of_constr cenv c =
-  match kind_of_term c with
-  | Rel i -> Lrel (mk_rel cenv i)
-  | Lambda _ -> assert false
-(*      let params, body = decompose_lam c in
-      let ids = get_names (List.rev params) in
-      let ln,cenv = push_rels ids cenv in
-      let lb = mllambda_of_constr cenv body in
-      mkLlam ids lb*)
-  | App(f, args) -> assert false (* mllambda_of_app cenv f args *)
-(*
-  | Var id -> Lglobal (get_var cenv id)
-  | Sort s -> Lprimitive (Mk_sort s)
-  | Ind ind -> Lglobal (get_ind cenv ind)
-  | Prod(x, dom, codom) ->
-      let ld = mllambda_of_constr cenv dom in
-      let lx, cenv = push_rel x cenv in
-      let lc = mllambda_of_constr cenv codom in
-      Lapp(Lprimitive (Mk_prod x), [|ld; Llam([|lx|],lc)|])
-	
-  | LetIn(x, def, _, body) ->
-      let ld = mllambda_of_constr cenv def in
-      let lx,cenv = push_rel x cenv in 
-      let lb = mllambda_of_constr cenv body in
-      Llet(lx, ld, lb)
-
-  | Const _ -> mllambda_of_app cenv c empty_args
-
-  | Construct _ -> mllambda_of_app cenv c empty_args
-
-  | Case(ci,t,a,branches) ->  
-      (* generation de la def global ---> fv, match_toto *)
-      (* *)
-      let la = mllambda_of_constr cenv a in
-      Lapp(match_toto, [| fv; la|])
-
-  | Fix(rec_init,(names,type_bodies,rec_bodies)) ->
-      (* generation de norm --> fv, norm_toto*)
-      (* 
-      let norm_toto_i fv totos = fun params_i -> body_i 
-      let norm_toto fv totos = 
-        [| norm_toto_i fv |]
-      let type_toto fv =
-        Lazy [| types |] 
-      
-      let rec toto_i = 
-        fun params_i ->
-         if is_accu rec_arg then mk_fix_accu (norm_toto fv) (types fv) params
-	 else norm_toto_i fv totos params
-       and toto_j = ...
-       in toto_rec_init
-      *)
-	
-  | CoFix(init,(names,type_bodies,rec_bodies)) -> ...
-
-  | NativeInt i -> Lint i
-  | NativeArr(_,p) -> makearray (mllambda_of_args env 0 p)
-
-(*  
-(*
-  | Lprim         of constant option * Native.prim_op * mllambda array
-	(* No check if None *)
-  | Lcprim        of constant * Native.caml_prim * mllambda array *)
-  | Lcase         of annot_sw * mllambda * mllambda * lam_branches 
-  | Lareint       of mllambda array 
-
-  | Lfix          of (int array * int) * fix_decl 
-  | Lcofix        of int * fix_decl 
-  | Lmakeblock    of int * mllambda array
-  | Lint          of int
-  | Lval          of values
-  | Lsort         of sorts
-  | Lind          of inductive
-
-Prod(x,dom,codom) -->
-  mkprodaccu "x" dom (fun x -> codom)
-
-*)
-*)
-*)
-
+let pp_array base_mp fmt t =
+  let len = Array.length t in
+  Format.fprintf fmt "@[[|";
+  for i = 0 to len - 2 do
+    Format.fprintf fmt "%a; " (pp_mllam base_mp) t.(i)
+  done;
+  if len > 0 then
+    Format.fprintf fmt "%a" (pp_mllam base_mp) t.(len - 1);
+  Format.fprintf fmt "|]@]"
+  
 let pp_global base_mp fmt g =
   match g with
-(*  | Gtblname of gname * identifier array
-  | Gtblnorm of gname * lname array * mllambda array 
-  | Gtblfixtype of gname * lname array * mllambda array*)
   | Glet (gn, c) ->
       Format.fprintf fmt "@[let %a = %a@]@." (pp_gname base_mp) gn (pp_mllam
       base_mp) c
@@ -721,7 +641,13 @@ let pp_global base_mp fmt g =
         done
       in
       Format.fprintf fmt "@[type ind_%s_%i@ =@ %a@]@." l i (pp_const_sigs i) j
-  | _ -> assert false
+  | Gtblfixtype (g, params, t) ->
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+	pp_ldecls params (pp_array base_mp) t
+  | Gtblnorm (g, params, t) ->
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+	pp_ldecls params (pp_array base_mp) t 
+
 
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
