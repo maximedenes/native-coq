@@ -18,7 +18,9 @@ val mk_internal_let : string -> mllambda -> global
 
 val compile_constant : env -> global list -> module_path -> label ->
   constant_body -> global * global list
-val compile_mind : 'a -> Names.mutual_inductive -> global
+
+val compile_mind : mutual_inductive_body -> mutual_inductive ->
+  global list -> global list
 
 val conv_main_code : global list
 

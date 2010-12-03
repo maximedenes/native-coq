@@ -76,8 +76,7 @@ and translate_fields mp env mlcode (l,x) =
       tr::mlcode
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
-      let tr = compile_mind mb kn in
-      tr::mlcode
+      compile_mind mb kn mlcode
 (*  | SFBmodule md ->
       begin
         match md.mod_expr with
