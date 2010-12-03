@@ -27,6 +27,7 @@ type gname =
   | Gpred of int
   | Gfixtype of int
   | Gnorm of int
+  | Gnormtbl of int
   | Ginternal of string
 
 let case_ctr = ref (-1)
@@ -53,6 +54,22 @@ let fresh_gfixtype () =
   incr fixtype_ctr;
   Gfixtype !fixtype_ctr
 
+let norm_ctr = ref (-1)
+
+let reset_norm () = norm_ctr := -1
+
+let fresh_gnorm () =
+  incr norm_ctr;
+  Gnorm !norm_ctr
+
+let normtbl_ctr = ref (-1)
+
+let reset_normtbl () = normtbl_ctr := -1
+
+let fresh_gnormtbl () =
+  incr normtbl_ctr;
+  Gnormtbl !normtbl_ctr
+
 (*s Mllambda *)
   
 type primitive =
@@ -61,6 +78,7 @@ type primitive =
   | Mk_ind of mutual_inductive
   | Mk_const of constant
   | Mk_sw of annot_sw
+  | Mk_fix
   | Is_accu
   | Is_int
 
@@ -113,6 +131,8 @@ let push_global_let gn body =
 let push_global_fixtype gn params body =
   global_stack := Gtblfixtype(gn,params,body) :: !global_stack
 
+let push_global_norm name params body =
+  global_stack := Gtblnorm(name, params, body)::!global_stack
 (*s Compilation environment *)
 
 type env =
@@ -294,7 +314,7 @@ let rec ml_of_lam env l =
   | Lareint _ -> assert false
   | Lif(t,bt,bf) -> 
       MLif(ml_of_lam env t, ml_of_lam env bt, ml_of_lam env bf)
-  | Lfix ((rec_pos,start), fdecl) -> assert false
+  | Lfix ((rec_pos,start), (ids, tt, tb)) ->
       (* let type_f fvt = [| type fix |] 
          let norm_f1 fv f1 .. fn params1 = body1
 	 ..
@@ -311,54 +331,55 @@ let rec ml_of_lam env l =
 	   start
       *)
       (* Compilation of type *)
-    (*  let env_t = empty_env () in
-      let ml_t = Array.map (fun (_,t,_) -> ml_of_lam env_t t) fdecl in
+      let env_t = empty_env () in
+      let ml_t = Array.map (ml_of_lam env_t) tt in
       let params_t = fv_params env_t in
       let args_t = fv_args env !(env_t.env_named) !(env_t.env_urel) in
       let gft = fresh_gfixtype () in
       push_global_fixtype gft params_t ml_t;
+      let mk_type = MLapp(MLglobal gft, args_t) in
       (* Compilation of norm_i *)
-      let ids = Array.map (fun (id,_,_) -> id) fdecl in
-      let lf,env_n = push_rels (fresh_env ()) ids in
-      let t_params = Array.make (Array.length fdecl) [||] in
-      let t_norm_f = Array.make (Array.length fdecl) (Gnorm (-1)) in
-      let ml_of_fix i (_,_,body) =
+      let ndef = Array.length ids in
+      let lf,env_n = push_rels (empty_env ()) ids in
+      let t_params = Array.make ndef [||] in
+      let t_norm_f = Array.make ndef (Gnorm (-1)) in
+      let ml_of_fix i body =
 	let idsi,bodyi = decompose_Llam body in
 	let paramsi, envi = push_rels env_n idsi in
-	let norm_fi = fresh_gnorm () in
-	t_norm_f.(i) <- norm_fi;
+	t_norm_f.(i) <- fresh_gnorm ();
 	let bodyi = ml_of_lam envi bodyi in
 	t_params.(i) <- paramsi;
 	mkMLlam paramsi bodyi in
-      let tnorm = Array.mapi ml_of_fix fdecl in
+      let tnorm = Array.mapi ml_of_fix tb in
       let fvn,fvr = !(env_n.env_named), !(env_n.env_urel) in
       let fv_params = fv_params env_n in
-      let fv_args = fv_args env_n fvn fvr in
       let norm_params = Array.append fv_params lf in
       let norm_args = 
-        Array.append fv_args (Array.map (fun id -> MLlocal id) lf) in
+        Array.append (fv_args env_n fvn fvr) 
+	  (Array.map (fun id -> MLlocal id) lf) in
       Array.iteri (fun i body ->
-	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body));
-      let norm = fresh_gtblnorm () in
-      push_global_tbl norm norm_params 
+	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body)) tnorm;
+      let norm = fresh_gnormtbl () in
+      push_global_norm norm norm_params 
          (Array.map (fun g -> mkMLapp (MLglobal g) norm_args) t_norm_f);
+      (* Compilation of fix *)
+      let lf, env = push_rels env ids in
+      let lf_args = Array.map (fun id -> MLlocal id) lf in
+      let fv_args = fv_args env fvn fvr in
+      let mk_norm = MLapp(MLglobal norm, fv_args) in
       let mkrec i lname = 
 	let paramsi = t_params.(i) in
-	let reci = t_paramsi.(rec_pos.(i)) in
+	let reci = MLlocal (paramsi.(rec_pos.(i))) in
+	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
 	let body = 
 	  MLif(MLapp(MLprimitive Is_accu,[|reci|]),
-	       MLapp(MLprimitve Mk_fix, [|MLapp(MLglobal gft, args_t);
-					  MLapp(MLglobal norm, fv_args);
-					  
-      MLletrec(,) *)
-
-      
-      
-      
-
-      
-
-
+	       mkMLapp (MLapp(MLprimitive Mk_fix, [|mk_type; mk_norm|]))
+		 pargsi,
+	       MLapp(MLglobal t_norm_f.(i), 
+		     Array.concat [fv_args;lf_args;pargsi])) 
+	in
+	(lname, paramsi, body) in
+      MLletrec(Array.mapi mkrec lf, lf_args.(start))
   | Lcofix _ -> assert false
   | Lmakeblock (cn,_,args) ->
       MLconstruct(cn,Array.map (ml_of_lam env) args)
@@ -452,6 +473,7 @@ let pp_gname base_mp fmt g =
   | Gfixtype _ -> assert false
   | Gnorm _ -> assert false
   | Ginternal s -> Format.fprintf fmt "%s" s
+  | Gnormtbl _ -> assert false
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -476,6 +498,8 @@ let pp_primitive fmt = function
       Format.fprintf fmt "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
   | Mk_sw asw -> 
       Format.fprintf fmt "mk_sw_accu"
+  | Mk_fix -> 
+      Format.fprintf fmt "mk_fix_accu"
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
 
