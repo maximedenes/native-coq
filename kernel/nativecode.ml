@@ -1,6 +1,7 @@
 open Term
 open Names
 open Declarations
+open Util
 open Nativevalues
 open Nativelambda
 
@@ -122,6 +123,8 @@ type global =
   | Gtblfixtype of gname * lname array * mllambda array
   | Glet of gname * mllambda
   | Gopen of string
+  | Gtype of inductive * int (* mind name, number of bodies, number of
+                                 constructors *)
   
 let global_stack = ref ([] : global list)
 
@@ -458,7 +461,7 @@ let pp_gname base_mp fmt g =
   match g with
   | Gind (mind,i) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
-      let id = Format.sprintf "ind_%s_%i" (string_of_label l) i in
+      let id = Format.sprintf "indaccu_%s_%i" (string_of_label l) i in
       Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
   | Gconstruct ((mind,i),j) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
@@ -540,11 +543,11 @@ let rec pp_mllam fmt l =
      (* of annot_sw * mllambda * mllambda *
   mllam_branches *)
                                (* argument, accu branch, branches *)
-  | MLconstruct(cn,args) -> assert false
-(*      Format.fprintf fmt "@[%s%a@]" cn (pp_cargs cenv) args *)
+  | MLconstruct(cn,args) ->
+      Format.fprintf fmt "@[%a%a@]" (pp_gname base_mp) (Gconstruct cn) pp_cargs args
   | MLint i -> Format.fprintf fmt "%i" i
   | MLparray _ -> assert false
-  | MLval _ -> assert false 
+  | MLval _ -> () (* TODO *) 
   | MLsetref (s, body) ->
       Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
 
@@ -708,6 +711,16 @@ let pp_global base_mp fmt g =
       base_mp) c
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
+  | Gtype ((mind, i), j) ->
+      let (_,_,l) = repr_kn (canonical_mind mind) in
+      let l = string_of_label l in
+      let pp_const_sigs i fmt j =
+        Format.fprintf fmt "Accu_%s_%i of Nativevalues.t" l i;
+        for j = 1 to j do
+          Format.fprintf fmt "| Construct_%s_%i_%i of Nativevalues.t" l i j
+        done
+      in
+      Format.fprintf fmt "@[type ind_%s_%i@ =@ %a@]@." l i (pp_const_sigs i) j
   | _ -> assert false
 
 
@@ -726,8 +739,12 @@ let compile_constant env auxdefs mp l cb =
       Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
 
 
-let compile_mind mb mind =
-  Glet(Gind (mind,0), MLprimitive(Mk_ind mind))
+let compile_mind mb mind stack =
+  let f i acc ob =
+    let accu = Glet(Gind (mind,i), MLprimitive(Mk_ind mind)) in
+    Gtype((mind, i), Array.length ob.mind_consnames)::accu::acc
+  in
+  array_fold_left_i f stack mb.mind_packets
 
 let mk_opens l =
   List.map (fun s -> Gopen s) l
