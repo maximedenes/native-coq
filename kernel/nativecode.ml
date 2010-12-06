@@ -537,7 +537,7 @@ let pp_primitive fmt = function
 let pp_ldecls fmt ids =
   let len = Array.length ids in
   for i = 0 to len - 1 do
-    Format.fprintf fmt " %a" pp_lname ids.(i)
+    Format.fprintf fmt " (%a : Nativevalues.t)" pp_lname ids.(i)
   done
 
 let string_of_construct base_mp ((mind,i),j) =
