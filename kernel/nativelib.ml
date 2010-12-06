@@ -129,9 +129,9 @@ type lam =
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of lam * lam * lam array * case_info
+  | Case of annot_sw *lam * lam * lam array 
   | Prod of name * lam * lam
-  | Fix of name * rec_pos * lam * lam 
+  | Fix of (*name *) lam array * lam array * rec_pos * int
   | Array of lam array
 
 let rnorm = ref (Rel (-1))
@@ -236,17 +236,18 @@ and norm_atom lvl a =
       Sort s
   | Avar id ->
       Var id
-  | Acase (c,p,ac,tbl,ci) ->
+  | Acase (annot,c,p,ac) ->
       let lc = norm_accu lvl c in
       let lp = norm_val lvl p in
-      let lac = Array.map (norm_branch lvl ac) tbl in
-      Case(lp,lc,lac,ci)
+      let lac = Array.map (norm_branch lvl ac) annot.asw_reloc in
+      Case(annot,lp,lc,lac)
   | Aprod (x,dom,codom) ->
       let rel = mk_rel_accu lvl in
       Prod(x, norm_val lvl dom, norm_val (lvl+1) (codom rel))
-  | Afix(_,f,rec_pos,l,ty) ->
-      let fr = mk_rel_accu lvl in
-      Fix (l, rec_pos, norm_val lvl ty, norm_val (lvl+1) (f fr))
+  | Afix(types,bodies,rec_pos,pos) ->
+      let types = Array.map (norm_val lvl) types in
+      let bodies = Array.map (norm_val lvl) bodies in
+      Fix (types,bodies,rec_pos, pos)
 
 (** Reifies a branch in a case.                                          **)
 (** Does not build abstractions for binders under construtors, they will **)

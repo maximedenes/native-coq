@@ -54,9 +54,9 @@ type lam =
   | App of lam * lam array
   | Const_int of int
   | Const_block of int * lam array
-  | Case of lam * lam * lam array * case_info
+  | Case of annot_sw * lam * lam * lam array 
   | Prod of name * lam * lam
-  | Fix of name * rec_pos * lam * lam 
+  | Fix of (*name *) lam array * lam array * rec_pos * int
   | Array of lam array
 
 val rnorm : lam ref
