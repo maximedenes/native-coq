@@ -126,8 +126,8 @@ type global =
   | Gletcase of 
       gname * lname array * annot_sw * mllambda * mllambda * mllam_branches
   | Gopen of string
-  | Gtype of mutual_inductive * (int array) array
-
+  | Gtype of inductive * int array
+    (* ind name, arities of constructors *)
   
 let global_stack = ref ([] : global list)
 
@@ -655,27 +655,19 @@ let pp_global base_mp fmt g =
       base_mp) c
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
-  | Gtype (mind, arity) ->
+  | Gtype ((mind, i), lar) ->
       let (_,_,l) = repr_kn (canonical_mind mind) in
       let l = string_of_label l in
-      let pp_const_sigs fmt i =
-	let arity = arity.(i) in
-	Format.fprintf fmt "@[| Accu_%s_%i of Nativevalues.t@\n" l i;
-	for j = 0 to Array.length arity - 1 do
-	  let arity = arity.(j) in
-	  Format.fprintf fmt "| Construct_%s_%i_%i" l i j;
-	  if arity > 0 then begin
-	    Format.fprintf fmt " of";
-	    for n = 1 to arity do Format.fprintf fmt " Nativevalues.t" done;
-	  end;
-	  Format.fprintf fmt "@\n"
-	done;
-	Format.fprintf fmt "@]"  in
-      Format.fprintf fmt "@[type ind_%s_%i =@\n  %a@\n"	l 0 pp_const_sigs 0;
-      for i = 1 to Array.length arity - 1 do
-	Format.fprintf fmt "and ind_%s_%i =@\n  %a@\n"	l i pp_const_sigs i
-      done;
-      Format.fprintf fmt "@\n@]"
+      let rec aux s ar = if ar = 0 then s else aux (s^" * Nativevalues.t") (ar-1) in
+      let pp_const_sig i fmt j ar =
+        let sig_str = if ar > 0 then aux "of Nativevalues.t" (ar-1) else "" in
+        Format.fprintf fmt "| Construct_%s_%i_%i %s" l i j sig_str
+      in
+      let pp_const_sigs i fmt lar =
+        Format.fprintf fmt "Accu_%s_%i of Nativevalues.t" l i;
+        Array.iteri (pp_const_sig i fmt) lar
+      in
+      Format.fprintf fmt "@[type ind_%s_%i@ =@ %a@]@." l i (pp_const_sigs i) lar
   | Gtblfixtype (g, params, t) ->
       Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
 	pp_ldecls params (pp_array base_mp) t
@@ -686,7 +678,6 @@ let pp_global base_mp fmt g =
       Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@."
 	(pp_gname base_mp) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
-
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
@@ -700,41 +691,29 @@ let compile_constant env auxdefs mp l cb =
       Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
   | _ -> 
       let kn = make_con mp empty_dirpath l in
-      Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
+      Glet(Gconstant kn, MLprimitive (Mk_const kn)), auxdefs
 
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
 
 let compile_mind mb mind stack =
-  let stk = ref stack in
-  let f i ob =
-    let ind = mind, i in
-    stk := Glet(Gind ind, MLprimitive(Mk_ind ind)) :: !stk;
-    Array.map snd ob.mind_reloc_tbl in
-  let decl = Array.mapi f mb.mind_packets in
-  stk := Gtype(mind, decl)::!stk;
-  let nparams = mb.mind_nparams in
-  let params = 
-    Array.init nparams (fun i -> {lname = param_name; luid = i}) in
-  let add_constructs i oib =
-    let add_construct j arity = 
-      let _, arity = oib.mind_reloc_tbl.(j) in
-      let args = 
-	Array.init arity (fun k -> {lname = arg_name; luid = k}) in 
-      let c = (mind,i),(j+1) in
-      stk := 
-	Glet(Gconstruct c,
+  let f i acc ob =
+    let gtype = Gtype((mind, i), ob.mind_consnrealdecls) in
+    let accu = Glet(Gind (mind,i), MLprimitive(Mk_ind (mind,i))) in
+    let nparams = mb.mind_nparams in
+    let params = 
+      Array.init nparams (fun i -> {lname = param_name; luid = i}) in
+    let add_construct j acc (_,arity) = 
+      let args = Array.init arity (fun k -> {lname = arg_name; luid = k}) in 
+      let c = (mind,i), (j+1) in
+	  Glet(Gconstruct c,
 	     mkMLlam (Array.append params args)
-	       (MLconstruct(c, Array.map (fun id -> MLlocal id) args)))::!stk 
+	       (MLconstruct(c, Array.map (fun id -> MLlocal id) args)))::acc
     in
-    Array.iteri add_construct oib.mind_reloc_tbl 
+    array_fold_left_i add_construct (gtype::accu::acc) ob.mind_reloc_tbl
   in
-  Array.iteri add_constructs mb.mind_packets;
-  !stk
-    
-			      
-
+  array_fold_left_i f stack mb.mind_packets
 
 let mk_opens l =
   List.map (fun s -> Gopen s) l
