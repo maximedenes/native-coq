@@ -11,13 +11,15 @@ type arity = int
 
 type reloc_table = (tag * arity) array
 
-(*type kind_of_constructor =
-  | KOCconst of tag
-  | KOCblock of tag * arity*)
-    
+type annot_sw = {
+    asw_ind : inductive;
+    asw_ci : case_info;
+    asw_reloc : reloc_table
+  }
+
 type sort_annot = string * int
 
-type rec_pos = int
+type rec_pos = int array
 
 type atom = 
   | Arel of int
@@ -25,14 +27,9 @@ type atom =
   | Aind of inductive
   | Asort of sorts
   | Avar of identifier
-  | Acase of accumulator * t * (t -> t) * reloc_table * case_info
-  | Afix of t * (t -> t) * rec_pos * name * t
+  | Acase of annot_sw * accumulator * t * (t -> t)
+  | Afix of  t array * t array * rec_pos * int
   | Aprod of name * t * (t -> t)
-
-type atom_fix = atom
-let dummy_atom_fix f rec_pos ls tys = Afix ((fun x -> x), f, rec_pos, ls, tys)
-let upd_fix_atom af frec =
-     (Obj.set_field (Obj.magic af) 0 (Obj.magic frec))
 
 let accumulate_tag = 0
 
@@ -74,8 +71,8 @@ let mk_sort_accu s =
 let mk_var_accu id = 
   mk_accu (Avar id)
 
-let mk_sw_accu c p ac tbl ci = 
-  mk_accu (Acase(c,p,ac,tbl,ci))
+let mk_sw_accu annot c p ac = 
+  mk_accu (Acase(annot,c,p,ac))
 
 let mk_prod_accu s dom codom =
   mk_accu (Aprod (s,dom,codom))
@@ -95,7 +92,7 @@ let is_accu x =
   let o = Obj.repr x in
   Obj.is_block o && Obj.tag o = accumulate_tag
 
-let accumulate_fix_code (k:accumulator) (a:t) =
+(*let accumulate_fix_code (k:accumulator) (a:t) =
   match atom_of_accu k with
   | Afix(frec,_,rec_pos,_,_) ->
       let nargs = accu_nargs k in
@@ -113,16 +110,15 @@ let accumulate_fix_code (k:accumulator) (a:t) =
 let rec accumulate_fix (x:t) =
   accumulate_fix_code (Obj.magic accumulate_fix) x
 
-let raccumulate_fix = ref accumulate_fix 
+let raccumulate_fix = ref accumulate_fix *)
 
 let is_atom_fix (a:atom) =
   match a with
   | Afix _ -> true
   | _ -> false
 
-let mk_fix_accu (a:atom) =
-  assert (is_atom_fix a);
-  mk_accu_gen raccumulate_fix a
+let mk_fix_accu rec_pos pos types bodies =
+  mk_accu_gen raccumulate (Afix(types,bodies,rec_pos, pos))
 
 let mk_const tag = Obj.magic tag
 

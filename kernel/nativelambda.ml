@@ -5,12 +5,6 @@ open Term
 open Declarations
 open Pre_env
 open Nativevalues
-
-type annot_sw = {
-    asw_ind : inductive;
-    asw_ci : case_info;
-    asw_reloc : reloc_table
-  }
       
 type lambda =
   | Lrel          of name * int 
@@ -377,10 +371,10 @@ let make_args start _end =
 (* Translation of constructors *)	
 
 let makeblock cn tag args =
-  if array_for_all is_value args then
+(*  if array_for_all is_value args then
     let args = Array.map get_value args in
     Lval (Nativevalues.mk_block tag args)
-  else Lmakeblock(cn, tag, args)
+  else*) Lmakeblock(cn, tag, args)
   
 let makearray args =   
   try
@@ -732,7 +726,7 @@ let rec lambda_of_constr env c =
       let lt = lambda_of_constr env t in
       (* translation of branches *)
       let mk_branch i b =
-	let cn = (ind,i) in
+	let cn = (ind,i+1) in
 	let _, arity = tbl.(i) in
 	let b = lambda_of_constr env b in
 	if arity = 0 then (cn, empty_ids, b)
