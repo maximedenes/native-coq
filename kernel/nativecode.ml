@@ -483,7 +483,9 @@ let pp_gname base_mp fmt g =
       let id = Format.sprintf "construct_%s_%i_%i" (string_of_label l) i (j-1) in
       Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
   | Gconstant c ->
-      Format.fprintf fmt "const_%s" (string_of_kn (canonical_con c))
+      let (mp,dp,l) = repr_kn (canonical_con c) in 
+      let id = Format.sprintf "const_%s" (string_of_label l) in
+      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
   | Gcase i ->
       Format.fprintf fmt "case_%i" i
   | Gpred i ->
