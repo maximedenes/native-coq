@@ -31,16 +31,22 @@ let compile_module code mp load_paths f =
      <:str_item< open Names >>]
     @ code
   in*)
-  let ch_out = open_out (f^".ml") in
+  let ch_out = open_out (f^".ml") in 
+  print_endline "Out module...";
+  let t0 = Sys.time () in
   let fmt = Format.formatter_of_out_channel ch_out in
   pp_globals mp fmt (header@code);
+  let t1 = Sys.time () in
+  Format.eprintf "Out module done %.5f@." (t1-.t0);
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
+    "time ocamlopt.opt -inline 0 -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
   in
   print_endline "Compiling module...";
-  let res = Sys.command comp_cmd in print_endline "Compiled"; res
+  let res = Sys.command comp_cmd in 
+  print_endline "Compiled"; 
+  res
 
 let push_comp_stack e =
   comp_stack := !comp_stack@e

@@ -11,6 +11,12 @@ type lname = { lname : name; luid : int }
 
 let dummy_lname = { lname = Anonymous; luid = -1 }
 
+module LNmap = Map.Make(
+  struct 
+    type t = lname 
+    let compare l1 l2 = l1.luid - l2.luid
+  end)
+
 let lname_ctr = ref (-1)
 
 let reset_lname = lname_ctr := -1
@@ -425,6 +431,138 @@ let mllambda_of_lambda auxdefs l =
   (* final result : global list, fv, ml *)
   (!global_stack, (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
 
+(** Optimization of match and fix *)
+
+let can_subst l = 
+  match l with
+  | MLlocal _ | MLint _ | MLval _ | MLglobal _ -> true
+  | _ -> false
+
+let subst s l =
+  if LNmap.is_empty s then l 
+  else
+    let rec aux l =
+      match l with
+      | MLlocal id -> (try LNmap.find id s with _ -> l)
+      | MLglobal _ | MLprimitive _ | MLint _ | MLval _ -> l
+      | MLlam(params,body) -> MLlam(params, aux body)
+      | MLletrec(defs,body) ->
+	let arec (f,params,body) = (f,params,aux body) in
+	MLletrec(Array.map arec defs, aux body)
+      | MLlet(id,def,body) -> MLlet(id,aux def, aux body)
+      | MLapp(f,args) -> MLapp(aux f, Array.map aux args)
+      | MLif(t,b1,b2) -> MLif(aux t, aux b1, aux b2)
+      | MLmatch(annot,a,accu,bs) ->
+	  let auxb (c,params,body) = (c,params,aux body) in
+	  MLmatch(annot,a,aux accu, Array.map auxb bs)
+      | MLconstruct(c,args) -> MLconstruct(c,Array.map aux args)
+      | MLparray p -> MLparray(Array.map aux p)
+      | MLsetref(s,l1) -> MLsetref(s,aux l1) in
+    aux l
+
+let add_subst id v s =
+  match v with
+  | MLlocal id' when id.luid = id'.luid -> s
+  | _ -> LNmap.add id v s
+
+let subst_norm params args s =
+  let len = Array.length params in
+  assert (Array.length args = len && Util.array_for_all can_subst args);
+  let s = ref s in
+  for i = 0 to len - 1 do
+    s := add_subst params.(i) args.(i) !s
+  done;
+  !s
+
+let subst_case params args s =
+  let len = Array.length params in
+  assert (len > 0 && 
+	  Array.length args = len && 
+	  let r = ref true and i = ref 0 in
+	  (* we test all arguments excepted the last *)
+	  while !i < len - 1  && !r do r := can_subst args.(!i); incr i done;
+	  !r);
+  let s = ref s in
+  for i = 0 to len - 2 do
+    s := add_subst params.(i) args.(i) !s
+  done;
+  !s, params.(len-1), args.(len-1)
+    
+    
+let empty_gdef = Intmap.empty, Intmap.empty
+let get_norm (gnorm, _) i = Intmap.find i gnorm
+let get_case (_, gcase) i = Intmap.find i gcase
+
+let optimize gdef l =   
+  let rec optimize s l =
+    match l with
+    | MLlocal id -> (try LNmap.find id s with _ -> l)
+    | MLglobal _ | MLprimitive _ | MLint _ | MLval _ -> l
+    | MLlam(params,body) -> 
+	MLlam(params, optimize s body)
+    | MLletrec(decls,body) ->
+	let opt_rec (f,params,body) = (f,params,optimize s body ) in 
+	MLletrec(Array.map opt_rec decls, optimize s body)
+    | MLlet(id,def,body) ->
+	let def = optimize s def in
+	if can_subst def then optimize (add_subst id def s) body 
+	else MLlet(id,def,optimize s body)
+    | MLapp(f, args) ->
+	let args = Array.map (optimize s) args in
+	begin match f with
+	| MLglobal (Gnorm i) ->
+	    (try
+	      let params,body = get_norm gdef i in
+	      let s = subst_norm params args s in
+	      optimize s body	    
+	    with Not_found -> MLapp(optimize s f, args))
+	| MLglobal (Gcase i) ->
+	    (try 
+	      let params,body = get_case gdef i in
+	      let s, id, arg = subst_case params args s in
+	      if can_subst arg then optimize (add_subst id arg s) body
+	      else MLlet(id, arg, optimize s body)
+	    with Not_found ->  MLapp(optimize s f, args))
+	| _ -> MLapp(optimize s f, args)
+	end
+    | MLif(t,b1,b2) ->
+	let t = optimize s t in
+	let b1 = optimize s b1 in
+	let b2 = optimize s b2 in
+	begin match t, b2 with
+	| MLapp(MLprimitive Is_accu,[| l1 |]), MLmatch(annot, l2, _, bs)
+	    when l1 = l2 -> MLmatch(annot, l1, b1, bs)
+        | _, _ -> MLif(t, b1, b2)
+	end
+    | MLmatch(annot,a,accu,bs) ->
+	let opt_b (c,params,body) = (c,params,optimize s body) in
+	MLmatch(annot, optimize s a, subst s accu, Array.map opt_b bs)
+    | MLconstruct(c,args) ->
+	MLconstruct(c,Array.map (optimize s) args)
+    | MLparray p -> MLparray (Array.map (optimize s) p)
+    | MLsetref(r,l) -> MLsetref(r, optimize s l) in
+  optimize LNmap.empty l
+
+let optimize_stk stk =
+  let add_global gdef g =
+    match g with
+    | Glet (Gnorm i, body) ->
+	let (gnorm, gcase) = gdef in
+	(Intmap.add i (decompose_MLlam body) gnorm, gcase)
+    | Gletcase(Gcase i, params, annot,a,accu,bs) ->
+	let (gnorm,gcase) = gdef in
+	(gnorm, Intmap.add i (params,MLmatch(annot,a,accu,bs)) gcase)
+    | Gletcase _ -> assert false
+    | _ -> gdef in
+  let gdef = List.fold_left add_global empty_gdef stk in
+  let optimize_global g = 
+    match g with
+    | Glet(Gconstant c, body) -> Glet(Gconstant c, optimize gdef body)
+    | _ -> g in
+  List.map optimize_global stk
+
+
+	  
 
 (** Printing to ocaml **)
 (* Redefine a bunch of functions in module Names to generate names

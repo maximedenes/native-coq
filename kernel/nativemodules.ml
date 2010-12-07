@@ -99,6 +99,11 @@ let dump_library mp env mod_expr =
   match mod_expr with
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
+      let t0 = Sys.time ()in 
       let mlcode = List.fold_left (translate_fields mp env) [] msb in
-      print_endline "Compiled library."; List.rev mlcode
+      let t1 = Sys.time () in
+      let mlopt = optimize_stk mlcode in
+      let t2 = Sys.time () in
+      Format.eprintf "Compiled library. ml %.5f; opt %.5f@." (t1-.t0) (t2-.t1);
+      List.rev mlopt
   | _ -> assert false
