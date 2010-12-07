@@ -88,8 +88,8 @@ let compare env t1 t2 cu =
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
-  let (gl,_,code1) = mllambda_of_lambda [] code1 in
-  let (gl,_,code2) = mllambda_of_lambda gl code2 in
+  let (gl,_,code1) = mllambda_of_lambda [] None code1 in
+  let (gl,_,code2) = mllambda_of_lambda gl None code2 in
   let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
   let code = header@gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
   code2]@conv_main_code in
