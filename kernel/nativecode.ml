@@ -123,6 +123,13 @@ let mkMLapp f args =
     | MLapp(f,args') -> MLapp(f,Array.append args' args)
     | _ -> MLapp(f,args)
 
+let empty_params = [||]
+
+let decompose_MLlam c =
+  match c with
+  | MLlam(ids,c) -> ids,c
+  | _ -> empty_params,c
+
 (*s Global declaration *)
 type global =
 (*  | Gtblname of gname * identifier array *)
@@ -775,7 +782,7 @@ and pp_branches fmt bs =
 
 in
   (* Opens a global box and flushes output *)
-  Format.fprintf fmt "@[%a@]@." pp_mllam l
+  Format.fprintf fmt "@[%a@]" pp_mllam l
   
 
 let pp_array base_mp fmt t =
@@ -791,31 +798,34 @@ let pp_array base_mp fmt t =
 let pp_global base_mp fmt g =
   match g with
   | Glet (gn, c) ->
-      Format.fprintf fmt "@[let %a = %a@]@." (pp_gname base_mp) gn (pp_mllam
-      base_mp) c
+      let ids, c = decompose_MLlam c in
+      Format.fprintf fmt "@[let %a%a =@\n  %a@]@\n@." (pp_gname base_mp) gn 
+	pp_ldecls ids
+	(pp_mllam base_mp) c
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
   | Gtype ((mind, i), lar) ->
       let (_,_,l) = repr_kn (canonical_mind mind) in
       let l = string_of_label l in
-      let rec aux s ar = if ar = 0 then s else aux (s^" * Nativevalues.t") (ar-1) in
+      let rec aux s ar = 
+	if ar = 0 then s else aux (s^" * Nativevalues.t") (ar-1) in
       let pp_const_sig i fmt j ar =
         let sig_str = if ar > 0 then aux "of Nativevalues.t" (ar-1) else "" in
-        Format.fprintf fmt "| Construct_%s_%i_%i %s" l i j sig_str
+        Format.fprintf fmt "  | Construct_%s_%i_%i %s@\n" l i j sig_str
       in
       let pp_const_sigs i fmt lar =
-        Format.fprintf fmt "Accu_%s_%i of Nativevalues.t" l i;
+        Format.fprintf fmt "  | Accu_%s_%i of Nativevalues.t@\n" l i;
         Array.iteri (pp_const_sig i fmt) lar
       in
-      Format.fprintf fmt "@[type ind_%s_%i@ =@ %a@]@." l i (pp_const_sigs i) lar
+      Format.fprintf fmt "@[type ind_%s_%i =@\n%a@]@\n@." l i (pp_const_sigs i) lar
   | Gtblfixtype (g, params, t) ->
-      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@\n@." (pp_gname base_mp) g
 	pp_ldecls params (pp_array base_mp) t
   | Gtblnorm (g, params, t) ->
-      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@\n@." (pp_gname base_mp) g
 	pp_ldecls params (pp_array base_mp) t 
   | Gletcase(g,params,annot,a,accu,bs) ->
-      Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@."
+      Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@\n@."
 	(pp_gname base_mp) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
 
