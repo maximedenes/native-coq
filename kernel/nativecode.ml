@@ -24,52 +24,52 @@ type gname =
   | Gind of inductive
   | Gconstruct of constructor
   | Gconstant of constant
-  | Gcase of int
-  | Gpred of int
-  | Gfixtype of int
-  | Gnorm of int
-  | Gnormtbl of int
+  | Gcase of label option * int
+  | Gpred of label option * int
+  | Gfixtype of label option * int
+  | Gnorm of label option * int
+  | Gnormtbl of label option * int
   | Ginternal of string
 
 let case_ctr = ref (-1)
 
 let reset_gcase () = case_ctr := -1
 
-let fresh_gcase () =
+let fresh_gcase l =
   incr case_ctr;
-  Gcase !case_ctr
+  Gcase (l,!case_ctr)
 
 let pred_ctr = ref (-1)
 
 let reset_gpred () = pred_ctr := -1
 
-let fresh_gpred () = 
+let fresh_gpred l = 
   incr pred_ctr;
-  Gpred !pred_ctr
+  Gpred (l,!pred_ctr)
 
 let fixtype_ctr = ref (-1)
 
 let reset_gfixtype () = fixtype_ctr := -1
 
-let fresh_gfixtype () =
+let fresh_gfixtype l =
   incr fixtype_ctr;
-  Gfixtype !fixtype_ctr
+  Gfixtype (l,!fixtype_ctr)
 
 let norm_ctr = ref (-1)
 
 let reset_norm () = norm_ctr := -1
 
-let fresh_gnorm () =
+let fresh_gnorm l =
   incr norm_ctr;
-  Gnorm !norm_ctr
+  Gnorm (l,!norm_ctr)
 
 let normtbl_ctr = ref (-1)
 
 let reset_normtbl () = normtbl_ctr := -1
 
-let fresh_gnormtbl () =
+let fresh_gnormtbl l =
   incr normtbl_ctr;
-  Gnormtbl !normtbl_ctr
+  Gnormtbl (l,!normtbl_ctr)
 
 (*s Mllambda *)
   
@@ -259,30 +259,30 @@ let fv_args env fvn fvr =
       args
     end
 
-let rec ml_of_lam env l =
-  match l with
+let rec ml_of_lam env l t =
+  match t with
   | Lrel(id ,i) -> get_rel env id i
   | Lvar id -> get_var env id
   | Lprod(dom,codom) ->
-      let dom = ml_of_lam env dom in
-      let codom = ml_of_lam env codom in
+      let dom = ml_of_lam env l dom in
+      let codom = ml_of_lam env l codom in
       let n = get_prod_name codom in
       MLapp(MLprimitive(Mk_prod n), [|dom;codom|])
   | Llam(ids,body) ->
     let lnames,env = push_rels env ids in
-    MLlam(lnames, ml_of_lam env body)
+    MLlam(lnames, ml_of_lam env l body)
   | Lrec(id,body) ->
       let ids,body = decompose_Llam body in
       let lname, env = push_rel env id in
       let lnames, env = push_rels env ids in
-      MLletrec([|lname, lnames, ml_of_lam env body|], MLlocal lname)
+      MLletrec([|lname, lnames, ml_of_lam env l body|], MLlocal lname)
   | Llet(id,def,body) ->
-      let def = ml_of_lam env def in
+      let def = ml_of_lam env l def in
       let lname, env = push_rel env id in
-      let body = ml_of_lam env body in
+      let body = ml_of_lam env l body in
       MLlet(lname,def,body)
   | Lapp(f,args) ->
-      MLapp(ml_of_lam env f, Array.map (ml_of_lam env) args)
+      MLapp(ml_of_lam env l f, Array.map (ml_of_lam env l) args)
   | Lconst c -> MLglobal(Gconstant c)
   | Lprim _ | Lcprim _ -> assert false
   | Lcase (annot,p,a,bs) ->
@@ -297,8 +297,8 @@ let rec ml_of_lam env l =
             should a least compute the fv, then store the lambda representation
             of the predicate (not the mllambda) *)
       let env_p = empty_env () in
-      let pn = fresh_gpred () in
-      let mlp = ml_of_lam env_p p in
+      let pn = fresh_gpred l in
+      let mlp = ml_of_lam env_p l p in
       let mlp = generalize_fv env_p mlp in
       let (pfvn,pfvr) = !(env_p.env_named), !(env_p.env_urel) in
       push_global_let pn mlp; 
@@ -309,9 +309,9 @@ let rec ml_of_lam env l =
       (* compilation of branches *)
       let ml_br (c,params, body) = 
 	let lnames, env = push_rels env_c params in
-	(c,lnames, ml_of_lam env body) in
+	(c,lnames, ml_of_lam env l body) in
       let bs = Array.map ml_br bs in
-      let cn = fresh_gcase () in
+      let cn = fresh_gcase l in
       (* Compilation of accu branch *)
       let pred = MLapp(MLglobal pn, fv_args env_c pfvn pfvr) in  
       let (fvn, fvr) = !(env_c.env_named), !(env_c.env_urel) in
@@ -328,10 +328,10 @@ let rec ml_of_lam env l =
 	(Array.append (fv_params env_c) [|a_uid|]) annot la_uid accu bs;
 
       (* Final result *)
-      mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|ml_of_lam env a|]
+      mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|ml_of_lam env l a|]
   | Lareint _ -> assert false
   | Lif(t,bt,bf) -> 
-      MLif(ml_of_lam env t, ml_of_lam env bt, ml_of_lam env bf)
+      MLif(ml_of_lam env l t, ml_of_lam env l bt, ml_of_lam env l bf)
   | Lfix ((rec_pos,start), (ids, tt, tb)) ->
       (* let type_f fvt = [| type fix |] 
          let norm_f1 fv f1 .. fn params1 = body1
@@ -350,22 +350,22 @@ let rec ml_of_lam env l =
       *)
       (* Compilation of type *)
       let env_t = empty_env () in
-      let ml_t = Array.map (ml_of_lam env_t) tt in
+      let ml_t = Array.map (ml_of_lam env_t l) tt in
       let params_t = fv_params env_t in
       let args_t = fv_args env !(env_t.env_named) !(env_t.env_urel) in
-      let gft = fresh_gfixtype () in
+      let gft = fresh_gfixtype l in
       push_global_fixtype gft params_t ml_t;
       let mk_type = MLapp(MLglobal gft, args_t) in
       (* Compilation of norm_i *)
       let ndef = Array.length ids in
       let lf,env_n = push_rels (empty_env ()) ids in
       let t_params = Array.make ndef [||] in
-      let t_norm_f = Array.make ndef (Gnorm (-1)) in
+      let t_norm_f = Array.make ndef (Gnorm (l,-1)) in
       let ml_of_fix i body =
 	let idsi,bodyi = decompose_Llam body in
 	let paramsi, envi = push_rels env_n idsi in
-	t_norm_f.(i) <- fresh_gnorm ();
-	let bodyi = ml_of_lam envi bodyi in
+	t_norm_f.(i) <- fresh_gnorm l;
+	let bodyi = ml_of_lam envi l bodyi in
 	t_params.(i) <- paramsi;
 	mkMLlam paramsi bodyi in
       let tnorm = Array.mapi ml_of_fix tb in
@@ -375,7 +375,7 @@ let rec ml_of_lam env l =
       let norm_params = Array.append fv_params lf in
       Array.iteri (fun i body ->
 	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body)) tnorm;
-      let norm = fresh_gnormtbl () in
+      let norm = fresh_gnormtbl l in
       push_global_norm norm fv_params 
          (Array.map (fun g -> mkMLapp (MLglobal g) fv_args') t_norm_f);
       (* Compilation of fix *)
@@ -400,24 +400,24 @@ let rec ml_of_lam env l =
       MLletrec(Array.mapi mkrec lf, lf_args.(start))
   | Lcofix _ -> assert false
   | Lmakeblock (cn,_,args) ->
-      MLconstruct(cn,Array.map (ml_of_lam env) args)
+      MLconstruct(cn,Array.map (ml_of_lam env l) args)
   | Lconstruct cn ->
       MLglobal (Gconstruct cn)
   | Lint i -> MLint i
-  | Lparray t -> MLparray(Array.map (ml_of_lam env) t)
+  | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v -> MLval v
   | Lsort s -> MLprimitive(Mk_sort s)
   | Lind i -> MLglobal (Gind i)
 
-let mllambda_of_lambda auxdefs l =
+let mllambda_of_lambda auxdefs l t =
   let env = empty_env () in
   global_stack := auxdefs;
-  let ml = ml_of_lam env l in
+  let ml = ml_of_lam env l t in
   let fv_rel = !(env.env_urel) in
   let fv_named = !(env.env_named) in
   (* build the free variables *)
-  let get_name (_,l) = 
-   match l with
+  let get_name (_,t) = 
+   match t with
    | MLlocal x -> x
    | _ -> assert false in
   let params = 
@@ -444,6 +444,11 @@ let string_of_name x =
   match x with
     | Anonymous -> "anonymous" (* assert false *)
     | Name id -> string_of_id id
+
+let string_of_label_def l =
+  match l with
+    | None -> ""
+    | Some l -> string_of_label l
 
 (* Relativization of module paths *)
 let rec list_of_mp acc = function
@@ -486,17 +491,17 @@ let pp_gname base_mp fmt g =
       let (mp,dp,l) = repr_kn (canonical_con c) in 
       let id = Format.sprintf "const_%s" (string_of_label l) in
       Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
-  | Gcase i ->
-      Format.fprintf fmt "case_%i" i
-  | Gpred i ->
-      Format.fprintf fmt "pred_%i" i
-  | Gfixtype i ->
-      Format.fprintf fmt "fixtype_%i" i
-  | Gnorm i ->
-      Format.fprintf fmt "norm_%i" i
+  | Gcase (l,i) ->
+      Format.fprintf fmt "case_%s_%i" (string_of_label_def l) i
+  | Gpred (l,i) ->
+      Format.fprintf fmt "pred_%s_%i" (string_of_label_def l) i
+  | Gfixtype (l,i) ->
+      Format.fprintf fmt "fixtype_%s_%i" (string_of_label_def l) i
+  | Gnorm (l,i) ->
+      Format.fprintf fmt "norm_%s_%i" (string_of_label_def l) i
   | Ginternal s -> Format.fprintf fmt "%s" s
-  | Gnormtbl i -> 
-      Format.fprintf fmt "normtbl_%i" i
+  | Gnormtbl (l,i) -> 
+      Format.fprintf fmt "normtbl_%s_%i" (string_of_label_def l) i
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -689,7 +694,7 @@ let compile_constant env auxdefs mp l cb =
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr env t in
-      let auxdefs,_,code = mllambda_of_lambda auxdefs code in
+      let auxdefs,_,code = mllambda_of_lambda auxdefs (Some l) code in
       Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
   | _ -> 
       let kn = make_con mp empty_dirpath l in

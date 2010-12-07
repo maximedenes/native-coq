@@ -6,7 +6,7 @@ open Nativelambda
 type mllambda
 type global
 
-val mllambda_of_lambda : global list -> lambda -> global list *
+val mllambda_of_lambda : global list -> label option -> lambda -> global list *
    ((identifier * mllambda) list * (int * mllambda) list) * mllambda
 
 val pp_mllam : module_path -> Format.formatter -> mllambda -> unit
