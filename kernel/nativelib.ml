@@ -24,24 +24,6 @@ let include_dirs =
 let include_libs =
   "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
 
-let compile_module code mp load_paths f =
-  let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
-(*  let code =
-    [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>]
-    @ code
-  in*)
-  let ch_out = open_out (f^".ml") in
-  let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals mp fmt (header@code);
-  let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
-  close_out ch_out;
-  let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
-  in
-  print_endline "Compiling module...";
-  let res = Sys.command comp_cmd in print_endline "Compiled"; res
-
 let push_comp_stack e =
   comp_stack := !comp_stack@e
 
@@ -297,8 +279,3 @@ let compile_constant mp env kn ck =
   in
   push_comp_stack ast
   *)
-
-let compile_mind mb kn =
-  assert false
-(*  let ast = translate_mind mb kn in
-  push_comp_stack ast *)

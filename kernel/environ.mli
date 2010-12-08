@@ -10,7 +10,6 @@ open Names
 open Term
 open Declarations
 open Sign
-open Nativelib
 
 (** Unsafe environments. We define here a datatype for environments.
    Since typing is not yet defined, it is not possible to check the

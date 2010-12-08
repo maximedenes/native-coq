@@ -2,8 +2,11 @@ open Names
 open Term
 open Nativevalues
 open Nativecode
+open Nativemodules
 
 exception NotConvertible
+
+val include_dirs : string
 
 val load_paths : string list ref
 val imports : string list ref
@@ -12,9 +15,6 @@ val topological_sort :
   Util.Stringset.elt list ->
   ('a * 'b * 'c list * Util.Stringset.elt list) Util.Stringmap.t ->
   'c list * ('a * 'b) Util.Stringmap.t
-
-val compile_module :
-  global list -> module_path -> string list -> string -> int
 
 val push_comp_stack :
   mllambda list -> unit
@@ -81,5 +81,3 @@ val lazy_norm : Nativevalues.t Lazy.t -> lam
 
 val extern_state : string -> unit
 val intern_state : string -> unit
-
-val compile_mind : 'a -> 'b -> 'c
