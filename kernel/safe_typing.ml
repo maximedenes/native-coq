@@ -701,7 +701,7 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option
 
-type native_library = Nativecode.global list * module_path
+type native_library = Nativemodules.mod_field list * module_path
 
 (* We check that only initial state Require's were performed before
    [start_library] was called *)

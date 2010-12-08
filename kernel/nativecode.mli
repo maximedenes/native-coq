@@ -11,6 +11,7 @@ val mllambda_of_lambda : global list -> label option -> lambda -> global list *
 
 val pp_mllam : module_path -> Format.formatter -> mllambda -> unit
 
+val pp_global : module_path -> Format.formatter -> global -> unit
 val pp_globals : module_path -> Format.formatter -> global list -> unit
 
 val mk_opens : string list -> global list

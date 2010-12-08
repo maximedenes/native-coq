@@ -658,7 +658,7 @@ let save_library_to dir f =
     close_out ch;
     let lp = List.map System.string_of_physical_path (get_load_paths ()) in
     let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
-    match Nativelib.compile_module ast mp lp fn with
+    match Nativemodules.compile_module ast mp lp fn with
       | 0 -> ()
       | _ -> anomaly "Library compilation failure"
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e
