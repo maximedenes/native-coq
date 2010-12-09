@@ -478,19 +478,24 @@ let mk_relative_id base_mp (mp,id) =
       s^"."^id
 
 let pp_gname base_mp fmt g =
+  let relativize =
+    match base_mp with
+    | Some mp -> mk_relative_id mp
+    | None -> snd
+  in
   match g with
   | Gind (mind,i) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
       let id = Format.sprintf "indaccu_%s_%i" (string_of_label l) i in
-      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
+      Format.fprintf fmt "%s" (relativize (mp,id))
   | Gconstruct ((mind,i),j) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
       let id = Format.sprintf "construct_%s_%i_%i" (string_of_label l) i (j-1) in
-      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
+      Format.fprintf fmt "%s" (relativize (mp,id))
   | Gconstant c ->
       let (mp,dp,l) = repr_kn (canonical_con c) in 
       let id = Format.sprintf "const_%s" (string_of_label l) in
-      Format.fprintf fmt "%s" (mk_relative_id base_mp (mp,id))
+      Format.fprintf fmt "%s" (relativize (mp,id))
   | Gcase (l,i) ->
       Format.fprintf fmt "case_%s_%i" (string_of_label_def l) i
   | Gpred (l,i) ->
@@ -555,7 +560,7 @@ let pp_mllam base_mp fmt l =
 let rec pp_mllam fmt l =
   match l with
   | MLlocal ln -> Format.fprintf fmt "@[%a@]" pp_lname ln
-  | MLglobal g -> Format.fprintf fmt "@[%a@]" (pp_gname base_mp) g
+  | MLglobal g -> Format.fprintf fmt "@[%a@]" (pp_gname (Some base_mp)) g
   | MLprimitive p -> Format.fprintf fmt "@[%a@]" pp_primitive p
   | MLlam(ids,body) ->
     Format.fprintf fmt "@[(fun%a@ ->@\n %a)@]"
@@ -658,7 +663,7 @@ let pp_array base_mp fmt t =
 let pp_global base_mp fmt g =
   match g with
   | Glet (gn, c) ->
-      Format.fprintf fmt "@[let %a = %a@]@." (pp_gname base_mp) gn (pp_mllam
+      Format.fprintf fmt "@[let %a = %a@]@." (pp_gname None) gn (pp_mllam
       base_mp) c
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
@@ -676,14 +681,14 @@ let pp_global base_mp fmt g =
       in
       Format.fprintf fmt "@[type ind_%s_%i@ =@ %a@]@." l i (pp_const_sigs i) lar
   | Gtblfixtype (g, params, t) ->
-      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname None) g
 	pp_ldecls params (pp_array base_mp) t
   | Gtblnorm (g, params, t) ->
-      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname base_mp) g
+      Format.fprintf fmt "@[let %a %a =@\n  %a@]@." (pp_gname None) g
 	pp_ldecls params (pp_array base_mp) t 
   | Gletcase(g,params,annot,a,accu,bs) ->
       Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@."
-	(pp_gname base_mp) g pp_ldecls params 
+	(pp_gname None) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
