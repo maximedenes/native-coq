@@ -83,7 +83,8 @@ and translate_fields mp env acc (l,x) =
   match x with
   | SFBconst cb ->
       let tr,auxdefs = compile_constant (pre_env env) [] mp l cb in
-      List.fold_right (fun g acc -> MFglobal g::acc) (tr::auxdefs) acc
+      let l = optimize_stk (tr::auxdefs) in
+      List.fold_right (fun g acc -> MFglobal g::acc) l acc
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
       let tr = compile_mind mb kn [] in
@@ -106,10 +107,10 @@ let dump_library mp env mod_expr =
       let t0 = Sys.time ()in 
       let mlcode = List.fold_left (translate_fields mp env) [] msb in
       let t1 = Sys.time () in
-      let mlopt = optimize_stk mlcode in
-      let t2 = Sys.time () in
-      Format.eprintf "Compiled library. ml %.5f; opt %.5f@." (t1-.t0) (t2-.t1);
-      List.rev mlopt
+(*      let mlopt = optimize_stk mlcode in
+      let t2 = Sys.time () in*)
+      Format.eprintf "Compiled library. ml %.5f@." (t1-.t0);
+      List.rev mlcode
   | _ -> assert false
 
 
