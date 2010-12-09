@@ -103,8 +103,13 @@ let dump_library mp env mod_expr =
   match mod_expr with
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
+      let t0 = Sys.time ()in 
       let mlcode = List.fold_left (translate_fields mp env) [] msb in
-      print_endline "Compiled library."; List.rev mlcode
+      let t1 = Sys.time () in
+      let mlopt = optimize_stk mlcode in
+      let t2 = Sys.time () in
+      Format.eprintf "Compiled library. ml %.5f; opt %.5f@." (t1-.t0) (t2-.t1);
+      List.rev mlopt
   | _ -> assert false
 
 
@@ -145,16 +150,20 @@ let compile_module code mp load_paths f =
      <:str_item< open Names >>]
     @ code
   in*)
+  print_endline "Dumping library...";
+  let t0 = Sys.time () in
   let ch_out = open_out (f^".ml") in
   let fmt = Format.formatter_of_out_channel ch_out in
   pp_globals mp fmt header;
   pp_mod_fields mp fmt code;
   Format.fprintf fmt "@.";
-  let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
+  let t1 = Sys.time () in
+  Format.eprintf "Library dumped %.5f@." (t1-.t0);
+  let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
     "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
   in
-  print_endline "Compiling module...";
+  print_endline "Compiling library...";
   let res = Sys.command comp_cmd in print_endline "Compiled"; res
 
