@@ -6,6 +6,8 @@ open Nativelambda
 type mllambda
 type global
 
+val relative_list_of_mp : module_path -> module_path -> string list
+
 val mllambda_of_lambda : global list -> label option -> lambda -> global list *
    ((identifier * mllambda) list * (int * mllambda) list) * mllambda
 
