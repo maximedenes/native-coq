@@ -619,6 +619,11 @@ let mk_relative_id base_mp (mp,id) =
       let s = List.fold_left (fun acc x -> acc^"."^x) hd1 tl1 in
       s^"."^id
 
+let relative_list_of_mp base_mp mp =
+  let base_l = list_of_mp base_mp in
+  let l = list_of_mp mp in
+  snd (strip_common_prefix base_l l)
+
 let pp_gname base_mp fmt g =
   let relativize =
     match base_mp with

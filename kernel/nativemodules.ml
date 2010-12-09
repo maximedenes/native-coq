@@ -20,7 +20,8 @@ type mod_field =
   | MFmodtype of label * mod_sig_expr
 
 and mod_expr =
-  | MEident
+  | MEident of string
+  | MEapply of mod_expr * mod_expr
   | MEstruct of mod_field list
   | MEfunctor of string * mod_sig_expr * mod_expr
 
@@ -58,9 +59,8 @@ and translate_fields_type mp env (l,e) =
 
 let rec translate_mod mp env mod_expr =
   match mod_expr with
-  | SEBident mp' -> assert false
-(*      let uid = relative_mp_of_mp mp mp' in
-      <:module_expr< $uid$ >>, annots*)
+  | SEBident mp' ->
+      MEident (String.concat "." (relative_list_of_mp mp mp'))
   | SEBstruct msb ->
       let env' = add_signature mp msb empty_delta_resolver env in
       let ast =
@@ -74,10 +74,10 @@ let rec translate_mod mp env mod_expr =
       let ast = translate_mod mp env' meb in
       let typ_ast = translate_mod_type mp' env mtb.typ_expr in
       MEfunctor(mbid,typ_ast,ast)
-  | SEBapply (f,x,_) -> assert false
-(*      let tr_f, annots = translate_mod mp env annots f in
-      let tr_x, annots = translate_mod mp env annots x in
-      <:module_expr< $tr_f$ $tr_x$ >>, annots *)
+  | SEBapply (f,x,_) ->
+      let tr_f = translate_mod mp env f in
+      let tr_x = translate_mod mp env x in
+      MEapply(tr_f,tr_x)
   | SEBwith _ -> assert false
 and translate_fields mp env acc (l,x) =
   match x with
@@ -127,7 +127,10 @@ and pp_mod_sig_fields mp fmt l =
 
 let rec pp_mod_expr mp fmt me =
   match me with
-  | MEident -> assert false
+  | MEident s ->
+      Format.fprintf fmt "%s" s
+  | MEapply(f,x) ->
+      Format.fprintf fmt "%a.%a" (pp_mod_expr mp) f (pp_mod_expr mp) x
   | MEstruct l -> Format.fprintf fmt "@[struct@ %a@ end@]" (pp_mod_fields mp) l
   | MEfunctor(l, mse, me) ->
       Format.fprintf fmt "functor (%s : %a) ->@ @[%a@]" l (pp_mod_type_expr mp)
