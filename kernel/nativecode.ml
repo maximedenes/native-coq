@@ -517,13 +517,13 @@ let optimize gdef l =
     | MLapp(f, args) ->
 	let args = Array.map (optimize s) args in
 	begin match f with
-	| MLglobal (Gnorm i) ->
+	| MLglobal (Gnorm (_,i)) ->
 	    (try
 	      let params,body = get_norm gdef i in
 	      let s = subst_norm params args s in
 	      optimize s body	    
 	    with Not_found -> MLapp(optimize s f, args))
-	| MLglobal (Gcase i) ->
+	| MLglobal (Gcase (_,i)) ->
 	    (try 
 	      let params,body = get_case gdef i in
 	      let s, id, arg = subst_case params args s in
@@ -553,10 +553,10 @@ let optimize gdef l =
 let optimize_stk stk =
   let add_global gdef g =
     match g with
-    | Glet (Gnorm i, body) ->
+    | Glet (Gnorm (_,i), body) ->
 	let (gnorm, gcase) = gdef in
 	(Intmap.add i (decompose_MLlam body) gnorm, gcase)
-    | Gletcase(Gcase i, params, annot,a,accu,bs) ->
+    | Gletcase(Gcase (_,i), params, annot,a,accu,bs) ->
 	let (gnorm,gcase) = gdef in
 	(gnorm, Intmap.add i (params,MLmatch(annot,a,accu,bs)) gcase)
     | Gletcase _ -> assert false
@@ -567,9 +567,6 @@ let optimize_stk stk =
     | Glet(Gconstant c, body) -> Glet(Gconstant c, optimize gdef body)
     | _ -> g in
   List.map optimize_global stk
-
-
-	  
 
 (** Printing to ocaml **)
 (* Redefine a bunch of functions in module Names to generate names
