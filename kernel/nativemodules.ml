@@ -120,7 +120,8 @@ let rec pp_mod_type_expr mp fmt mse =
 
 and pp_mod_sig_field mp fmt t =
   match t with
-  | MSFconst l -> Format.fprintf fmt "val %s : Nativevalues.t@," (string_of_label l)
+  | MSFglobal gn ->
+      Format.fprintf fmt "val %a : Nativevalues.t@\n" (pp_gname None) gn 
 
 and pp_mod_sig_fields mp fmt l =
   List.iter (pp_mod_sig_field mp fmt) l
@@ -130,7 +131,7 @@ let rec pp_mod_expr mp fmt me =
   | MEident s ->
       Format.fprintf fmt "%s" s
   | MEapply(f,x) ->
-      Format.fprintf fmt "%a.%a" (pp_mod_expr mp) f (pp_mod_expr mp) x
+      Format.fprintf fmt "%a(%a)" (pp_mod_expr mp) f (pp_mod_expr mp) x
   | MEstruct l -> Format.fprintf fmt "@[struct@ %a@ end@]" (pp_mod_fields mp) l
   | MEfunctor(l, mse, me) ->
       Format.fprintf fmt "functor (%s : %a) ->@ @[%a@]" l (pp_mod_type_expr mp)
