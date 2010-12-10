@@ -10,14 +10,16 @@ open Nativelib
 
 type mod_sig_field =
   | MSFglobal of gname
+  | MSFmodule of module_path * label * mod_sig_expr
 
 and mod_sig_expr =
-  MSEsig of mod_sig_field list
+  | MSEsig of mod_sig_field list
+  | MSEfunctor of string * mod_sig_expr * mod_sig_expr
 
 type mod_field =
   | MFglobal of global
-  | MFmodule of label * mod_expr
-  | MFmodtype of label * mod_sig_expr
+  | MFmodule of module_path * label * mod_expr
+  | MFmodtype of module_path * label * mod_sig_expr
 
 and mod_expr =
   | MEident of string
@@ -31,23 +33,21 @@ let rec translate_mod_type mp env typ_expr =
 (*      <:module_type< $uid:string_of_mp mp$ >>*)
   | SEBstruct expr_list ->
       MSEsig (List.map (translate_fields_type mp env) expr_list)
-  | SEBfunctor (mbid, mtb, mtb') -> assert false
-      (*
+  | SEBfunctor (mbid, mtb, mtb') ->
       let mp' = MPbound mbid in
       let env' = add_module (module_body_of_type mp' mtb) env in
       let (_,mbid,_) = repr_mbid mbid in
       let ast = translate_mod_type mp env' mtb' in
       let typ_ast = translate_mod_type mp' env mtb.typ_expr in
-      <:module_type< functor ($uid:mbid$ : $typ_ast$) -> $ast$ >> *)
+      MSEfunctor(mbid, typ_ast, ast)
   | _ -> assert false
 
 and translate_fields_type mp env (l,e) =
   match e with
   | SFBconst cb -> MSFglobal (gname_of_con (make_con mp empty_dirpath l))
-  | SFBmodule md -> assert false
-(*      let mod_type_expr = translate_mod_type md.mod_mp env md.mod_type in
-      let uid = string_of_label l in
-      <:sig_item< module $uid:uid$ : $mod_type_expr$ >>*)
+  | SFBmodule md ->
+      let mte = translate_mod_type md.mod_mp env md.mod_type in
+      MSFmodule(md.mod_mp,l,mte)
   | SFBmind mb -> assert false
 (*      let _,lid = mind_lid mp (mp,id_of_label l) in
       <:sig_item< value $lid:lid$ : Nativevalues.t >>*)
@@ -93,11 +93,11 @@ and translate_fields mp env (l,x) acc =
       begin
         match md.mod_expr with
         | Some e ->
-            MFmodule(l,translate_mod md.mod_mp env e)::acc
+            MFmodule(md.mod_mp,l,translate_mod md.mod_mp env e)::acc
         | None -> assert false
       end
   | SFBmodtype mdtyp ->
-      MFmodtype(l,translate_mod_type mp env mdtyp.typ_expr)::acc
+      MFmodtype(mdtyp.typ_mp, l,translate_mod_type mp env mdtyp.typ_expr)::acc
 
 let dump_library mp env mod_expr =
   print_endline "Compiling library...";
@@ -117,11 +117,18 @@ let dump_library mp env mod_expr =
 let rec pp_mod_type_expr mp fmt mse =
   match mse with
   | MSEsig l -> Format.fprintf fmt "@[sig@ %a@ end@]" (pp_mod_sig_fields mp) l
+  | MSEfunctor (l, mst, mse) ->
+      Format.fprintf fmt "functor (%s : %a) ->@ @[%a@]" l (pp_mod_type_expr mp) mst
+      (pp_mod_type_expr mp) mse
+
 
 and pp_mod_sig_field mp fmt t =
   match t with
   | MSFglobal gn ->
       Format.fprintf fmt "val %a : Nativevalues.t@\n" (pp_gname None) gn 
+  | MSFmodule (mp',l,mse) ->
+      Format.fprintf fmt "module %s : @,%a@\n" (string_of_label l)
+      (pp_mod_type_expr mp') mse
 
 and pp_mod_sig_fields mp fmt l =
   List.iter (pp_mod_sig_field mp fmt) l
@@ -140,10 +147,12 @@ let rec pp_mod_expr mp fmt me =
 and pp_mod_field mp fmt t =
   match t with
   | MFglobal g -> pp_global mp fmt g
-  | MFmodule (l,me) -> Format.fprintf fmt "module %s =@,%a@\n" (string_of_label l) (pp_mod_expr mp) me
-  | MFmodtype (l,mse) ->
+  | MFmodule (mp',l,me) ->
+      Format.fprintf fmt "module %s =@,%a@\n" (string_of_label l)
+      (pp_mod_expr mp') me
+  | MFmodtype (mp',l,mse) ->
       Format.fprintf fmt "module type %s =@,%a@\n" (string_of_label l)
-      (pp_mod_type_expr mp) mse
+      (pp_mod_type_expr mp') mse
 
 and pp_mod_fields mp fmt l =
   List.iter (pp_mod_field mp fmt) l
