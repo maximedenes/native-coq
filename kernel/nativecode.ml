@@ -669,7 +669,7 @@ let pp_gname base_mp fmt g =
     | _ -> assert false*)
 
 let pp_lname fmt ln =
-  Format.fprintf fmt "x_%s_%i" (string_of_name ln.lname) ln.luid
+  Format.fprintf fmt "x_%i" ln.luid
 
 let pp_primitive fmt = function
   | Mk_prod id -> Format.fprintf fmt "mk_prod_accu (str_decode \"%s\")" 
