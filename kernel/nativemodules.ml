@@ -9,7 +9,7 @@ open Nativecode
 open Nativelib
 
 type mod_sig_field =
-  | MSFconst of label
+  | MSFglobal of gname
 
 and mod_sig_expr =
   MSEsig of mod_sig_field list
@@ -43,7 +43,7 @@ let rec translate_mod_type mp env typ_expr =
 
 and translate_fields_type mp env (l,e) =
   match e with
-  | SFBconst cb -> MSFconst l
+  | SFBconst cb -> MSFglobal (gname_of_con (make_con mp empty_dirpath l))
   | SFBmodule md -> assert false
 (*      let mod_type_expr = translate_mod_type md.mod_mp env md.mod_type in
       let uid = string_of_label l in

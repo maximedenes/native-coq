@@ -37,6 +37,9 @@ type gname =
   | Gnormtbl of label option * int
   | Ginternal of string
 
+let gname_of_con c =
+  Gconstant c
+
 let case_ctr = ref (-1)
 
 let reset_gcase () = case_ctr := -1
