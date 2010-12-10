@@ -64,7 +64,7 @@ let rec translate_mod mp env mod_expr =
   | SEBstruct msb ->
       let env' = add_signature mp msb empty_delta_resolver env in
       let ast =
-        List.fold_left (translate_fields mp env') [] msb
+        List.fold_right (translate_fields mp env') msb []
       in
       MEstruct ast
   | SEBfunctor (mbid,mtb,meb) ->
@@ -79,16 +79,16 @@ let rec translate_mod mp env mod_expr =
       let tr_x = translate_mod mp env x in
       MEapply(tr_f,tr_x)
   | SEBwith _ -> assert false
-and translate_fields mp env acc (l,x) =
+and translate_fields mp env (l,x) acc =
   match x with
   | SFBconst cb ->
       let tr,auxdefs = compile_constant (pre_env env) [] mp l cb in
       let l = optimize_stk (tr::auxdefs) in
-      List.fold_right (fun g acc -> MFglobal g::acc) l acc
+      List.fold_left (fun acc g -> MFglobal g::acc) acc l
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
       let tr = compile_mind mb kn [] in
-      List.fold_right (fun g acc -> MFglobal g::acc) tr acc
+      List.fold_left (fun acc g -> MFglobal g::acc) acc tr
   | SFBmodule md ->
       begin
         match md.mod_expr with
@@ -105,12 +105,12 @@ let dump_library mp env mod_expr =
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
       let t0 = Sys.time ()in 
-      let mlcode = List.fold_left (translate_fields mp env) [] msb in
+      let mlcode = List.fold_right (translate_fields mp env) msb [] in
       let t1 = Sys.time () in
 (*      let mlopt = optimize_stk mlcode in
       let t2 = Sys.time () in*)
       Format.eprintf "Compiled library. ml %.5f@." (t1-.t0);
-      List.rev mlcode
+      mlcode
   | _ -> assert false
 
 
