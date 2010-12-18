@@ -137,7 +137,7 @@ let rec empty_environment =
       resolver_of_param = empty_delta_resolver};
     labset = Labset.empty;
     revstruct = [];
-    univ = Univ.Constraint.empty;
+    univ = Univ.empty_constraint;
     engagement = None;
     imports = [];
     loads = [];
@@ -156,7 +156,7 @@ let env_of_senv = env_of_safe_env
 let add_constraints cst senv =
   {senv with
     env = Environ.add_constraints cst senv.env;
-    univ = Univ.Constraint.union cst senv.univ }
+    univ = Univ.union_constraints cst senv.univ }
 
 
 
@@ -357,7 +357,7 @@ let start_module l senv =
 	 modinfo = modinfo;
 	 labset = Labset.empty;
 	 revstruct = [];
-         univ = Univ.Constraint.empty;
+         univ = Univ.empty_constraint;
          engagement = None;
 	 imports = senv.imports;
 	 loads = [];
@@ -391,13 +391,13 @@ let end_module l restype senv =
    let mexpr,mod_typ,mod_typ_alg,resolver,cst = 
     match restype with
       | None ->  let mexpr = functorize_struct auto_tb in
-	 mexpr,mexpr,None,modinfo.resolver,Constraint.empty
+	 mexpr,mexpr,None,modinfo.resolver,empty_constraint
       | Some mtb ->
 	  let auto_mtb = {
 	    typ_mp = senv.modinfo.modpath;
 	    typ_expr = auto_tb;
 	    typ_expr_alg = None;
-	    typ_constraints = Constraint.empty;
+	    typ_constraints = empty_constraint;
 	    typ_delta = empty_delta_resolver} in
 	  let cst = check_subtypes senv.env auto_mtb
 	    mtb in
@@ -407,7 +407,7 @@ let end_module l restype senv =
 	    Option.map functorize_struct mtb.typ_expr_alg in
 	    mexpr,mod_typ,typ_alg,mtb.typ_delta,cst
   in
-  let cst = Constraint.union cst senv.univ in
+  let cst = union_constraints cst senv.univ in
   let mb =
     { mod_mp = mp;
       mod_expr = Some mexpr;
@@ -443,7 +443,7 @@ let end_module l restype senv =
 		  modinfo = modinfo;
 		  labset = Labset.add l oldsenv.labset;
 		  revstruct = (l,SFBmodule mb)::oldsenv.revstruct;
-		  univ = Univ.Constraint.union senv'.univ oldsenv.univ;
+		  univ = Univ.union_constraints senv'.univ oldsenv.univ;
 		  (* engagement is propagated to the upper level *)
 		  engagement = senv'.engagement;
 		  imports = senv'.imports;
@@ -485,7 +485,7 @@ let end_module l restype senv =
    let resolver,sign,senv = compute_sign sign {typ_mp = mp_sup;
 				      typ_expr = SEBstruct (List.rev senv.revstruct);
 				      typ_expr_alg = None;
-				      typ_constraints = Constraint.empty;
+				      typ_constraints = empty_constraint;
 				      typ_delta = senv.modinfo.resolver} resolver senv in
    let str = match sign with
      | SEBstruct(str_l) -> str_l
@@ -622,7 +622,7 @@ let start_modtype l senv =
 	modinfo = modinfo;
 	labset = Labset.empty;
 	revstruct = [];
-        univ = Univ.Constraint.empty;
+        univ = Univ.empty_constraint;
         engagement = None;
 	imports = senv.imports;
 	loads = [];
@@ -673,7 +673,7 @@ let end_modtype l senv =
 	  modinfo = oldsenv.modinfo;
 	  labset = Labset.add l oldsenv.labset;
 	  revstruct = (l,SFBmodtype mtb)::oldsenv.revstruct;
-          univ = Univ.Constraint.union senv.univ oldsenv.univ;
+          univ = Univ.union_constraints senv.univ oldsenv.univ;
           engagement = senv.engagement;
 	  imports = senv.imports;
 	  loads = senv.loads@oldsenv.loads;
@@ -733,7 +733,7 @@ let start_library dir senv =
 	modinfo = modinfo;
 	labset = Labset.empty;
 	revstruct = [];
-        univ = Univ.Constraint.empty;
+        univ = Univ.empty_constraint;
         engagement = None;
 	imports = senv.imports;
 	loads = [];
@@ -745,7 +745,7 @@ let pack_module senv =
    mod_expr=None;
    mod_type= SEBstruct (List.rev senv.revstruct);
    mod_type_alg=None;
-   mod_constraints=Constraint.empty;
+   mod_constraints=empty_constraint;
    mod_delta=senv.modinfo.resolver;
    mod_retroknowledge = []
   }

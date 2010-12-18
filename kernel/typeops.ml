@@ -26,8 +26,8 @@ let conv_leq_vecti env v1 v2 =
       let c' =
         try default_conv CUMUL env t1 t2
         with NotConvertible -> raise (NotConvertibleVect i) in
-      Constraint.union c c')
-    Constraint.empty
+      union_constraints c c')
+    empty_constraint
     v1
     v2
 
@@ -220,7 +220,7 @@ let judge_of_apply env funj argjv =
           | Prod (_,c1,c2) ->
 	      (try
 		let c = conv_leq env hj.uj_type c1 in
-		let cst' = Constraint.union cst c in
+		let cst' = union_constraints cst c in
 		apply_rec (n+1) (subst1 hj.uj_val c2) cst' restjl
 	      with NotConvertible ->
 		error_cant_apply_bad_type env
@@ -232,7 +232,7 @@ let judge_of_apply env funj argjv =
   in
   apply_rec 1
     funj.uj_type
-    Constraint.empty
+    empty_constraint
     (Array.to_list argjv)
 
 (* Type of product *)
@@ -366,7 +366,7 @@ let judge_of_case env ci pj cj lfj =
   ({ uj_val  = mkCase (ci, (*nf_betaiota*) pj.uj_val, cj.uj_val,
                        Array.map j_val lfj);
      uj_type = rslty },
-  Constraint.union univ univ')
+  union_constraints univ univ')
 
 (* Fixpoints. *)
 
@@ -396,7 +396,7 @@ let type_fixpoint env lna lar vdefj =
    graph and in the universes of the environment. This is to ensure
    that the infered local graph is satisfiable. *)
 let univ_combinator (cst,univ) (j,c') =
-  (j,(Constraint.union cst c', merge_constraints c' univ))
+  (j,(union_constraints cst c', merge_constraints c' univ))
 
 (* The typing machine. *)
     (* ATTENTION : faudra faire le typage du contexte des Const,
@@ -415,7 +415,7 @@ type renv =
 
 let empty_renv () = { 
   hconstruct = Hashtbl.create 17;
-  rc = Constraint.empty;
+  rc = empty_constraint;
   int_checked = false;
   int_constr = mkRel 0;
   arr_checked = false;
@@ -429,7 +429,7 @@ let type_of_apply renv env f tf args targs =
     | Prod(_,c1,c2) ->
 	begin try 
 	  let c = conv_leq env ta c1 in
-	  renv.rc <- Constraint.union renv.rc c;
+	  renv.rc <- union_constraints renv.rc c;
 	  typ := subst1 args.(n) c2
 	with NotConvertible -> 
 	  let funj = make_judge f tf in
@@ -539,7 +539,7 @@ let rec execute renv env cstr =
 	let t1 = execute renv env c1 in
 	let _ = execute_type renv env c2 in
 	let _, cte = type_of_cast env c1 t1 DEFAULTcast c2 in
-	renv.rc <- Constraint.union renv.rc cte;
+	renv.rc <- union_constraints renv.rc cte;
         let env1 = push_rel (name,Some c1, c2) env in
 	let t3 = execute renv env1 c3 in
 	type_of_letin env c1 t3
@@ -548,7 +548,7 @@ let rec execute renv env cstr =
         let tc = execute renv env c in
         let _ = execute_type renv env t in
 	let tc, cte = type_of_cast env c tc k t in
-	renv.rc <- Constraint.union renv.rc cte;
+	renv.rc <- union_constraints renv.rc cte;
 	tc
 
     (* Inductive types *)
@@ -566,7 +566,7 @@ let rec execute renv env cstr =
 	  judge_of_case env ci 
 	    (make_judge p tp) (make_judge c tc) 
 	    (array_map2 make_judge lf tlf) in
-	renv.rc <- Constraint.union renv.rc cst;
+	renv.rc <- union_constraints renv.rc cst;
 	j.uj_type
   
    | Fix ((vn,i as vni),recdef) ->
@@ -590,7 +590,7 @@ let rec execute renv env cstr =
 	Array.iter (fun e ->
 	  let te = execute renv env e in
 	  let _,cte = type_of_cast env e te DEFAULTcast t in
-	  renv.rc <- Constraint.union renv.rc cte) p;
+	  renv.rc <- union_constraints renv.rc cte) p;
 	mkApp(ta, [|t|]) 
 
     (* Partial proofs: unsupported by the kernel *)
@@ -611,7 +611,7 @@ and execute_recdef renv env (names,lar,vdef) i =
   let env1 = push_rec_types (names,lar,vdef) env in
   let tvdef = execute_array renv env1 vdef in
   let cst = type_of_fixpoint env1 names lar vdef tvdef in
-  renv.rc <- Constraint.union renv.rc cst;
+  renv.rc <- union_constraints renv.rc cst;
   lar.(i)
 
 and execute_array renv env = Array.map (execute renv env)
@@ -635,7 +635,6 @@ let infer_v env cv =
   let tv = execute_array renv env cv in
   let _ = merge_constraints renv.rc (universes env) in 
   array_map2 make_judge cv tv, renv.rc
-
 (* Typing of several terms. *)
 
 let infer_local_decl env id = function
@@ -651,8 +650,8 @@ let infer_local_decls env decls =
   | (id, d) :: l ->
       let env, l, cst1 = inferec env l in
       let d, cst2 = infer_local_decl env id d in
-      push_rel d env, add_rel_decl d l, Constraint.union cst1 cst2
-  | [] -> env, empty_rel_context, Constraint.empty in
+      push_rel d env, add_rel_decl d l, union_constraints cst1 cst2
+  | [] -> env, empty_rel_context, empty_constraint in
   inferec env decls
 
 (* Exported typing functions *)
