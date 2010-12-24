@@ -597,46 +597,44 @@ let id_of_name = function
   | Names.Name x -> x
 
 (* TODO: finish Rec case *)
-let ids_of_rawterm c =
-  let rec ids_of_rawterm acc c =
+let ids_of_glob_constr c =
+  let rec ids_of_glob_constr acc c =
     let idof = id_of_name in
     match c with
       | GVar (_,id) -> Idset.add id acc
       | GApp (loc,g,args) ->
-	  List.fold_left ids_of_rawterm (ids_of_rawterm acc g) args
+	  List.fold_left ids_of_glob_constr (ids_of_glob_constr acc g) args
       | GLambda (loc,na,k,ty,c) -> 
-	  ids_of_rawterm (ids_of_rawterm (Idset.add (idof na) acc) ty) c
+	  ids_of_glob_constr (ids_of_glob_constr (Idset.add (idof na) acc) ty) c
       | GProd (loc,na,k,ty,c) -> 
-	  ids_of_rawterm (ids_of_rawterm (Idset.add (idof na) acc) ty) c
+	  ids_of_glob_constr (ids_of_glob_constr (Idset.add (idof na) acc) ty) c
       | GLetIn (loc,na,b,c) -> 
-	  ids_of_rawterm (ids_of_rawterm (Idset.add (idof na) acc) b) c
+	  ids_of_glob_constr (ids_of_glob_constr (Idset.add (idof na) acc) b) c
       | GCast (loc,c,CastConv(k,t)) -> 
-	  ids_of_rawterm (ids_of_rawterm acc t) c
-      | GCast (loc,c,CastCoerce) -> ids_of_rawterm acc c
+	  ids_of_glob_constr (ids_of_glob_constr acc t) c
+      | GCast (loc,c,CastCoerce) -> ids_of_glob_constr acc c
       | GIf (loc,c,(na,po),b1,b2) -> 
-	  ids_of_rawterm (ids_of_rawterm (ids_of_rawterm acc c) b1) b2
+	  ids_of_glob_constr (ids_of_glob_constr (ids_of_glob_constr acc c) b1) b2
       | GLetTuple (_,nal,(na,po),b,c) ->
 	  let acc = 
 	    List.fold_left (fun acc na -> Idset.add (idof na) acc) acc nal in
-	  ids_of_rawterm (ids_of_rawterm acc c) b
-      | RCases (loc,sty,rtntypopt,tml,brchl) ->
+	  ids_of_glob_constr (ids_of_glob_constr acc c) b
+      | GCases (loc,sty,rtntypopt,tml,brchl) ->
 	  (* Bizard: l'objet du match n'est pas pris en compte ???? *)
           (* Pareil pour le predicat ....                           *)
 	  let do_b acc (_,idl,patl,c) =
 	    let acc = 
 	      List.fold_left (fun acc id -> Idset.add id acc) acc idl in
-	    ids_of_rawterm acc c in
+	    ids_of_glob_constr acc c in
 	  List.fold_left do_b acc brchl
-      | RRec _ -> failwith "Fix inside a constructor branch"
-      | (RSort _ | RHole _ | RRef _ | REvar _ | RPatVar _ | RDynamic _ | 
-	RNativeInt _) -> acc
-      | RNativeArr(loc,t,p) ->
-	  Array.fold_left ids_of_rawterm (ids_of_rawterm acc t) p
+      | GRec _ -> failwith "Fix inside a constructor branch"
+      | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic _ | 
+	GNativeInt _) -> acc
+      | GNativeArr(loc,t,p) ->
+	  Array.fold_left ids_of_glob_constr (ids_of_glob_constr acc t) p
   in
   (* build the set *)
-  ids_of_rawterm Idset.empty c
-
-
+  ids_of_glob_constr Idset.empty c
 
 
 
