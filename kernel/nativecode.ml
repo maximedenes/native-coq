@@ -864,7 +864,7 @@ let arg_name = Name (id_of_string "arg")
 
 let compile_mind mb mind stack =
   let f i acc ob =
-    let gtype = Gtype((mind, i), ob.mind_consnrealdecls) in
+    let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in
     let accu = Glet(Gind (mind,i), MLprimitive(Mk_ind (mind,i))) in
     let nparams = mb.mind_nparams in
     let params = 
