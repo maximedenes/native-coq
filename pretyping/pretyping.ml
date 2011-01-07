@@ -629,22 +629,26 @@ module Pretyping_F (Coercion : Coercion.S) = struct
     | GCast (loc,c,k) ->
 	let cj =
 	  match k with
-	    CastCoerce ->
-	      let cj = pretype empty_tycon env evdref lvar c in
-	      evd_comb1 (Coercion.inh_coerce_to_base loc env) evdref cj
-	  | CastConv (k,t) ->
-	      let tj = pretype_type empty_valcon env evdref lvar t in
- 	      let cj = pretype empty_tycon env evdref lvar c in
-	      let cty = nf_evar !evdref cj.uj_type and tval = nf_evar !evdref tj.utj_val in
-	      let cj = match k with
-	      | VMcast when not (occur_existential cty || occur_existential tval) ->
-		  ignore (Reduction.vm_conv Reduction.CUMUL env cty tval); cj
-	      | NATIVEcast when not (occur_existential cty || occur_existential tval) ->
-		  ignore (Reduction.native_conv Reduction.CUMUL env cty tval); cj
-	      | _ -> inh_conv_coerce_to_tycon loc env evdref cj (mk_tycon tval)
-	      in
-	      let v = mkCast (cj.uj_val, k, tval) in
-	      { uj_val = v; uj_type = tval }
+	      CastCoerce ->
+		let cj = pretype empty_tycon env evdref lvar c in
+		  evd_comb1 (Coercion.inh_coerce_to_base loc env) evdref cj
+	    | CastConv (k,t) ->
+		let tj = pretype_type empty_valcon env evdref lvar t in
+ 		let cj = pretype empty_tycon env evdref lvar c in
+		let cty = nf_evar !evdref cj.uj_type and tval = nf_evar !evdref tj.utj_val in
+		let cj = match k with
+		  | VMcast when not (occur_existential cty || occur_existential tval) ->
+		     (try ignore (Reduction.vm_conv Reduction.CUMUL env cty tval); cj
+                      with Reduction.NotConvertible ->
+                        error_actual_type_loc loc env !evdref cj tval)
+		  | NATIVEcast when not (occur_existential cty || occur_existential tval) ->
+		     (try ignore (Reduction.native_conv Reduction.CUMUL env cty tval); cj
+                      with Reduction.NotConvertible ->
+                        error_actual_type_loc loc env !evdref cj tval)
+		  | _ -> inh_conv_coerce_to_tycon loc env evdref cj (mk_tycon tval)
+		in
+		let v = mkCast (cj.uj_val, k, tval) in
+		  { uj_val = v; uj_type = tval }
 	in inh_conv_coerce_to_tycon loc env evdref cj tycon
 
     | GDynamic (loc,d) ->
