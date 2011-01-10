@@ -19,12 +19,13 @@ val pp_gname : module_path option -> Format.formatter -> gname -> unit
 val pp_mllam : module_path -> Format.formatter -> mllambda -> unit
 
 val pp_global : module_path -> Format.formatter -> global -> unit
+val pp_global_aux : module_path -> Format.formatter -> global -> global list -> unit
 val pp_globals : module_path -> Format.formatter -> global list -> unit
 
 val mk_opens : string list -> global list
 val mk_internal_let : string -> mllambda -> global
 
-val compile_constant : env -> global list -> module_path -> label ->
+val compile_constant : env -> module_path -> label ->
   constant_body -> global * global list
 
 val compile_mind : mutual_inductive_body -> mutual_inductive ->

@@ -844,19 +844,31 @@ let pp_global base_mp fmt g =
 	(pp_gname None) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
 
+let pp_global_aux base_mp fmt g auxdefs = 
+  if auxdefs = [] then pp_global base_mp fmt g
+  else
+    match g with
+    | Glet(gn, c) ->
+	let pp_auxdefs fmt auxdefs =
+	  List.iter (Format.fprintf fmt "  %a   in@\n"  (pp_global base_mp)) auxdefs in
+	Format.fprintf fmt "@[let %a =@\n%a  %a@]@\n@." 
+	  (pp_gname None) gn pp_auxdefs auxdefs (pp_mllam base_mp) c
+    | _ -> assert false
+
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
 (* Compilation of elements in environment *)
-let compile_constant env auxdefs mp l cb =
+let compile_constant env mp l cb =
   match cb.const_body with
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr env t in
-      let auxdefs,_,code = mllambda_of_lambda auxdefs (Some l) code in
+      let auxdefs,_,code = mllambda_of_lambda [] (Some l) code in
+      (* TODO : Dans le cas des sections il faut prendre en compte les variables libres *)
       Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
   | _ -> 
       let kn = make_con mp empty_dirpath l in
-      Glet(Gconstant kn, MLprimitive (Mk_const kn)), auxdefs
+      Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
 
 
 let param_name = Name (id_of_string "params")
