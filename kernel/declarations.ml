@@ -54,6 +54,7 @@ type 'a constant_def =
   | Opaque of 'a option (* None means parameter *)
   | Primitive of Native.op
  
+
 type constant_body = {
     const_hyps : section_context; (* New: younger hyp at top *)
     const_body : constr_substituted constant_def;

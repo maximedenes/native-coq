@@ -178,7 +178,7 @@ let compile_module code mp load_paths f =
   Format.eprintf "Library dumped %.5f@." (t1-.t0);
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
+    "time ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
   in
   print_endline "Compiling library...";
   let res = Sys.command comp_cmd in print_endline "Compiled"; res
