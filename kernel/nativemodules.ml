@@ -17,7 +17,7 @@ and mod_sig_expr =
   | MSEfunctor of string * mod_sig_expr * mod_sig_expr
 
 type mod_field =
-  | MFglobal of global
+  | MFglobal of global * global list 
   | MFmodule of module_path * label * mod_expr
   | MFmodtype of module_path * label * mod_sig_expr
 
@@ -82,13 +82,15 @@ let rec translate_mod mp env mod_expr =
 and translate_fields mp env (l,x) acc =
   match x with
   | SFBconst cb ->
-      let tr,auxdefs = compile_constant (pre_env env) [] mp l cb in
+      let tr, auxdefs = compile_constant (pre_env env) mp l cb in
       let l = optimize_stk (tr::auxdefs) in
-      List.fold_left (fun acc g -> MFglobal g::acc) acc l
+      let tr, auxdefs = List.hd l, List.rev (List.tl l) in
+      MFglobal(tr,auxdefs)::acc
+(*      List.fold_left (fun acc g -> MFglobal g::acc) acc l *)
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
       let tr = compile_mind mb kn [] in
-      List.fold_left (fun acc g -> MFglobal g::acc) acc tr
+      List.fold_left (fun acc g -> MFglobal(g,[])::acc) acc tr
   | SFBmodule md ->
       begin
         match md.mod_expr with
@@ -146,7 +148,7 @@ let rec pp_mod_expr mp fmt me =
 
 and pp_mod_field mp fmt t =
   match t with
-  | MFglobal g -> pp_global mp fmt g
+  | MFglobal (g,auxdefs) -> pp_global_aux mp fmt g auxdefs
   | MFmodule (mp',l,me) ->
       Format.fprintf fmt "module %s =@,%a@\n" (string_of_label l)
       (pp_mod_expr mp') me
