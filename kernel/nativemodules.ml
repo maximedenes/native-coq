@@ -174,7 +174,7 @@ let compile_module code mp load_paths f =
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
+    "time ocamlopt.opt -shared -o "^f^".cmxs -rectypes "^include_dirs^load_paths^f^".ml"
   in
   print_endline "Compiling module...";
   let res = Sys.command comp_cmd in print_endline "Compiled"; res

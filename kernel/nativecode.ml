@@ -91,9 +91,12 @@ type primitive =
   | Mk_const of constant
   | Mk_sw of annot_sw
   | Mk_fix of rec_pos * int 
+  | Mk_cofix of int
   | Is_accu
   | Is_int
   | Cast_accu
+  | Upd_cofix
+  | Force_cofix
 
 type mllambda =
   | MLlocal        of lname 
@@ -111,6 +114,7 @@ type mllambda =
   | MLparray       of mllambda array
   | MLval          of Nativevalues.t
   | MLsetref       of string * mllambda
+  | MLsequence     of mllambda * mllambda
 
 and mllam_branches = ((constructor * lname option array) list * mllambda) array
 
@@ -152,7 +156,8 @@ let fv_lam l =
           (* argument, accu branch, branches *)
     | MLconstruct (_,p) | MLparray p -> 
 	Array.fold_right (fun a fv -> aux a bind fv) p fv
-    | MLsetref(_,l) -> aux l bind fv in
+    | MLsetref(_,l) -> aux l bind fv
+    | MLsequence(l1,l2) -> aux l1 bind (aux l2 bind fv) in
   aux l LNset.empty LNset.empty
 
 
@@ -420,7 +425,11 @@ let rec ml_of_lam env l t =
 	(Array.append (fv_params env_c) [|a_uid|]) annot la_uid accu (merge_branches bs);
 
       (* Final result *)
-      mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|ml_of_lam env l a|]
+      let arg = ml_of_lam env l a in
+      let force =
+	if annot.asw_finite then arg
+	else MLapp(MLprimitive Force_cofix, [|arg|]) in
+      mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|force|]
   | Lareint _ -> assert false
   | Lif(t,bt,bf) -> 
       MLif(ml_of_lam env l t, ml_of_lam env l bt, ml_of_lam env l bf)
@@ -490,7 +499,75 @@ let rec ml_of_lam env l t =
 	in
 	(lname, paramsi, body) in
       MLletrec(Array.mapi mkrec lf, lf_args.(start))
-  | Lcofix _ -> assert false
+  | Lcofix (start, (ids, tt, tb)) -> 
+      (* Compilation of type *)
+      let env_t = empty_env () in
+      let ml_t = Array.map (ml_of_lam env_t l) tt in
+      let params_t = fv_params env_t in
+      let args_t = fv_args env !(env_t.env_named) !(env_t.env_urel) in
+      let gft = fresh_gfixtype l in
+      push_global_fixtype gft params_t ml_t;
+      let mk_type = MLapp(MLglobal gft, args_t) in
+      (* Compilation of norm_i *) 
+      let ndef = Array.length ids in
+      let lf,env_n = push_rels (empty_env ()) ids in
+      let t_params = Array.make ndef [||] in
+      let t_norm_f = Array.make ndef (Gnorm (l,-1)) in
+      let ml_of_fix i body =
+	let idsi,bodyi = decompose_Llam body in
+	let paramsi, envi = push_rels env_n idsi in
+	t_norm_f.(i) <- fresh_gnorm l;
+	let bodyi = ml_of_lam envi l bodyi in
+	t_params.(i) <- paramsi;
+	mkMLlam paramsi bodyi in
+      let tnorm = Array.mapi ml_of_fix tb in
+      let fvn,fvr = !(env_n.env_named), !(env_n.env_urel) in
+      let fv_params = fv_params env_n in
+      let fv_args' = Array.map (fun id -> MLlocal id) fv_params in
+      let norm_params = Array.append fv_params lf in
+      Array.iteri (fun i body ->
+	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body)) tnorm;
+      let norm = fresh_gnormtbl l in
+      push_global_norm norm fv_params 
+        (Array.map (fun g -> mkMLapp (MLglobal g) fv_args') t_norm_f);
+      (* Compilation of fix *)
+      let fv_args = fv_args env fvn fvr in      
+      let mk_norm = MLapp(MLglobal norm, fv_args) in
+      let lnorm = fresh_lname Anonymous in
+      let ltype = fresh_lname Anonymous in
+      let lf, env = push_rels env ids in
+      let lf_args = Array.map (fun id -> MLlocal id) lf in
+      let upd i lname cont =
+	let paramsi = t_params.(i) in
+	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
+	let uniti = fresh_lname Anonymous in
+	let body =
+	  MLlam(Array.append paramsi [|uniti|],
+		MLapp(MLglobal t_norm_f.(i),
+		      Array.concat [fv_args;lf_args;pargsi])) in
+	MLsequence(MLapp(MLprimitive Upd_cofix, [|lf_args.(i);body|]),
+		   cont) in
+      let upd = Util.array_fold_right_i upd lf lf_args.(start) in
+      let mk_let i lname cont =
+	MLlet(lname,
+	      MLapp(MLprimitive(Mk_cofix i),[| MLlocal ltype; MLlocal lnorm|]),
+	      cont) in
+      let init = Util.array_fold_right_i mk_let lf upd in 
+      MLlet(lnorm, mk_norm, MLlet(ltype, mk_type, init))
+  (*    	    
+      let mkrec i lname = 
+	let paramsi = t_params.(i) in
+	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
+	let uniti = fresh_lname Anonymous in
+	let body = 
+	  MLapp( MLprimitive(Mk_cofix i),
+		 [|mk_type;mk_norm; 
+		   MLlam([|uniti|],
+			 MLapp(MLglobal t_norm_f.(i),
+			       Array.concat [fv_args;lf_args;pargsi]))|]) in
+	(lname, paramsi, body) in
+      MLletrec(Array.mapi mkrec lf, lf_args.(start)) *)
+   
   | Lmakeblock (cn,_,args) ->
       MLconstruct(cn,Array.map (ml_of_lam env l) args)
   | Lconstruct cn ->
@@ -543,7 +620,8 @@ let subst s l =
 	  MLmatch(annot,a,aux accu, Array.map auxb bs)
       | MLconstruct(c,args) -> MLconstruct(c,Array.map aux args)
       | MLparray p -> MLparray(Array.map aux p)
-      | MLsetref(s,l1) -> MLsetref(s,aux l1) in
+      | MLsetref(s,l1) -> MLsetref(s,aux l1) 
+      | MLsequence(l1,l2) -> MLsequence(aux l1, aux l2) in  
     aux l
 
 let add_subst id v s =
@@ -626,7 +704,8 @@ let optimize gdef l =
     | MLconstruct(c,args) ->
 	MLconstruct(c,Array.map (optimize s) args)
     | MLparray p -> MLparray (Array.map (optimize s) p)
-    | MLsetref(r,l) -> MLsetref(r, optimize s l) in
+    | MLsetref(r,l) -> MLsetref(r, optimize s l) 
+    | MLsequence(l1,l2) -> MLsequence(optimize s l1, optimize s l2) in
   optimize LNmap.empty l
 
 let optimize_stk stk =
@@ -766,9 +845,12 @@ let pp_primitive fmt = function
 	done;
 	Format.fprintf fmt " |]@]" in
       Format.fprintf fmt "mk_fix_accu %a %i" pp_rec_pos rec_pos start
+  | Mk_cofix(start) -> Format.fprintf fmt "mk_cofix_accu %i" start
   | Is_accu -> Format.fprintf fmt "is_accu"
   | Is_int -> Format.fprintf fmt "is_int"
   | Cast_accu -> Format.fprintf fmt "cast_accu"
+  | Upd_cofix -> Format.fprintf fmt "upd_cofix"
+  | Force_cofix -> Format.fprintf fmt "force_cofix"
 
 let pp_ldecls fmt ids =
   let len = Array.length ids in
@@ -819,8 +901,8 @@ let rec pp_mllam fmt l =
   | MLval v -> Format.fprintf fmt "(str_decode \"%s\")" (str_encode v)
   | MLsetref (s, body) ->
       Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
-
-
+  | MLsequence(l1,l2) ->
+      Format.fprintf fmt "@[%a;@\n%a@]" pp_mllam l1 pp_mllam l2 
 
 and pp_letrec fmt defs =
   let len = Array.length defs in

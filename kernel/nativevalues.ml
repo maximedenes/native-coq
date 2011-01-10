@@ -14,7 +14,8 @@ type reloc_table = (tag * arity) array
 type annot_sw = {
     asw_ind : inductive;
     asw_ci : case_info;
-    asw_reloc : reloc_table
+    asw_reloc : reloc_table;
+    asw_finite : bool
   }
 
 type sort_annot = string * int
@@ -29,6 +30,8 @@ type atom =
   | Avar of identifier
   | Acase of annot_sw * accumulator * t * (t -> t)
   | Afix of  t array * t array * rec_pos * int
+  | Acofix of t array * t array * int * t
+  | Acofixe of t array * t array * int * t
   | Aprod of name * t * (t -> t)
 
 let accumulate_tag = 0
@@ -79,6 +82,9 @@ let mk_prod_accu s dom codom =
 
 let atom_of_accu (k:accumulator) =
   (Obj.magic (Obj.field (Obj.magic k) 1) : atom)
+
+let set_atom_of_accu (k:accumulator) (a:atom) =
+  Obj.set_field (Obj.magic k) 1 (Obj.magic a)
     
 let arg_of_accu (k:accumulator) (i:int) =
   (Obj.magic (Obj.field (Obj.magic k) (i + 2)) : t)
@@ -119,6 +125,34 @@ let is_atom_fix (a:atom) =
 
 let mk_fix_accu rec_pos pos types bodies =
   mk_accu_gen raccumulate (Afix(types,bodies,rec_pos, pos))
+
+let mk_cofix_accu pos types norm =
+  mk_accu_gen raccumulate (Acofix(types,norm,pos,(Obj.magic 0 : t)))
+
+let upd_cofix (cofix :t) (cofix_fun : t) =
+  let atom = atom_of_accu (Obj.magic cofix) in
+  match atom with
+  | Acofix (typ,norm,pos,_) ->
+      set_atom_of_accu (Obj.magic cofix) (Acofix(typ,norm,pos,cofix_fun))
+  | _ -> assert false
+  
+let force_cofix (cofix : t) = 
+  if is_accu cofix then
+    let accu = (Obj.magic cofix : accumulator) in
+    let atom = atom_of_accu accu in
+    match atom with
+    | Acofix(typ,norm,pos,f) ->
+	let f = ref f in
+	let nargs = accu_nargs accu in
+	for i = 0 to nargs - 1 do 
+	  f := !f (arg_of_accu accu i)
+	done;
+	let v = !f (Obj.magic ()) in
+	set_atom_of_accu accu (Acofixe(typ,norm,pos,v));
+	v
+    | Acofixe(_,_,_,v) -> v 
+    | _ -> cofix
+  else cofix
 
 let mk_const tag = Obj.magic tag
 

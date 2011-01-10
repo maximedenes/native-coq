@@ -13,7 +13,8 @@ type reloc_table = (tag * arity) array
 type annot_sw = {
     asw_ind : inductive;
     asw_ci : case_info;
-    asw_reloc : reloc_table
+    asw_reloc : reloc_table;
+    asw_finite : bool
   }
 
 type sort_annot = string * int
@@ -28,6 +29,8 @@ type atom =
   | Avar of identifier
   | Acase of annot_sw * accumulator * t * (t -> t) 
   | Afix of t array * t array * rec_pos * int 
+  | Acofix of t array * t array * int * t
+  | Acofixe of t array * t array * int * t
   | Aprod of name * t * (t -> t)
 
 (* Constructors *)
@@ -41,7 +44,9 @@ val mk_var_accu : identifier -> t
 val mk_sw_accu : annot_sw -> accumulator -> t -> (t -> t)
 val mk_prod_accu : name -> t -> t -> t
 val mk_fix_accu : rec_pos  -> int -> t array -> t array -> t
-
+val mk_cofix_accu : int -> t array -> t array -> t 
+val upd_cofix : t -> t -> unit
+val force_cofix : t -> t 
 val mk_const : tag -> t
 val mk_block : tag -> t array -> t
 

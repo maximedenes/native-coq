@@ -965,7 +965,7 @@ let rec lambda_of_constr env c =
       let oib = mib.mind_packets.(snd ind) in
       let tbl = oib.mind_reloc_tbl in 
       (* Building info *)
-      let annot_sw = {asw_ind = ind; asw_ci = ci; asw_reloc = tbl} in
+      let annot_sw = {asw_ind = ind; asw_ci = ci; asw_reloc = tbl } in
       (* translation of the argument *)
       let la = lambda_of_constr env a in
       (* translation of the type *)
