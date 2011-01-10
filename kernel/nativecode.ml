@@ -11,11 +11,13 @@ type lname = { lname : name; luid : int }
 
 let dummy_lname = { lname = Anonymous; luid = -1 }
 
-module LNmap = Map.Make(
+module LNord = 
   struct 
     type t = lname 
     let compare l1 l2 = l1.luid - l2.luid
-  end)
+  end
+module LNmap = Map.Make(LNord)
+module LNset = Set.Make(LNord)
 
 let lname_ctr = ref (-1)
 
@@ -110,7 +112,49 @@ type mllambda =
   | MLval          of Nativevalues.t
   | MLsetref       of string * mllambda
 
-and mllam_branches = (constructor * lname array * mllambda) array
+and mllam_branches = ((constructor * lname option array) list * mllambda) array
+
+let fv_lam l =
+  let rec aux l bind fv =
+    match l with
+    | MLlocal l ->
+	if LNset.mem l bind then fv else LNset.add l fv
+    | MLglobal _ | MLprimitive _  | MLint _   | MLval _ -> fv
+    | MLlam (ln,body) ->
+	let bind = Array.fold_right LNset.add ln bind in
+	aux body bind fv
+    | MLletrec(bodies,def) ->
+	let bind = 
+	  Array.fold_right (fun (id,_,_) b -> LNset.add id b) bodies bind in
+	let fv_body (_,ln,body) fv =
+	  let bind = Array.fold_right LNset.add ln bind in
+	  aux body bind fv in
+	Array.fold_right fv_body bodies (aux def bind fv)
+    | MLlet(l,def,body) ->
+	aux body (LNset.add l bind) (aux def bind fv)
+    | MLapp(f,args) ->
+	let fv_arg arg fv = aux arg bind fv in
+	Array.fold_right fv_arg args (aux f bind fv)
+    | MLif(t,b1,b2) ->
+	aux t bind (aux b1 bind (aux b2 bind fv))
+    | MLmatch(_,a,p,bs) ->
+      let fv = aux a bind (aux p bind fv) in
+      let fv_bs (cargs, body) fv =
+	let bind = 
+	  List.fold_right (fun (_,args) bind ->
+	    Array.fold_right 
+	      (fun o bind -> match o with 
+	      | Some l -> LNset.add l bind 
+	      | _ -> bind) args bind) 
+	    cargs bind in
+	aux body bind fv in
+      Array.fold_right fv_bs bs fv
+          (* argument, accu branch, branches *)
+    | MLconstruct (_,p) | MLparray p -> 
+	Array.fold_right (fun a fv -> aux a bind fv) p fv
+    | MLsetref(_,l) -> aux l bind fv in
+  aux l LNset.empty LNset.empty
+
 
 let mkMLlam params body =
   if Array.length params = 0 then body 
@@ -275,6 +319,38 @@ let fv_args env fvn fvr =
       args
     end
 
+type rlist =
+  | Rnil 
+  | Rcons of (constructor * lname option array) list ref * LNset.t * mllambda * rlist' 
+and rlist' = rlist ref
+
+let rm_params fv params = 
+  Array.map (fun l -> if LNset.mem l fv then Some l else None) params 
+
+let rec insert cargs body rl =
+ match !rl with
+ | Rnil ->
+     let fv = fv_lam body in
+     let (c,params) = cargs in
+     let params = rm_params fv params in
+     rl:= Rcons(ref [(c,params)], fv, body, ref Rnil)
+ | Rcons(l,fv,body',rl) ->
+     if body = body' then 
+       let (c,params) = cargs in
+       let params = rm_params fv params in
+       l := (c,params)::!l
+     else insert cargs body rl
+
+let rec to_list rl =
+  match !rl with
+  | Rnil -> []
+  | Rcons(l,_,body,tl) -> (!l,body)::to_list tl
+
+let merge_branches t =
+  let newt = ref Rnil in
+  Array.iter (fun (c,args,body) -> insert (c,args) body newt) t;
+  Array.of_list (to_list newt)
+
 let rec ml_of_lam env l t =
   match t with
   | Lrel(id ,i) -> get_rel env id i
@@ -341,7 +417,7 @@ let rec ml_of_lam env l t =
 (*      let body = MLlam([|a_uid|], MLmatch(annot, la_uid, accu, bs)) in
       let case = generalize_fv env_c body in *)
       push_global_case cn 
-	(Array.append (fv_params env_c) [|a_uid|]) annot la_uid accu bs;
+	(Array.append (fv_params env_c) [|a_uid|]) annot la_uid accu (merge_branches bs);
 
       (* Final result *)
       mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|ml_of_lam env l a|]
@@ -463,7 +539,7 @@ let subst s l =
       | MLapp(f,args) -> MLapp(aux f, Array.map aux args)
       | MLif(t,b1,b2) -> MLif(aux t, aux b1, aux b2)
       | MLmatch(annot,a,accu,bs) ->
-	  let auxb (c,params,body) = (c,params,aux body) in
+	  let auxb (cargs,body) = (cargs,aux body) in
 	  MLmatch(annot,a,aux accu, Array.map auxb bs)
       | MLconstruct(c,args) -> MLconstruct(c,Array.map aux args)
       | MLparray p -> MLparray(Array.map aux p)
@@ -545,7 +621,7 @@ let optimize gdef l =
         | _, _ -> MLif(t, b1, b2)
 	end
     | MLmatch(annot,a,accu,bs) ->
-	let opt_b (c,params,body) = (c,params,optimize s body) in
+	let opt_b (cargs,body) = (cargs,optimize s body) in
 	MLmatch(annot, optimize s a, subst s accu, Array.map opt_b bs)
     | MLconstruct(c,args) ->
 	MLconstruct(c,Array.map (optimize s) args)
@@ -787,11 +863,36 @@ and pp_cargs fmt args =
   | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
   | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
 
+and pp_cparam fmt param = 
+  match param with
+  | Some l -> pp_mllam fmt (MLlocal l)
+  | None -> Format.fprintf fmt "_"
+
+and pp_cparams fmt params =
+  let len = Array.length params in
+  match len with
+  | 0 -> ()
+  | 1 -> Format.fprintf fmt " %a" pp_cparam params.(0)
+  | _ -> 
+      let aux fmt params =
+	Format.fprintf fmt "%a" pp_cparam params.(0);
+	for i = 1 to len - 1 do
+	  Format.fprintf fmt ",%a" pp_cparam params.(i)
+	done in 
+      Format.fprintf fmt "(%a)" aux params
+
 and pp_branches fmt bs =
-  let pp_branch (cn,args,body) =
-    let args = Array.map (fun ln -> MLlocal ln) args in
-    Format.fprintf fmt "| %s%a ->@\n  %a@\n" 
-	(string_of_construct base_mp cn) pp_cargs args pp_mllam body
+  let pp_branch (cargs,body) =
+    let pp_c fmt (cn,args) = 
+      Format.fprintf fmt "| %s%a " 
+	(string_of_construct base_mp cn) pp_cparams args in
+    let rec pp_cargs fmt cargs =
+      match cargs with
+      | [] -> ()
+      | cargs::cargs' -> 
+	  Format.fprintf fmt "%a%a" pp_c cargs pp_cargs cargs' in
+    Format.fprintf fmt "%a ->@\n  %a@\n" 
+      pp_cargs cargs pp_mllam body
   in
   Array.iter pp_branch bs
 
