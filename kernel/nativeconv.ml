@@ -90,7 +90,9 @@ let compare env t1 t2 cu =
   let code2 = lambda_of_constr env t2 in
   let (gl,_,code1) = mllambda_of_lambda [] None code1 in
   let (gl,_,code2) = mllambda_of_lambda gl None code2 in
-  let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
+  let header =
+    mk_opens ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
+  in
   let code = header@gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
   code2]@conv_main_code in
 (*  let (code1,_) = translate mp env "t1" t1 in
@@ -101,9 +103,6 @@ let compare env t1 t2 cu =
     "Test running time: %.5fs\n" (Unix.time() -. t0);
     flush_all() }*)
     >>] *)
-  print_endline "code:" ;
-  Nativecode.pp_globals mp Format.std_formatter code;
-  print_newline ();
   match compile_terms mp code with
     | 0,fn,modname ->
       begin
