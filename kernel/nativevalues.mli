@@ -37,6 +37,7 @@ type atom =
 
 val mk_accu : atom -> t
 val mk_rel_accu : int -> t
+val mk_rels_accu : int -> int -> t array
 val mk_constant_accu : constant -> t
 val mk_ind_accu : inductive -> t
 val mk_sort_accu : sorts -> t
@@ -52,6 +53,8 @@ val mk_block : tag -> t array -> t
 
 val mk_uint : int -> t
 val mk_int : int -> t
+
+val napply : t -> t array -> t
 (* Functions over accumulators *)
 
 val dummy_atom : atom    
@@ -68,7 +71,7 @@ val block_size : block -> int
 val block_field : block -> int -> t
 val block_tag : block -> int
 
-val mk_block : int -> t array -> t
+
 
 (* kind_of_value *)
 

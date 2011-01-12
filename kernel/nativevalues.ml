@@ -62,6 +62,19 @@ let mk_accu (a:atom) = mk_accu_gen raccumulate a
 let mk_rel_accu i = 
   mk_accu (Arel i)
 
+let rel_tbl_size = 100 
+let rel_tbl = Array.init rel_tbl_size mk_rel_accu
+
+let mk_rel_accu i = 
+  if i < rel_tbl_size then rel_tbl.(i)
+  else mk_rel_accu i
+
+let mk_rels_accu lvl len =
+  Array.init len (fun i -> mk_rel_accu (lvl + i))
+
+let napply (f:t) (args: t array) =
+  Array.fold_left (fun f a -> f a) f args
+
 let mk_constant_accu kn = 
   mk_accu (Aconstant kn)
 
@@ -163,6 +176,8 @@ let mk_block tag args =
     Obj.set_field r i (Obj.magic args.(i))
   done;
   (Obj.magic r : t)
+
+
 
 let dummy_atom = Arel (-1)
 
