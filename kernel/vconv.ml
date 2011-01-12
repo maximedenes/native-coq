@@ -56,7 +56,7 @@ and conv_whd pb k whd1 whd2 cu =
 	  let rcu = ref cu in
 	  let n = Native.Uint31.to_int n in
 	  for i = 0 to n - 1 do
-	    let i =  Native.Uint31.of_int n in
+	    let i = Native.Uint31.of_int i in
 	    rcu := 
 	      conv_val CONV k 
 		(Native.Parray.get p1 i) (Native.Parray.get p2 i) !rcu
