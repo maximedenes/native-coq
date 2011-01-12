@@ -1038,6 +1038,10 @@ let pp_global_aux base_mp fmt g auxdefs =
 	  (pp_gname None) gn pp_auxdefs auxdefs (pp_mllam base_mp) c
     | _ -> assert false
 
+(*let pp_global_aux base_mp fmt g auxdefs = 
+  List.iter (pp_global base_mp fmt) auxdefs;
+  pp_global base_mp fmt g *)
+
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
 (* Compilation of elements in environment *)
