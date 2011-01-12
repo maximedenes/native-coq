@@ -164,8 +164,14 @@ let nconv pb env t1 t2 =
     | 0,fn,modname ->
       begin
         print_endline "Running test...";
-        try call_linker fn modname; conv_val !rt1 !rt2; cu with
-          | _ -> raise NotConvertible
+        try
+	  let t0 = Sys.time () in
+	  call_linker fn modname; 
+	  let t1 = Sys.time () in
+	  Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
+          (* TODO change 0 when we can have deBruijn *)
+	  conv_val pb 0 !rt1 !rt2 Constraint.empty
+	with _ -> raise NotConvertible
       end
     | _ -> anomaly "Compilation failure" 
 
