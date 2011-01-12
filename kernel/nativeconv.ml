@@ -1,7 +1,9 @@
 open Names
 open Term
+open Univ
 open Pre_env
 open Pcaml
+open Reduction
 open Nativelib
 open Declarations
 open Util
@@ -11,80 +13,135 @@ open Nativecode
 
 exception NotConvertible
 
-let rec conv_val lvl v1 v2 = 
-  if not (v1 == v2) then 
+let rec conv_val pb lvl v1 v2 cu = 
+  if v1 == v2 then cu 
+  else
     match kind_of_value v1, kind_of_value v2 with
     | Vaccu k1, Vaccu k2 ->
-	conv_accu lvl k1 k2
+	conv_accu pb lvl k1 k2 cu
     | Vfun f1, Vfun f2 -> 
-	conv_fun lvl f1 f2
+	let v = mk_rel_accu lvl in
+	conv_val CONV (lvl+1) (f1 v) (f2 v) cu
     | Vconst i1, Vconst i2 -> 
-(*        print_endline ("Vconst: "^string_of_int i1);*)
-	if i1 <> i2 then raise NotConvertible
+	if i1 = i2 then cu else raise NotConvertible
     | Vblock b1, Vblock b2 ->
 	let n1 = block_size b1 in
 	if block_tag b1 <> block_tag b2 || n1 <> block_size b2 then
 	  raise NotConvertible;
-        for i = 0 to n1 - 1 do 
-	  conv_val lvl (block_field b1 i) (block_field b2 i) 
-	done
+	let rec aux lvl max b1 b2 i cu =
+	  if i = max then 
+	    conv_val CONV lvl (block_field b1 i) (block_field b2 i) cu
+	  else
+	    let cu = 
+	      conv_val CONV lvl (block_field b1 i) (block_field b2 i) cu in
+	    aux lvl max b1 b2 (i+1) cu in
+	aux lvl (n1-1) b1 b2 0 cu
     | Varray t1, Varray t2 ->
-      let len = Native.Parray.length t1 in
-      if len <> Native.Parray.length t2 then
-      raise NotConvertible;
-      for i = 0 to Native.Uint31.to_int len - 1 do
-        conv_val lvl (Native.Parray.get t1 (Native.Uint31.of_int i))
-           (Native.Parray.get t2 (Native.Uint31.of_int i))
-      done;
-      conv_val lvl (Native.Parray.default t1) (Native.Parray.default t2)   
+	let len = Native.Parray.length t1 in
+	if len <> Native.Parray.length t2 then raise NotConvertible;
+	let len = Native.Uint31.to_int len in 
+	let rec aux lvl len t1 t2 i cu =
+	  if i = len then
+	    conv_val CONV lvl
+	      (Native.Parray.default t1) (Native.Parray.default t2) cu
+	  else
+	    let cu = 
+	      let i = Native.Uint31.of_int i in
+              conv_val CONV lvl 
+		(Native.Parray.get t1 i) (Native.Parray.get t2 i) cu in
+	    aux lvl len t1 t2 (i+1) cu in
+	aux lvl len t1 t2 0 cu
+    | Vfun f1, _ -> 
+	conv_val CONV lvl v1 (fun x -> v2 x) cu
+    | _, Vfun f2 ->
+	conv_val CONV lvl (fun x -> v1 x) v2 cu
     | _, _ -> raise NotConvertible
-and conv_accu lvl k1 k2 = 
+
+and conv_accu pb lvl k1 k2 cu = 
   let n1 = accu_nargs k1 in
   if n1 <> accu_nargs k2 then raise NotConvertible;
-(*  print_endline ("nargs: "^string_of_int n1);*)
-  conv_atom lvl (atom_of_accu k1) (atom_of_accu k2);
-  for i = 0 to n1 - 1 do
-    conv_val lvl (arg_of_accu k1 i) (arg_of_accu k2 i) 
-  done
+  if n1 = 0 then 
+    conv_atom pb lvl (atom_of_accu k1) (atom_of_accu k2) cu
+  else
+    let cu = conv_atom pb lvl (atom_of_accu k1) (atom_of_accu k2) cu in
+    let rec aux lvl max k1 k2 i cu =
+      if i = max then 
+	conv_val CONV lvl (arg_of_accu k1 i) (arg_of_accu k2 i) cu
+      else
+	let cu =
+	  conv_val CONV lvl (arg_of_accu k1 i) (arg_of_accu k2 i) cu in
+	aux lvl max k1 k2 (i+1) cu in
+    aux lvl (n1-1) k1 k2 0 cu
 
-and conv_atom lvl a1 a2 =
-  if not (a1 == a2) then
+and conv_atom pb lvl a1 a2 cu =
+  if a1 == a2 then cu
+  else
     match a1, a2 with
     | Arel i1, Arel i2 -> 
-	if i1 <> i2 then raise NotConvertible
+	if i1 <> i2 then raise NotConvertible;
+	cu
     | Aind ind1, Aind ind2 ->
-        if not (eq_ind ind1 ind2) then raise NotConvertible
-(* TODO    | Aconstruct(_,_,i1), Aconstruct(_,_,i2) -> 
-	if i1 <> i2 then raise NotConvertible*)
-(* TODO    | Acase(k1,f1,tbl1,_,it1), Acase(k2,f2,tbl2,_,it2) ->
-	let t1,t2 = get_type_of_index it1, get_type_of_index it2 in
-        if not (eq_type t1 t2) then raise NotConvertible;
-	conv_accu lvl k1 k2;
-	assert (tbl1==tbl2);
-	for i = 0 to Array.length tbl1 - 1 do
-	  let (tag,arity) = tbl1.(i) in
-	  let ci =
- 	    if arity = 0 then mk_const tag 
-	    else 
-	      let args = Array.init arity (fun i -> mk_rel_accu (lvl+i)) in
-	      mk_block tag args in
-	  conv_val (lvl+arity) (f1 ci) (f2 ci)
-	done*)
-(* TODO    | Afix(_,f1,rp1,_,it1), Afix(_,f2,rp2,_,it2) ->
-	let t1, t2= get_type_of_index it1, get_type_of_index it2 in
-	if not (eq_type t1 t2) then raise NotConvertible;
-	if rp1 <> rp2 then raise NotConvertible;
-	conv_fun lvl f1 f2 *)
+	if not (eq_ind ind1 ind2) then raise NotConvertible;
+	cu
+    | Aconstant c1, Aconstant c2 ->
+	if not (eq_constant c1 c2) then raise NotConvertible;
+	cu
+    | Asort s1, Asort s2 -> 
+	sort_cmp pb s1 s2 cu
+    | Avar id1, Avar id2 ->
+	if id1 <> id2 then raise NotConvertible;
+	cu
+    | Acase(a1,ac1,p1,bs1), Acase(a2,ac2,p2,bs2) ->
+	if a1.asw_ind <> a2.asw_ind then raise NotConvertible;
+	let cu = conv_accu CONV lvl ac1 ac2 cu in
+	let tbl = a1.asw_reloc in
+	let len = Array.length tbl in
+	if len = 0 then conv_val CONV lvl p1 p2 cu 
+	else
+	  let cu = conv_val CONV lvl p1 p2 cu in
+	  let max = len - 1 in
+	  let rec aux i cu =
+	    let tag,arity = tbl.(i) in
+	    let ci = 
+	      if arity = 0 then mk_const tag
+	      else mk_block tag (mk_rels_accu lvl arity) in
+	    let bi1 = bs1 ci and bi2 = bs2 ci in
+	    if i = max then conv_val CONV (lvl + arity) bi1 bi2 cu
+	    else aux (i+1) (conv_val CONV (lvl + arity) bi1 bi2 cu) in
+	  aux 0 cu
+    | Afix(t1,f1,rp1,s1), Afix(t2,f2,rp2,s2) ->
+	if s1 <> s2 || rp1 <> rp2 then raise NotConvertible;
+	if f1 == f2 then cu
+	else conv_fix lvl t1 f1 t2 f2 cu
+    | (Acofix(t1,f1,s1,_) | Acofixe(t1,f1,s1,_)),
+      (Acofix(t2,f2,s2,_) | Acofixe(t2,f2,s2,_)) ->
+	if s1 <> s2 then raise NotConvertible;
+	if f1 == f2 then cu
+	else
+	  if Array.length f1 <> Array.length f2 then raise NotConvertible
+	  else conv_fix lvl t1 f1 t2 f2 cu 
+    | Aprod(_,d1,c1), Aprod(_,d2,c2) ->
+	let cu = conv_val CONV lvl d1 d2 cu in
+	let v = mk_rel_accu lvl in
+	conv_val pb (lvl + 1) (d1 v) (d2 v) cu 
     | _, _ -> raise NotConvertible
 
-and conv_fun lvl f1 f2 = 
-  let x = mk_rel_accu lvl in
-  conv_val (lvl+1) (f1 x) (f2 x)
-
-let conv_val t1 t2 = conv_val 0 t1 t2
-
-
-let compare env t1 t2 cu =
+(* Precondition length t1 = length f1 = length f2 = length t2 *)
+and conv_fix lvl t1 f1 t2 f2 cu =
+  let len = Array.length f1 in
+  let max = len - 1 in
+  let fargs = mk_rels_accu lvl len in
+  let flvl = lvl + len in
+  let rec aux i cu =
+    let cu = conv_val CONV lvl t1.(i) t2.(i) cu in
+    let fi1 = napply f1.(i) fargs in
+    let fi2 = napply f2.(i) fargs in
+    if i = max then conv_val CONV flvl fi1 fi2 cu 
+    else aux (i+1) (conv_val CONV flvl fi1 fi2 cu) in
+  aux 0 cu
+    
+let nconv pb env t1 t2 =
+  let env = Environ.pre_env env in 
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
@@ -93,12 +150,12 @@ let compare env t1 t2 cu =
   let header =
     mk_opens ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
   in
-  let code = header@gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
+  let code = header@List.rev gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
   code2]@conv_main_code in
 (*  let (code1,_) = translate mp env "t1" t1 in
   let (code2,_) = translate mp env "t2" t2 in *)
 (*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
-      (*do {*)try conv_val 0 t1 t2 with _ -> exit 1 (*;
+      (*do {*)try conv_val pb 0 t1 t2 Constraint.empty with _ -> exit 1 (*;
     Format.fprintf Format.std_formatter
     "Test running time: %.5fs\n" (Unix.time() -. t0);
     flush_all() }*)
@@ -132,3 +189,4 @@ let compare env t1 t2 cu =
       end
     | _ -> (print_endline "Compilation failure"; raise NotConvertible)*)
   
+let _ = Reduction.set_nat_conv nconv

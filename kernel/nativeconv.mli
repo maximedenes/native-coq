@@ -1,9 +1,8 @@
 open Term
-open Pre_env
 open Univ
-open Nativelib
+open Environ
+open Reduction
 
-val conv_val : Nativevalues.t -> Nativevalues.t -> unit
 
-val compare :
-  env -> constr -> constr -> constraints -> constraints
+val nconv : conv_pb -> types conversion_function
+
