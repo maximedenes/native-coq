@@ -42,42 +42,9 @@ module NbeAnnotTbl :
 
   end
 
-type tag
 
-type lam = 
-  | Lam of lam
-  | Rel of int
-  | Constant of constant
-  | Ind of inductive
-  | Sort of sorts
-  | Var of identifier
-  | App of lam * lam array
-  | Const_int of int
-  | Const_block of int * lam array
-  | Case of annot_sw * lam * lam * lam array 
-  | Prod of name * lam * lam
-  | Fix of (*name *) lam array * lam array * rec_pos * int
-  | Array of lam array
-
-val rnorm : lam ref
 val rt1 : Nativevalues.t ref
 val rt2 : Nativevalues.t ref
-
-
-(*val array_iter2 : ('a -> 'b -> 'c) -> 'a array -> 'b array -> unit
-val string_of_term : int -> term -> string
-val bug : term -> 'a
-val app1 : term -> term -> term
-val app2 : term -> term -> term -> term
-val app3 : term -> term -> term -> term -> term
-val app4 : term -> term -> term -> term -> term -> term
-val app5 : term -> term -> term -> term -> term -> term -> term
-val app6 : term -> term -> term -> term -> term -> term -> term -> term
-val app : term -> term -> term
-val compare : int -> term -> term -> unit
-val normalize : int -> term -> term*)
-val print_nf : Nativevalues.t Lazy.t -> unit
-val lazy_norm : Nativevalues.t Lazy.t -> lam
 
 val extern_state : string -> unit
 val intern_state : string -> unit

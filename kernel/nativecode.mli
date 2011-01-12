@@ -33,5 +33,6 @@ val compile_mind : mutual_inductive_body -> mutual_inductive ->
 
 val optimize_stk : global list -> global list
 val conv_main_code : global list
+val norm_main_code : global list
 
 val mod_uid_of_dirpath : dir_path -> string
