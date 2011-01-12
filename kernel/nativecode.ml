@@ -1091,4 +1091,8 @@ let conv_main_code =
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
   [Glet(Ginternal "_", MLsetref("rt1",g1));
-  Glet(Ginternal "_", MLsetref("rt2",g2));]
+  Glet(Ginternal "_", MLsetref("rt2",g2))]
+
+let norm_main_code = 
+  let g1 = MLglobal (Ginternal "t1") in
+  [Glet(Ginternal "_", MLsetref("rt1",g1))]
