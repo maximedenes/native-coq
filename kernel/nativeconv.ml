@@ -139,6 +139,21 @@ and conv_fix lvl t1 f1 t2 f2 cu =
     if i = max then conv_val CONV flvl fi1 fi2 cu 
     else aux (i+1) (conv_val CONV flvl fi1 fi2 cu) in
   aux 0 cu
+
+type fconv_res =
+  | FCRNone
+  | FCRNotConvertible
+  | FCRConvertible of constraints
+
+let fconv_result = ref FCRNone
+
+let async_fconv cv_pb env t1 t2 =
+  let env = Environ.env_of_pre_env env in
+  try
+    fconv_result := FCRConvertible (conv_cmp cv_pb env t1 t2)
+  with 
+  | NotConvertible -> fconv_result := FCRNotConvertible
+  | _ -> ()
     
 let nconv pb env t1 t2 =
   let env = Environ.pre_env env in 
@@ -152,47 +167,39 @@ let nconv pb env t1 t2 =
   in
   let code = header@List.rev gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
   code2]@conv_main_code in
-(*  let (code1,_) = translate mp env "t1" t1 in
-  let (code2,_) = translate mp env "t2" t2 in *)
-(*@ [<:str_item< value _ = (*let t0 = Unix.time () in *)
-      (*do {*)try conv_val pb 0 t1 t2 Constraint.empty with _ -> exit 1 (*;
-    Format.fprintf Format.std_formatter
-    "Test running time: %.5fs\n" (Unix.time() -. t0);
-    flush_all() }*)
-    >>] *)
-  match compile_terms mp code with
-    | 0,fn,modname ->
-      begin
-        print_endline "Running test...";
-        try
-	  let t0 = Sys.time () in
-	  call_linker fn modname; 
-	  let t1 = Sys.time () in
-	  Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
-          (* TODO change 0 when we can have deBruijn *)
-	  conv_val pb 0 !rt1 !rt2 Constraint.empty
-	with _ -> raise NotConvertible
-      end
-    | _ -> anomaly "Compilation failure" 
-
-  (*let file_names = env_name^".ml "^terms_name^".ml" in
-  let _ = Sys.command ("touch "^env_name^".ml") in
-  print_endline "Compilation...";
-  let comp_cmd =
-    "ocamlopt.opt -rectypes "^include_dirs^include_libs^file_names
-  in
-  let res = Sys.command comp_cmd in
-  match res with
-    | 0 ->
-      begin
-      let _ = Sys.command ("rm "^file_names) in
-      print_endline "Running conversion test...";
-      let res = Sys.command "./a.out" in
-      let _ = Sys.command "rm a.out" in
-      match res with
-        | 0 -> cu
-        | _ -> (print_endline "Conversion test failure"; raise NotConvertible)
-      end
-    | _ -> (print_endline "Compilation failure"; raise NotConvertible)*)
+  fconv_result := FCRNone;
+  Nativelib.comp_result := None;
+  let comp_thread = Thread.create (compile_terms mp) code in
+  let fconv_thread = Thread.create (async_fconv pb env t1) t2 in
+  while (!fconv_result = FCRNone && !Nativelib.comp_result = None) do
+    Thread.yield ()
+  done;
+  match !fconv_result with
+    | FCRNone ->
+        begin
+        print_endline "Native code compilation finished first";
+        match !Nativelib.comp_result with
+        | Some (0,fn,modname) ->
+            begin
+              print_endline "Running test...";
+              try
+                let t0 = Sys.time () in
+                call_linker fn modname; 
+                let t1 = Sys.time () in
+                Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
+                (* TODO change 0 when we can have deBruijn *)
+                conv_val pb 0 !rt1 !rt2 Constraint.empty
+              with _ -> raise NotConvertible
+            end
+        | _ -> anomaly "Compilation failure" 
+        end
+    | FCRNotConvertible ->
+        (* TODO Thread.kill comp_thread; *)
+        print_endline "Closure conversion finished first (not convertible)";
+        raise NotConvertible
+    | FCRConvertible cu ->
+        (* TODO Thread.kill comp_thread; *)
+        print_endline "Closure conversion finished first (convertible)";
+        cu
   
 let _ = Reduction.set_nat_conv nconv

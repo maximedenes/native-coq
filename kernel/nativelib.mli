@@ -11,6 +11,8 @@ val include_dirs : string
 val load_paths : string list ref
 val imports : string list ref
 
+val comp_result : (int * string * string) option ref
+
 val topological_sort :
   Util.Stringset.elt list ->
   ('a * 'b * 'c list * Util.Stringset.elt list) Util.Stringmap.t ->
