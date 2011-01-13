@@ -13,6 +13,8 @@ let imports = ref ([] : string list)
 let open_header = ref ([] : mllambda list)
 let comp_stack = ref ([] : mllambda list)
 
+let comp_result = ref (None : (int * string * string) option)
+
 (* Global settings and utilies for interface with OCaml *)
 let env_name = "Coq_conv_env"
 
@@ -53,6 +55,7 @@ let compile_terms base_mp terms_code =
   in
   let res = Sys.command comp_cmd in
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
+    comp_result := Some (res, filename, mod_name);
     res, filename, mod_name
 
 let call_linker f mod_name =

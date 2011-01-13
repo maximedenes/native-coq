@@ -356,6 +356,7 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
   pr_state st1;  Printf.printf "\n\n";
   pr_state st2;  Printf.printf "\n\n";*)
   Util.check_for_interrupt ();
+  Thread.yield ();
   (* First head reduce both terms *)
   let rec whd_both (t1,stk1) (t2,stk2) =
     let st1' = whd_stack (snd infos) t1 stk1 in
