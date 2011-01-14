@@ -100,7 +100,7 @@ exception Non_closed
 
 let interp_int31 dloc n =
   let sn = to_string n in
-  try RNativeInt (dloc, Native.Uint31.of_string sn)
+  try RNativeInt (dloc, Uint31.of_string sn)
   with Failure "int_of_string" ->
     let msg = 
       if is_pos_or_zero n then "int31: object to large."
@@ -113,7 +113,7 @@ let interp_int31 dloc n =
 
 let uninterp_int31 i =
   match i with
-  | RNativeInt(_,i) -> Some (of_string (Native.Uint31.to_string i))
+  | RNativeInt(_,i) -> Some (of_string (Uint31.to_string i))
   | _ -> None
 
 

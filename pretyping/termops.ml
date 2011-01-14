@@ -86,7 +86,7 @@ let rec pr_constr c = match kind_of_term c with
            pr_name na ++ str":" ++ pr_constr ty ++
            cut() ++ str":=" ++ pr_constr bd) (Array.to_list fixl)) ++
          str"}")
-  | NativeInt i -> str"Int("++str (Native.Uint31.to_string i) ++ str")"
+  | NativeInt i -> str"Int("++str (Uint31.to_string i) ++ str")"
   | NativeArr(t,p) ->
       (str"Array(" ++ pr_constr c ++ str ":|" ++
        prlist_with_sep (fun _ -> str";"++spc ()) pr_constr (Array.to_list p) ++ str")")

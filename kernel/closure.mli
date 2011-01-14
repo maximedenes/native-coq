@@ -110,7 +110,7 @@ and fterm =
   | FProd of name * fconstr * fconstr
   | FLetIn of name * fconstr * fconstr * constr * fconstr subs
   | FEvar of existential * fconstr subs
-  | FNativeInt of Native.Uint31.t
+  | FNativeInt of Uint31.t
   | FNativeArr of fconstr * fconstr Native.Parray.t
   | FLIFT of int * fconstr
   | FCLOS of constr * fconstr subs

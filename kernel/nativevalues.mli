@@ -51,7 +51,7 @@ val force_cofix : t -> t
 val mk_const : tag -> t
 val mk_block : tag -> t array -> t
 
-val mk_uint : int -> t
+
 val mk_int : int -> t
 
 val napply : t -> t array -> t
@@ -89,6 +89,11 @@ val is_accu : t -> bool
 
 (*** Primitive sur les entiers *)
 
+val val_to_int : t -> int
+val val_of_int : int -> t
+val is_int : t -> bool
+
+(* function with check *)
 val head0 : t -> t -> t
 val tail0 : t -> t -> t
 
@@ -123,10 +128,7 @@ val compare : t -> t -> t -> t
 val eqb_correct : t -> t -> t -> t -> t
 
 val print : t -> t -> t
-val foldi_cont : t -> t -> t -> t -> t -> t -> t -> t
-val foldi_down_cont : t -> t -> t -> t -> t -> t -> t -> t
 
-val parray_of_array : t array -> t
 val arraymake    : t -> t -> t -> t -> t      (* accu A n def *)
 val arrayget     : t -> t -> t -> t -> t      (* accu A t n *)
 val arraydefault : t -> t -> t -> t           (* accu A t *)
@@ -134,6 +136,45 @@ val arrayset     : t -> t -> t -> t -> t -> t (* accu A t n v *)
 val arraycopy    : t -> t -> t -> t           (* accu A t *)
 val arrayreroot  : t -> t -> t -> t           (* accu A t *)
 val arraylength  : t -> t -> t -> t           (* accu A t *)
+
+(* Function without check *)
+val no_check_head0 : t -> t
+val no_check_tail0 : t -> t
+
+val no_check_add : t -> t -> t
+val no_check_sub : t -> t -> t
+val no_check_mul : t -> t -> t
+val no_check_div : t -> t -> t
+val no_check_rem : t -> t -> t
+
+val no_check_l_sr  : t -> t -> t
+val no_check_l_sl  : t -> t -> t
+val no_check_l_and : t -> t -> t
+val no_check_l_xor : t -> t -> t
+val no_check_l_or  : t -> t -> t
+
+val no_check_addc      : t -> t -> t
+val no_check_subc      : t -> t -> t
+val no_check_addCarryC : t -> t -> t
+val no_check_subCarryC : t -> t -> t
+
+val no_check_mulc    : t -> t -> t
+val no_check_diveucl : t -> t -> t
+
+val no_check_div21     : t -> t -> t -> t
+val no_check_addMulDiv : t -> t -> t -> t
+
+val no_check_eq      : t -> t -> t
+val no_check_lt      : t -> t -> t
+val no_check_le      : t -> t -> t
+val no_check_compare : t -> t -> t 
+
+
+
+val lt_b : t -> t -> bool
+val le_b : t -> t -> bool
+
+val parray_of_array : t array -> t
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a

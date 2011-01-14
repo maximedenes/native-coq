@@ -43,7 +43,7 @@ struct
     | DCase   of case_info * 't * 't * 't array
     | DFix    of int array * int * 't array * 't array
     | DCoFix  of int * 't array * 't array
-    | DNativeInt of Native.Uint31.t
+    | DNativeInt of Uint31.t
     | DNativeArr of 't * 't array
     (* special constructors only inside the left-hand side of DCtx or
        DApp. Used to encode lists of foralls/letins/apps as contexts *)

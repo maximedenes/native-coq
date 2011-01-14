@@ -148,7 +148,7 @@ let construct_of_constr const env tag typ =
       construct_of_constr_notnative const env tag ind l
   | _ ->
       assert (t = Typeops.type_of_int env);
-      (mkInt (Native.Uint31.of_int tag), t)
+      (mkInt (Uint31.of_int tag), t)
 
 let construct_of_constr_const env tag typ = 
   fst (construct_of_constr true env tag typ)
@@ -384,9 +384,9 @@ and nf_array env p typ =
   assert (Typeops.type_of_array env = t);
   let typ_elem = allargs.(0) in
   let p = 
-    Array.init (Native.Uint31.to_int (Native.Parray.length p) + 1)
+    Array.init (Uint31.to_int (Native.Parray.length p) + 1)
       (fun i -> 
-	nf_val env (Native.Parray.get p (Native.Uint31.of_int i)) typ_elem) in
+	nf_val env (Native.Parray.get p (Uint31.of_int i)) typ_elem) in
   mkArray(typ_elem, p)
 
   

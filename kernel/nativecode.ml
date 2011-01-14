@@ -97,6 +97,56 @@ type primitive =
   | Cast_accu
   | Upd_cofix
   | Force_cofix
+  | Val_to_int
+  | Val_of_int
+  (* Coq primitive with check *)
+  | Chead0 of constant option
+  | Ctail0 of constant option
+  | Cadd of constant option
+  | Csub of constant option
+  | Cmul of constant option
+  | Cdiv of constant option
+  | Crem of constant option
+  | Clsr of constant option
+  | Clsl of constant option
+  | Cand of constant option
+  | Cor of constant option
+  | Cxor of constant option
+  | Caddc of constant option
+  | Csubc of constant option
+  | CaddCarryC of constant option
+  | CsubCarryC of constant option
+  | Cmulc of constant option
+  | Cdiveucl of constant option
+  | Cdiv21 of constant option
+  | CaddMulDiv of constant option
+  | Ceq of constant option
+  | Clt of constant option
+  | Cle of constant option
+  | Clt_b 
+  | Cle_b
+  | Ccompare of constant option
+  | Cprint of constant option
+  | Carraymake of constant option
+  | Carrayget of constant option
+  | Carraydefault of constant option
+  | Carrayset of constant option
+  | Carraycopy of constant option
+  | Carrayreroot of constant option
+  | Carraylength of constant option
+  (* Caml primitive *)
+  | MLand
+  | MLle
+  | MLlt
+  | MLinteq
+  | MLlsl
+  | MLlsr
+  | MLland
+  | MLlor
+  | MLlxor
+  | MLadd
+  | MLsub
+  | MLmul
 
 type mllambda =
   | MLlocal        of lname 
@@ -110,7 +160,7 @@ type mllambda =
   | MLmatch        of annot_sw * mllambda * mllambda * mllam_branches
                                (* argument, accu branch, branches *)
   | MLconstruct    of constructor * mllambda array
-  | MLint          of int
+  | MLint          of bool * int   (* true if the type sould be int *)
   | MLparray       of mllambda array
   | MLval          of Nativevalues.t
   | MLsetref       of string * mllambda
@@ -305,7 +355,7 @@ let fv_args env fvn fvr =
   if size = 0 then empty_args 
   else 
     begin
-      let args = Array.make size (MLint 0) in
+      let args = Array.make size (MLint (false,0)) in
       let fvn = ref fvn in
       let i = ref 0 in
       while !fvn <> [] do
@@ -356,6 +406,174 @@ let merge_branches t =
   Array.iter (fun (c,args,body) -> insert (c,args) body newt) t;
   Array.of_list (to_list newt)
 
+let mlprim_of_prim p o =
+  match p with
+  | Native.Int31head0       -> Chead0 o
+  | Native.Int31tail0       -> Ctail0 o
+  | Native.Int31add         -> Cadd o
+  | Native.Int31sub         -> Csub o
+  | Native.Int31mul         -> Cmul o
+  | Native.Int31div         -> Cdiv o
+  | Native.Int31mod         -> Crem o
+  | Native.Int31lsr         -> Clsr o
+  | Native.Int31lsl         -> Clsl o
+  | Native.Int31land        -> Cand o
+  | Native.Int31lor         -> Cor o
+  | Native.Int31lxor        -> Cxor o
+  | Native.Int31addc        -> Caddc o
+  | Native.Int31subc        -> Csubc o
+  | Native.Int31addCarryC   -> CaddCarryC o
+  | Native.Int31subCarryC   -> CsubCarryC o
+  | Native.Int31mulc        -> Cmulc o
+  | Native.Int31diveucl     -> Cdiveucl o
+  | Native.Int31div21       -> Cdiv21 o
+  | Native.Int31addMulDiv   -> CaddMulDiv o
+  | Native.Int31eq          -> Ceq o
+  | Native.Int31lt          -> Clt o
+  | Native.Int31le          -> Cle o
+  | Native.Int31compare     -> Ccompare o
+  | Native.Int31eqb_correct -> assert false
+      
+let mlprim_of_cprim p kn =
+  match p with
+  | Native.Int31print      -> Cprint (Some kn)
+  | Native.ArrayMake       -> Carraymake (Some kn)
+  | Native.ArrayGet        -> Carrayget (Some kn)
+  | Native.ArrayGetdefault -> Carraydefault (Some kn)
+  | Native.ArraySet        -> Carrayset (Some kn)
+  | Native.ArrayCopy       -> Carraycopy (Some kn)
+  | Native.ArrayReroot     -> Carrayreroot (Some kn)
+  | Native.ArrayLength     -> Carraylength (Some kn)
+
+type prim_aux = 
+  | PAprim of constant option * Native.prim_op * prim_aux array
+  (*| PAcprim of constant * Native.caml_prim * prim_aux array *)
+  | PAml of mllambda
+
+let add_check cond args =
+  let aux cond a = 
+    match a with
+    | PAml(MLint _ | MLval _) -> cond
+    | PAml ml -> if List.mem ml cond then cond else ml::cond 
+    | _ -> cond
+  in
+  Array.fold_left aux cond args
+  
+let extract_prim ml_of l =
+  let decl = ref [] in
+  let cond = ref [] in
+  let rec aux l = 
+    match l with
+    | Lprim(o,p,args) ->
+	assert (p <> Native.Int31eqb_correct);
+	let args = Array.map aux args in
+	if o <> None then cond := add_check !cond args;
+	PAprim(o,p,args)
+    | Lrel _ | Lvar _ | Lint _ | Lval _ | Lconst _ -> PAml (ml_of l)
+    | _ -> 
+	let x = fresh_lname Anonymous in
+	decl := (x,ml_of l)::!decl;
+	PAml (MLlocal x) in
+  let res = aux l in
+  (!decl, !cond, res)
+
+let app_prim p args = MLapp(MLprimitive p, args)
+let select f32 f64 = if Sys.word_size = 64 then f64 else f32
+
+let mk_of_int32 i = i
+let mk_of_int64 i = app_prim MLland [|i;MLint(true,0x7FFFFFFF)|]
+let mk_of_int = select mk_of_int32 mk_of_int64
+
+let (*rec*) to_int v =
+  match v with
+  | MLint(false,i) -> MLint(true,i)
+  | MLint _ -> v 
+(*  | MLapp(MLprimitive (MLlsl |  MLlsr | MLland | MLlor | MLlxor | MLadd | MLsub | MLmul), _) -> v *)
+  | MLapp(MLprimitive Val_of_int, t) -> t.(0)
+(*  | MLif(e,b1,b2) -> MLif(e,to_int b1, to_int b2) *)
+  | _ -> MLapp(MLprimitive Val_to_int, [|v|]) 
+
+let (*rec*) of_int v = 
+  match v with
+  | MLint(true,i) -> MLint(false,i)
+  | MLint _ -> v
+  | MLapp(MLprimitive Val_to_int, t) -> t.(0)
+(*  | MLif(e,b1,b2) -> MLif(e,of_int b1, of_int b2) *)
+  | _ -> MLapp(MLprimitive Val_of_int,[|v|]) 
+
+
+let check_bound v b1 b2 =
+  match v with
+  | MLint(_,x) -> if 0 <= x && x < 31 then b1 else b2
+  | _ -> 
+      let t1 = app_prim MLle [|MLint(true,0); v|] in
+      let t2 = app_prim MLlt [|MLint(true,31); v|] in
+      MLif(app_prim MLand [|t1;t2|], b1, b2)
+      
+let mk_lsl args = 
+  mk_of_int (check_bound args.(1) (app_prim MLlsl args) (MLint(true,0)))
+
+let mk_lsr args = 
+  (check_bound args.(1) (app_prim MLlsr args) (MLint(true,0)))
+
+let mk_land args = app_prim MLland args
+let mk_lor args = app_prim MLlor args
+let mk_lxor args = app_prim MLlxor args
+
+let mk_add args = mk_of_int (app_prim MLadd args)
+let mk_sub args = mk_of_int (app_prim MLsub args)
+let mk_mul args = mk_of_int (app_prim MLmul args)
+let mk_inteq args = app_prim MLinteq args
+  
+let compile_prim decl cond paux =
+  let args_to_int args = 
+    for i = 0 to Array.length args - 1 do
+      args.(i) <- to_int args.(i)
+    done;
+    args in
+  let rec opt_prim_aux paux =
+    match paux with
+    | PAprim(o, op, args) ->
+	let args = Array.map opt_prim_aux args in
+	begin match o, op with
+	| None, Native.Int31lt -> MLapp(MLprimitive Clt_b, args)
+	| None, Native.Int31le -> MLapp(MLprimitive Cle_b, args)
+	| _, Native.Int31lsl  -> of_int (mk_lsl (args_to_int args))
+	| _, Native.Int31lsr  -> of_int (mk_lsr (args_to_int args))
+	| _, Native.Int31land -> of_int (mk_land (args_to_int args))
+	| _, Native.Int31lor  -> of_int (mk_lor (args_to_int args))
+	| _, Native.Int31lxor -> of_int (mk_lxor (args_to_int args))
+	| _, Native.Int31add  -> of_int (mk_add (args_to_int args))
+	| _, Native.Int31sub  -> of_int (mk_sub (args_to_int args))
+	| _, Native.Int31mul  -> of_int (mk_mul (args_to_int args))
+(*	| _, Native.Int31eq -> mk_inteq (args_to_int args) *)
+	| _, _ -> MLapp(MLprimitive (mlprim_of_prim op None) ,args) 
+	end
+    | PAml ml -> ml 
+  and naive_prim_aux paux = 
+    match paux with
+    | PAprim(o, op, args) ->
+	MLapp(MLprimitive (mlprim_of_prim op o),Array.map naive_prim_aux args)
+    | PAml ml -> ml in
+
+  let compile_cond cond paux = 
+    match cond with
+    | [] -> opt_prim_aux paux 
+    | c1::cond ->
+	let cond = 
+	  List.fold_left 
+	    (fun ml c ->
+	      MLapp(MLprimitive MLand, [|ml; MLapp(MLprimitive Is_int,[|c|])|]))
+	    (MLapp(MLprimitive Is_int, [|c1|])) cond in
+	MLif(cond, opt_prim_aux paux, naive_prim_aux paux) in
+  let add_decl decl body =
+    List.fold_left (fun body (x,d) -> MLlet(x,d,body)) body decl in
+  add_decl decl (compile_cond cond paux)
+
+
+	  
+
+
 let rec ml_of_lam env l t =
   match t with
   | Lrel(id ,i) -> get_rel env id i
@@ -381,7 +599,12 @@ let rec ml_of_lam env l t =
   | Lapp(f,args) ->
       MLapp(ml_of_lam env l f, Array.map (ml_of_lam env l) args)
   | Lconst c -> MLglobal(Gconstant c)
-  | Lprim _ | Lcprim _ -> assert false
+  | Lprim _ ->
+      let decl,cond,paux = extract_prim (ml_of_lam env l) t in
+      compile_prim decl cond paux
+  | Lcprim (kn,p,args) ->
+      MLapp(MLprimitive (mlprim_of_cprim p kn),
+	    Array.map (ml_of_lam env l) args)
   | Lcase (annot,p,a,bs) ->
       (* let predicate_uid fv_pred = compilation of p 
          let rec case_uid fv a_uid = 
@@ -430,7 +653,13 @@ let rec ml_of_lam env l t =
 	if annot.asw_finite then arg
 	else MLapp(MLprimitive Force_cofix, [|arg|]) in
       mkMLapp (MLapp (MLglobal cn, fv_args env fvn fvr)) [|force|]
-  | Lareint _ -> assert false
+  | Lareint args -> 
+      let res = ref (MLapp(MLprimitive Is_int, [|ml_of_lam env l args.(0)|]))in
+      for i = 1 to Array.length args - 1 do
+	let t = MLapp(MLprimitive Is_int, [|ml_of_lam env l args.(i)|]) in
+	res := MLapp(MLprimitive MLand, [|!res;t|])
+      done;
+      !res
   | Lif(t,bt,bf) -> 
       MLif(ml_of_lam env l t, ml_of_lam env l bt, ml_of_lam env l bf)
   | Lfix ((rec_pos,start), (ids, tt, tb)) ->
@@ -572,7 +801,7 @@ let rec ml_of_lam env l t =
       MLconstruct(cn,Array.map (ml_of_lam env l) args)
   | Lconstruct cn ->
       MLglobal (Gconstruct cn)
-  | Lint i -> MLint i
+  | Lint i -> MLint (false,Uint31.to_int i)
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v -> MLval v
   | Lsort s -> MLprimitive(Mk_sort s)
@@ -826,31 +1055,7 @@ let pp_gname base_mp fmt g =
 let pp_lname fmt ln =
   Format.fprintf fmt "x_%i" ln.luid
 
-let pp_primitive fmt = function
-  | Mk_prod id -> Format.fprintf fmt "mk_prod_accu (str_decode \"%s\")" 
-	(str_encode id)
-  | Mk_sort s -> 
-      Format.fprintf fmt "mk_sort_accu (str_decode \"%s\")" (str_encode s)
-  | Mk_ind ind -> 
-      Format.fprintf fmt "mk_ind_accu (str_decode \"%s\")" (str_encode ind)
-  | Mk_const kn -> 
-      Format.fprintf fmt "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
-  | Mk_sw asw -> 
-      Format.fprintf fmt "mk_sw_accu (str_decode \"%s\")" (str_encode asw)
-  | Mk_fix(rec_pos,start) -> 
-      let pp_rec_pos fmt rec_pos = 
-	Format.fprintf fmt "@[[| %i" rec_pos.(0);
-	for i = 1 to Array.length rec_pos - 1 do
-	  Format.fprintf fmt "; %i" rec_pos.(i) 
-	done;
-	Format.fprintf fmt " |]@]" in
-      Format.fprintf fmt "mk_fix_accu %a %i" pp_rec_pos rec_pos start
-  | Mk_cofix(start) -> Format.fprintf fmt "mk_cofix_accu %i" start
-  | Is_accu -> Format.fprintf fmt "is_accu"
-  | Is_int -> Format.fprintf fmt "is_int"
-  | Cast_accu -> Format.fprintf fmt "cast_accu"
-  | Upd_cofix -> Format.fprintf fmt "upd_cofix"
-  | Force_cofix -> Format.fprintf fmt "force_cofix"
+
 
 let pp_ldecls fmt ids =
   let len = Array.length ids in
@@ -863,123 +1068,213 @@ let string_of_construct base_mp ((mind,i),j) =
   let id = Format.sprintf "Construct_%s_%i_%i" (string_of_label l) i (j-1) in
   (mk_relative_id base_mp (mp,id))
    
-  
+let pp_int fmt i =
+  if i < 0 then Format.fprintf fmt "(%i)" i else Format.fprintf fmt "%i" i
+
 let pp_mllam base_mp fmt l =
-let rec pp_mllam fmt l =
-  match l with
-  | MLlocal ln -> Format.fprintf fmt "@[%a@]" pp_lname ln
-  | MLglobal g -> Format.fprintf fmt "@[%a@]" (pp_gname (Some base_mp)) g
-  | MLprimitive p -> Format.fprintf fmt "@[%a@]" pp_primitive p
-  | MLlam(ids,body) ->
-    Format.fprintf fmt "@[(fun%a@ ->@\n %a)@]"
-      pp_ldecls ids pp_mllam body
-  | MLletrec(defs, body) ->
-      Format.fprintf fmt "@[%a@ in@\n%a@]" pp_letrec defs 
-      pp_mllam body
-  | MLlet(id,def,body) ->
-      Format.fprintf fmt "@[let@ %a@ =@\n %a@ in@\n%a@]"
-         pp_lname id pp_mllam def pp_mllam body
-  | MLapp(f, args) ->
-      Format.fprintf fmt "@[%a@ %a@]" pp_mllam f (pp_args true) args
-  | MLif(t,l1,l2) ->
-      Format.fprintf fmt "@[if %a then@\n  %a@\nelse@\n  %a@]"
-	pp_mllam t pp_mllam l1 pp_mllam l2 
-  | MLmatch (asw, c, accu_br, br) ->
-      let mind,i = asw.asw_ind in
-      let (mp,dp,l) = repr_kn (canonical_mind mind) in
-      let accu = Format.sprintf "Accu_%s_%i" (string_of_label l) i in
-      let accu = mk_relative_id base_mp (mp,accu) in
-      Format.fprintf fmt 
-	"@[begin match Obj.magic (%a) with@\n| %s _ ->@\n  %a@\n%aend@]"
-	pp_mllam c accu pp_mllam accu_br pp_branches br
 
-  | MLconstruct(c,args) ->
-       Format.fprintf fmt "@[(Obj.magic (%s%a) : Nativevalues.t)@]" 
-	(string_of_construct base_mp c) pp_cargs args
-  | MLint i -> Format.fprintf fmt "%i" i
-  | MLparray _ -> assert false
-  | MLval v -> Format.fprintf fmt "(str_decode \"%s\")" (str_encode v)
-  | MLsetref (s, body) ->
-      Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
-  | MLsequence(l1,l2) ->
-      Format.fprintf fmt "@[%a;@\n%a@]" pp_mllam l1 pp_mllam l2 
+  let rec pp_mllam fmt l =
+    match l with
+    | MLlocal ln -> Format.fprintf fmt "@[%a@]" pp_lname ln
+    | MLglobal g -> Format.fprintf fmt "@[%a@]" (pp_gname (Some base_mp)) g
+    | MLprimitive p -> Format.fprintf fmt "@[%a@]" pp_primitive p
+    | MLlam(ids,body) ->
+	Format.fprintf fmt "@[(fun%a@ ->@\n %a)@]"
+	  pp_ldecls ids pp_mllam body
+    | MLletrec(defs, body) ->
+	Format.fprintf fmt "@[%a@ in@\n%a@]" pp_letrec defs 
+	  pp_mllam body
+    | MLlet(id,def,body) ->
+	Format.fprintf fmt "@[let@ %a@ =@\n %a@ in@\n%a@]"
+          pp_lname id pp_mllam def pp_mllam body
+    | MLapp(f, args) ->
+	Format.fprintf fmt "@[%a@ %a@]" pp_mllam f (pp_args true) args
+    | MLif(t,l1,l2) ->
+	Format.fprintf fmt "@[(if %a then@\n  %a@\nelse@\n  %a)@]"
+	  pp_mllam t pp_mllam l1 pp_mllam l2 
+    | MLmatch (asw, c, accu_br, br) ->
+	let mind,i = asw.asw_ind in
+	let (mp,dp,l) = repr_kn (canonical_mind mind) in
+	let accu = Format.sprintf "Accu_%s_%i" (string_of_label l) i in
+	let accu = mk_relative_id base_mp (mp,accu) in
+	Format.fprintf fmt 
+	  "@[begin match Obj.magic (%a) with@\n| %s _ ->@\n  %a@\n%aend@]"
+	  pp_mllam c accu pp_mllam accu_br pp_branches br
+	  
+    | MLconstruct(c,args) ->
+	Format.fprintf fmt "@[(Obj.magic (%s%a) : Nativevalues.t)@]" 
+	  (string_of_construct base_mp c) pp_cargs args
+    | MLint(int, i) ->
+	if int then pp_int fmt i
+	else Format.fprintf fmt "(val_of_int %a)" pp_int i
+    | MLparray p ->
+	Format.fprintf fmt "@[(parray_of_array@\n  [|";
+	for i = 0 to Array.length p - 2 do
+	  Format.fprintf fmt "%a;" pp_mllam p.(i)
+	done;
+	Format.fprintf fmt "%a|])@]" pp_mllam p.(Array.length p - 1)
+    | MLval v -> Format.fprintf fmt "(str_decode \"%s\")" (str_encode v)
+    | MLsetref (s, body) ->
+	Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
+    | MLsequence(l1,l2) ->
+	Format.fprintf fmt "@[%a;@\n%a@]" pp_mllam l1 pp_mllam l2 
 
-and pp_letrec fmt defs =
-  let len = Array.length defs in
-  let pp_one_rec i (fn, argsn, body) =
-    Format.fprintf fmt "%a%a =@\n  %a"
-      pp_lname fn 
-      pp_ldecls argsn pp_mllam body in
-  Format.fprintf fmt "@[let rec ";
-  pp_one_rec 0 defs.(0);
-  for i = 1 to len - 1 do
-    Format.fprintf fmt "@\nand ";
-    pp_one_rec i defs.(i)
-  done;
-  
-
-and pp_blam fmt l =
-  match l with
-  | MLprimitive (Mk_prod _ | Mk_sort _) 
-  | MLlam _ | MLletrec _ | MLlet _ | MLapp _ | MLif _ ->
-      Format.fprintf fmt "(%a)" pp_mllam l
-  | MLconstruct(_,args) when Array.length args > 0 ->
-      Format.fprintf fmt "(%a)" pp_mllam l
-  | _ -> pp_mllam fmt l
-
-and pp_args sep fmt args =
-  let pp_mllam = if sep then pp_blam else pp_mllam in
-  let sep = if sep then " " else "," in
-  let len = Array.length args in
-  if len > 0 then begin
-    Format.fprintf fmt "%a" pp_mllam args.(0);
+  and pp_letrec fmt defs =
+    let len = Array.length defs in
+    let pp_one_rec i (fn, argsn, body) =
+      Format.fprintf fmt "%a%a =@\n  %a"
+	pp_lname fn 
+	pp_ldecls argsn pp_mllam body in
+    Format.fprintf fmt "@[let rec ";
+    pp_one_rec 0 defs.(0);
     for i = 1 to len - 1 do
-      Format.fprintf fmt "%s%a" sep pp_mllam args.(i)
-    done
-  end 
+      Format.fprintf fmt "@\nand ";
+      pp_one_rec i defs.(i)
+    done;
 
-and pp_cargs fmt args =
-  let len = Array.length args in
-  match len with
-  | 0 -> ()
-  | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
-  | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
+  and pp_blam fmt l =
+    match l with
+    | MLprimitive (Mk_prod _ | Mk_sort _) 
+    | MLlam _ | MLletrec _ | MLlet _ | MLapp _ | MLif _ ->
+	Format.fprintf fmt "(%a)" pp_mllam l
+    | MLconstruct(_,args) when Array.length args > 0 ->
+	Format.fprintf fmt "(%a)" pp_mllam l
+    | _ -> pp_mllam fmt l
 
-and pp_cparam fmt param = 
-  match param with
-  | Some l -> pp_mllam fmt (MLlocal l)
-  | None -> Format.fprintf fmt "_"
+  and pp_args sep fmt args =
+    let pp_mllam = if sep then pp_blam else pp_mllam in
+    let sep = if sep then " " else "," in
+    let len = Array.length args in
+    if len > 0 then begin
+      Format.fprintf fmt "%a" pp_mllam args.(0);
+      for i = 1 to len - 1 do
+	Format.fprintf fmt "%s%a" sep pp_mllam args.(i)
+      done
+    end 
 
-and pp_cparams fmt params =
-  let len = Array.length params in
-  match len with
-  | 0 -> ()
-  | 1 -> Format.fprintf fmt " %a" pp_cparam params.(0)
-  | _ -> 
-      let aux fmt params =
-	Format.fprintf fmt "%a" pp_cparam params.(0);
-	for i = 1 to len - 1 do
-	  Format.fprintf fmt ",%a" pp_cparam params.(i)
-	done in 
-      Format.fprintf fmt "(%a)" aux params
+  and pp_cargs fmt args =
+    let len = Array.length args in
+    match len with
+    | 0 -> ()
+    | 1 -> Format.fprintf fmt " %a" pp_blam args.(0)
+    | _ -> Format.fprintf fmt "(%a)" (pp_args false) args
 
-and pp_branches fmt bs =
-  let pp_branch (cargs,body) =
-    let pp_c fmt (cn,args) = 
-      Format.fprintf fmt "| %s%a " 
-	(string_of_construct base_mp cn) pp_cparams args in
-    let rec pp_cargs fmt cargs =
-      match cargs with
-      | [] -> ()
-      | cargs::cargs' -> 
-	  Format.fprintf fmt "%a%a" pp_c cargs pp_cargs cargs' in
-    Format.fprintf fmt "%a ->@\n  %a@\n" 
-      pp_cargs cargs pp_mllam body
+  and pp_cparam fmt param = 
+    match param with
+    | Some l -> pp_mllam fmt (MLlocal l)
+    | None -> Format.fprintf fmt "_"
+
+  and pp_cparams fmt params =
+    let len = Array.length params in
+    match len with
+    | 0 -> ()
+    | 1 -> Format.fprintf fmt " %a" pp_cparam params.(0)
+    | _ -> 
+	let aux fmt params =
+	  Format.fprintf fmt "%a" pp_cparam params.(0);
+	  for i = 1 to len - 1 do
+	    Format.fprintf fmt ",%a" pp_cparam params.(i)
+	  done in 
+	Format.fprintf fmt "(%a)" aux params
+
+  and pp_branches fmt bs =
+    let pp_branch (cargs,body) =
+      let pp_c fmt (cn,args) = 
+	Format.fprintf fmt "| %s%a " 
+	  (string_of_construct base_mp cn) pp_cparams args in
+      let rec pp_cargs fmt cargs =
+	match cargs with
+	| [] -> ()
+	| cargs::cargs' -> 
+	    Format.fprintf fmt "%a%a" pp_c cargs pp_cargs cargs' in
+      Format.fprintf fmt "%a ->@\n  %a@\n" 
+	pp_cargs cargs pp_mllam body
+    in
+    Array.iter pp_branch bs
+
+  and pp_vprim o s = 
+    match o with
+    | None -> Format.fprintf fmt "no_check_%s" s
+    | Some kn -> Format.fprintf fmt "%s %a" s pp_mllam (MLglobal (Gconstant kn))
+
+  and pp_primitive fmt = function
+    | Mk_prod id -> Format.fprintf fmt "mk_prod_accu (str_decode \"%s\")" 
+	  (str_encode id)
+    | Mk_sort s -> 
+	Format.fprintf fmt "mk_sort_accu (str_decode \"%s\")" (str_encode s)
+    | Mk_ind ind -> 
+	Format.fprintf fmt "mk_ind_accu (str_decode \"%s\")" (str_encode ind)
+    | Mk_const kn -> 
+	Format.fprintf fmt 
+	  "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
+    | Mk_sw asw -> 
+	Format.fprintf fmt "mk_sw_accu (str_decode \"%s\")" (str_encode asw)
+    | Mk_fix(rec_pos,start) -> 
+	let pp_rec_pos fmt rec_pos = 
+	  Format.fprintf fmt "@[[| %i" rec_pos.(0);
+	  for i = 1 to Array.length rec_pos - 1 do
+	    Format.fprintf fmt "; %i" rec_pos.(i) 
+	  done;
+	  Format.fprintf fmt " |]@]" in
+	Format.fprintf fmt "mk_fix_accu %a %i" pp_rec_pos rec_pos start
+    | Mk_cofix(start) -> Format.fprintf fmt "mk_cofix_accu %i" start
+    | Is_accu -> Format.fprintf fmt "is_accu"
+    | Is_int -> Format.fprintf fmt "is_int"
+    | Cast_accu -> Format.fprintf fmt "cast_accu"
+    | Upd_cofix -> Format.fprintf fmt "upd_cofix"
+    | Force_cofix -> Format.fprintf fmt "force_cofix"
+    | Val_to_int -> Format.fprintf fmt "val_to_int"
+    | Val_of_int -> Format.fprintf fmt "val_of_int"
+    | Chead0 o -> pp_vprim o "head0" 
+    | Ctail0 o -> pp_vprim o "tail0"
+    | Cadd o -> pp_vprim o "add"
+    | Csub o -> pp_vprim o "sub"
+    | Cmul o -> pp_vprim o "mul"
+    | Cdiv o -> pp_vprim o "div"
+    | Crem o -> pp_vprim o "rem"
+    | Clsr o -> pp_vprim o "l_sr"
+    | Clsl o -> pp_vprim o "l_sl"
+    | Cand o -> pp_vprim o "l_and"
+    | Cor o -> pp_vprim o "l_or"
+    | Cxor o -> pp_vprim o "l_xor"
+    | Caddc o -> pp_vprim o "addc"
+    | Csubc o -> pp_vprim o "subc"
+    | CaddCarryC o -> pp_vprim o "addCarryC"
+    | CsubCarryC o -> pp_vprim o "subCarryC"
+    | Cmulc o -> pp_vprim o "mulc"
+    | Cdiveucl o -> pp_vprim o "diveucl"
+    | Cdiv21 o -> pp_vprim o "div21"
+    | CaddMulDiv o -> pp_vprim o "addMulDiv"
+    | Ceq o -> pp_vprim o "eq"
+    | Clt o -> pp_vprim o "lt"
+    | Cle o -> pp_vprim o "le"
+    | Clt_b  -> Format.fprintf fmt "lt_b"
+    | Cle_b -> Format.fprintf fmt "le_b"
+    | Ccompare o -> pp_vprim o "compare"
+    | Cprint o -> pp_vprim o "print"
+    | Carraymake o -> pp_vprim o "arraymake"
+    | Carrayget o -> pp_vprim o "arrayget"
+    | Carraydefault o -> pp_vprim o "arraydefault"
+    | Carrayset o -> pp_vprim o "arrayset"
+    | Carraycopy o -> pp_vprim o "arraycopy"
+    | Carrayreroot o -> pp_vprim o "arrayreroot"
+    | Carraylength o -> pp_vprim o "arraylength"
+	  (* Caml primitive *)
+    | MLand -> Format.fprintf fmt "(&&)"
+    | MLle -> Format.fprintf fmt "(<=)"
+    | MLlt -> Format.fprintf fmt "(<)"
+    | MLinteq -> Format.fprintf fmt "(==)"
+    | MLlsl -> Format.fprintf fmt "(lsl)"
+    | MLlsr -> Format.fprintf fmt "(lsr)"
+    | MLland -> Format.fprintf fmt "(land)"
+    | MLlor -> Format.fprintf fmt "(lor)"
+    | MLlxor -> Format.fprintf fmt "(lxor)"
+    | MLadd -> Format.fprintf fmt "(+)"
+    | MLsub -> Format.fprintf fmt "(-)"
+    | MLmul -> Format.fprintf fmt "( * )"
+    
+
   in
-  Array.iter pp_branch bs
-
-in
-  (* Opens a global box and flushes output *)
   Format.fprintf fmt "@[%a@]" pp_mllam l
   
 
@@ -1049,7 +1344,7 @@ let compile_constant env mp l cb =
   match cb.const_body with
   | Def t ->
       let t = Declarations.force t in
-      let code = lambda_of_constr env t in
+      let code = lambda_of_constr ~opt:true env t in
       let auxdefs,_,code = mllambda_of_lambda [] (Some l) code in
       (* TODO : Dans le cas des sections il faut prendre en compte les variables libres *)
       Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs

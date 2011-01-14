@@ -39,14 +39,14 @@ let rec conv_val pb lvl v1 v2 cu =
     | Varray t1, Varray t2 ->
 	let len = Native.Parray.length t1 in
 	if len <> Native.Parray.length t2 then raise NotConvertible;
-	let len = Native.Uint31.to_int len in 
+	let len = Uint31.to_int len in 
 	let rec aux lvl len t1 t2 i cu =
 	  if i = len then
 	    conv_val CONV lvl
 	      (Native.Parray.default t1) (Native.Parray.default t2) cu
 	  else
 	    let cu = 
-	      let i = Native.Uint31.of_int i in
+	      let i = Uint31.of_int i in
               conv_val CONV lvl 
 		(Native.Parray.get t1 i) (Native.Parray.get t2 i) cu in
 	    aux lvl len t1 t2 (i+1) cu in

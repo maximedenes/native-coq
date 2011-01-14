@@ -45,7 +45,7 @@ type aconstr =
   | AHole of Evd.hole_kind
   | APatVar of patvar
   | ACast of aconstr * aconstr cast_type
-  | ANativeInt of Native.Uint31.t
+  | ANativeInt of Uint31.t
   | ANativeArr of aconstr * aconstr array
 
 type scope_name = string
