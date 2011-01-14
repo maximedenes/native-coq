@@ -55,7 +55,7 @@ type cbv_value =
   | FIXP of fixpoint * cbv_value subs * cbv_value array
   | COFIXP of cofixpoint * cbv_value subs * cbv_value array
   | CONSTR of constructor * cbv_value array
-  | NATIVEINT of Native.Uint31.t
+  | NATIVEINT of Uint31.t
   | NATIVEARR of cbv_value * cbv_value Native.Parray.t
   | PRIMITIVE of Native.op * constr * cbv_value array
 

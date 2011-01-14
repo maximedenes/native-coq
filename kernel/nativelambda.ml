@@ -27,7 +27,7 @@ type lambda =
 	(* A constructor fully applied *)
   | Lconstruct    of constructor
 	(* A constructor partially appied *)
-  | Lint          of int
+  | Lint          of Uint31.t
   | Lparray       of lambda array
   | Lval          of Nativevalues.t
   | Lsort         of sorts
@@ -357,14 +357,12 @@ let is_value lc =
 	
 let get_value lc =
   match lc with
-  | Lint i -> Nativevalues.mk_int i
+  | Lint i -> Nativevalues.mk_int (Uint31.to_int i)
   | Lval v -> v
   | Lmakeblock(_,tag,args) when Array.length args = 0 -> 
       Nativevalues.mk_int tag
   | _ -> raise Not_found
 	
-let mkConst_b0 n = Lint n
-
 let make_args start _end =
   Array.init (start - _end + 1) (fun i -> Lrel (Anonymous, start - i))
     
@@ -398,7 +396,7 @@ let areint l1 l2 = Lareint [|l1; l2|]
 let isint l = Lareint [|l|]
 let add31 l1 l2 =Lprim(None, Native.Int31add, [|l1;l2|]) 
 let sub31 l1 l2 =Lprim(None, Native.Int31sub, [|l1;l2|]) 
-let one31 = mkConst_b0 1
+let one31 = Lint (Uint31.of_int 1)
 
 let _f = Name(id_of_string "f")
 let _min = Name (id_of_string "min") 
@@ -527,7 +525,7 @@ let prim kn op args =
       let h = Lrel(_h,1) in
       Llet(_h,args.(2),
 	Lif(isint h,
-            Lint 0 (* constructor eq_refl *),
+            Lint (Uint31.of_int 0) (* constructor eq_refl *),
 	    Lapp(Lconst kn, [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
   | Native.Oprim p      -> Lprim(Some kn, p, args)
   | Native.Ocaml_prim p -> Lcprim(kn, p, args)
@@ -538,12 +536,12 @@ let expense_prim kn op arity =
   let args = make_args arity 1 in
   Llam(ids, prim kn op args)
 
-let lambda_of_prim kn op args = assert false
-(*  let (nparams, arity) = Native.arity op in
+let lambda_of_prim kn op args = 
+  let (nparams, arity) = Native.arity op in
   let expected = nparams + arity in
   if Array.length args >= expected then prim kn op args
   else mkLapp (expense_prim kn op expected) args
-*)
+
 
 (*i Global environment *)
 
@@ -756,7 +754,7 @@ let rec lambda_of_constr env c =
       let lbodies = lambda_of_args env 0 rec_bodies in
       Renv.popn env (Array.length names);
       Lcofix(init, (names, ltypes, lbodies))
-  | NativeInt i -> Lint (Native.Uint31.to_int i)
+  | NativeInt i -> Lint i
   | NativeArr(_,p) -> makearray (lambda_of_args env 0 p)
 
 

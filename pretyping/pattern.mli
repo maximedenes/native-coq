@@ -77,7 +77,7 @@ type constr_pattern =
       * constr_pattern * constr_pattern * constr_pattern array
   | PFix of fixpoint
   | PCoFix of cofixpoint
-  | PNativeInt of Native.Uint31.t
+  | PNativeInt of Uint31.t
   | PNativeArr of constr_pattern * constr_pattern array 
 
 (** {5 Functions on patterns} *)

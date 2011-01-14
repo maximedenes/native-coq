@@ -686,7 +686,7 @@ let rec extern inctx scopes vars r =
 
   | RDynamic (loc,d) -> CDynamic (loc,d)
   | RNativeInt(loc,i) -> 
-      CPrim(loc, (Numeral (Bigint.of_string (Native.Uint31.to_string i))))
+      CPrim(loc, (Numeral (Bigint.of_string (Uint31.to_string i))))
   | RNativeArr(loc,t,p) ->
       CNativeArr(loc, extern_typ scopes vars t,
 		 Array.map (extern inctx scopes vars) p)

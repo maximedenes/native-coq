@@ -82,7 +82,7 @@ let rec pr_constr c = match kind_of_term c with
            pr_name na ++ str":" ++ pr_constr ty ++
            cut() ++ str":=" ++ pr_constr bd) (Array.to_list fixl)) ++
          str"}")
-  | NativeInt i -> str (Native.Uint31.to_string  i)
+  | NativeInt i -> str (Uint31.to_string  i)
   | NativeArr (t, p) ->
       str "[|" ++ pr_constr t ++ str ":" ++
       prlist_with_sep spc pr_constr (Array.to_list p)++ str "|]"
@@ -1003,7 +1003,7 @@ let rec lambda_of_constr env c =
       let lbodies = lambda_of_args env 0 rec_bodies in
       Renv.popn env (Array.length names);
       Lcofix(init, (names, ltypes, lbodies))
-  | NativeInt i -> Lint (Native.Uint31.to_int i)
+  | NativeInt i -> Lint (Uint31.to_int i)
   | NativeArr(_,p) -> makearray (lambda_of_args env 0 p)
 
 
