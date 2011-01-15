@@ -159,6 +159,13 @@ and pp_mod_field mp fmt t =
 and pp_mod_fields mp fmt l =
   List.iter (pp_mod_field mp fmt) l
 
+let pp_toplevel_field mp fmt t =
+  match t with
+  | MFglobal (g,auxdefs) ->
+    List.iter (pp_global mp fmt) auxdefs;
+    pp_global mp fmt g 
+  | _ -> pp_mod_field mp fmt t
+
 let compile_module code mp load_paths f =
   let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
 (*  let code =
@@ -169,7 +176,7 @@ let compile_module code mp load_paths f =
   let ch_out = open_out (f^".ml") in
   let fmt = Format.formatter_of_out_channel ch_out in
   pp_globals mp fmt header;
-  pp_mod_fields mp fmt code;
+  List.iter (pp_toplevel_field mp fmt) code;
   Format.fprintf fmt "@.";
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
