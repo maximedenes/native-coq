@@ -1085,7 +1085,7 @@ let pp_mllam base_mp fmt l =
 	Format.fprintf fmt "@[%a@ in@\n%a@]" pp_letrec defs 
 	  pp_mllam body
     | MLlet(id,def,body) ->
-	Format.fprintf fmt "@[let@ %a@ =@\n %a@ in@\n%a@]"
+	Format.fprintf fmt "@[(let@ %a@ =@\n %a@ in@\n%a)@]"
           pp_lname id pp_mllam def pp_mllam body
     | MLapp(f, args) ->
 	Format.fprintf fmt "@[%a@ %a@]" pp_mllam f (pp_args true) args
