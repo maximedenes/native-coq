@@ -10,6 +10,7 @@ open Nativelib
 
 type mod_sig_field =
   | MSFglobal of gname
+  | MSFtype of global
   | MSFmodule of module_path * label * mod_sig_expr
 
 and mod_sig_expr =
@@ -32,7 +33,7 @@ let rec translate_mod_type mp env typ_expr =
   | SEBident mp -> assert false
 (*      <:module_type< $uid:string_of_mp mp$ >>*)
   | SEBstruct expr_list ->
-      MSEsig (List.map (translate_fields_type mp env) expr_list)
+      MSEsig (List.fold_right (translate_fields_type mp env) expr_list [])
   | SEBfunctor (mbid, mtb, mtb') ->
       let mp' = MPbound mbid in
       let env' = add_module (module_body_of_type mp' mtb) env in
@@ -42,15 +43,20 @@ let rec translate_mod_type mp env typ_expr =
       MSEfunctor(mbid, typ_ast, ast)
   | _ -> assert false
 
-and translate_fields_type mp env (l,e) =
+and translate_fields_type mp env (l,e) acc =
   match e with
-  | SFBconst cb -> MSFglobal (gname_of_con (make_con mp empty_dirpath l))
+  | SFBconst cb ->
+      MSFglobal (gname_of_con (make_con mp empty_dirpath l))::acc
   | SFBmodule md ->
       let mte = translate_mod_type md.mod_mp env md.mod_type in
-      MSFmodule(md.mod_mp,l,mte)
-  | SFBmind mb -> assert false
-(*      let _,lid = mind_lid mp (mp,id_of_label l) in
-      <:sig_item< value $lid:lid$ : Nativevalues.t >>*)
+      MSFmodule(md.mod_mp,l,mte)::acc
+  | SFBmind mb ->
+      let kn = make_mind mp empty_dirpath l in
+      let tr = compile_mind_sig mb kn [] in
+      let f acc (t,gl) =
+        MSFtype t::(List.map (fun gn -> MSFglobal gn) gl)
+      in
+      List.fold_left f acc tr
 (*  | SFBmodtype mdtyp ->
       let tr = translate_mod_type mp env mdtyp.typ_expr in
       <:str_item< module type $uid:string_of_label l$ = $tr$ >>*)
@@ -128,6 +134,8 @@ and pp_mod_sig_field mp fmt t =
   match t with
   | MSFglobal gn ->
       Format.fprintf fmt "val %a : Nativevalues.t@\n" (pp_gname None) gn 
+  | MSFtype g ->
+      pp_global mp fmt g
   | MSFmodule (mp',l,mse) ->
       Format.fprintf fmt "module %s : @,%a@\n" (string_of_label l)
       (pp_mod_type_expr mp') mse

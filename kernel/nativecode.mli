@@ -30,6 +30,9 @@ val compile_constant : env -> module_path -> label ->
 
 val compile_mind : mutual_inductive_body -> mutual_inductive ->
   global list -> global list
+val compile_mind_sig : mutual_inductive_body -> mutual_inductive ->
+  (global * gname list) list -> (global * gname list) list
+
 
 val optimize_stk : global list -> global list
 val conv_main_code : global list
