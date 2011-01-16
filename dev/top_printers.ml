@@ -195,7 +195,7 @@ let constr_display csr =
         then (";"^i) else "")) lna "")^","
       ^(array_display bl)^")"
   | NativeInt i ->
-      "Int("^(Native.Uint31.to_string i)^")"
+      "Int("^(Uint31.to_string i)^")"
   | NativeArr(t,p) ->
       "Array("^(term_display t)^", "^(array_display p)^")"
 
@@ -309,7 +309,7 @@ let print_pure_constr csr =
         done
       in print_string"{"; print_fix (); print_string"}"
   | NativeInt i ->
-      print_string ("Int("^(Native.Uint31.to_string i)^")")
+      print_string ("Int("^(Uint31.to_string i)^")")
   | NativeArr(t,p) ->
       open_hbox();
       print_string "Array(";
