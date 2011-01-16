@@ -1374,6 +1374,16 @@ let compile_mind mb mind stack =
   in
   array_fold_left_i f stack mb.mind_packets
 
+let compile_mind_sig mb mind stack =
+  let f i acc ob =
+    let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in
+    let accu = Gind (mind,i) in
+    let n = Array.length ob.mind_reloc_tbl in
+    let constructs = Array.init n (fun j -> Gconstruct ((mind,i),j+1)) in
+    (gtype, accu::Array.to_list constructs)::acc
+  in
+  array_fold_left_i f stack mb.mind_packets
+
 let mk_opens l =
   List.map (fun s -> Gopen s) l
 
