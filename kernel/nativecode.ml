@@ -1053,7 +1053,8 @@ let pp_gname base_mp fmt g =
     | _ -> assert false*)
 
 let pp_lname fmt ln =
-  Format.fprintf fmt "x_%i" ln.luid
+  let s = ascii_of_ident (string_of_name ln.lname) in
+  Format.fprintf fmt "x_%s_%i" s ln.luid
 
 
 
