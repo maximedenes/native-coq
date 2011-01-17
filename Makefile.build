@@ -662,9 +662,9 @@ $(OCAMLDOCDIR)/%.pdf: $(OCAMLDOCDIR)/%.tex
 ###########################################################################
 
 dev/printers.cma: | dev/printers.mllib.d
-	$(SHOW)'Testing $@'
-	$(HIDE)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) $^ -o test-printer
-	@rm -f test-printer
+#	$(SHOW)'Testing $@'
+#	$(HIDE)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) $^ -o test-printer
+#	@rm -f test-printer
 	$(SHOW)'OCAMLC -a $@'   
 	$(HIDE)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) $^ -linkall -a -o $@
 
