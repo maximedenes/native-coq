@@ -202,7 +202,6 @@ let declare_projections indsp ?(kind=StructureComponent) ?name coers fieldimpls 
 		    const_entry_body = proj;
                     const_entry_type = Some projtyp;
                     const_entry_opaque = false;
-		    const_entry_boxed = Flags.boxed_definitions();
 		    const_entry_inline_code = false } in
 		  let k = (DefinitionEntry cie,IsDefinition kind) in
 		  let kn = declare_constant ~internal:KernelSilent fid k in
@@ -313,7 +312,6 @@ let declare_class finite def infer id idbuild paramimpls params arity fieldimpls
 	  { const_entry_body = class_body;
 	    const_entry_type = class_type;
 	    const_entry_opaque = false;
-	    const_entry_boxed = false;
 	    const_entry_inline_code = false }
 	in
 	let cst = Declare.declare_constant (snd id)
@@ -326,7 +324,6 @@ let declare_class finite def infer id idbuild paramimpls params arity fieldimpls
 	  { const_entry_body = proj_body;
 	    const_entry_type = Some proj_type;
 	    const_entry_opaque = false;
-	    const_entry_boxed = false;
 	    const_entry_inline_code = false }
 	in
 	let proj_cst = Declare.declare_constant proj_name

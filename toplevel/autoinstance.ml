@@ -180,7 +180,7 @@ let declare_record_instance gr ctx params =
   let def = it_mkLambda_or_LetIn (applistc (constr_of_global gr) params) ctx in
   let def = deep_refresh_universes def in
   let ce = { const_entry_body=def; const_entry_type=None;
-	     const_entry_opaque=false; const_entry_boxed=false;
+	     const_entry_opaque=false;
 	     const_entry_inline_code = false
 	   } in
   let cst = Declare.declare_constant ident
@@ -196,7 +196,7 @@ let declare_class_instance gr ctx params =
   let typ = deep_refresh_universes typ in
   let ce = Entries.DefinitionEntry
     {  const_entry_type=Some typ; const_entry_body=def;
-       const_entry_opaque=false; const_entry_boxed=false;
+       const_entry_opaque=false;
        const_entry_inline_code = false
      } in
   try

@@ -96,12 +96,12 @@ let infer_declaration1 env dcl =
       let cd = 
 	let cb = Declarations.from_val j.uj_val in
 	if c.const_entry_opaque then Opaque (Some cb) else Def cb in
-      cd, typ, cst, c.const_entry_boxed, c.const_entry_inline_code, false
+      cd, typ, cst, c.const_entry_inline_code, false
   | ParameterEntry (t,nl) ->
       let (j,cst) = infer env t in
       Opaque None, NonPolymorphicType (Typeops.assumption_of_judgment env j),
       cst,
-      false, false, nl
+      false, nl
   | PrimitiveEntry (t,op_t) ->
       let (j,cst) = infer env t in
       check_primitive_type env op_t t; 
@@ -111,8 +111,7 @@ let infer_declaration1 env dcl =
 	| Native.OT_type _ -> Opaque None in
       cd, NonPolymorphicType (Typeops.assumption_of_judgment env j), 
       cst, 
-      false,false, false
-      
+      false, false
 
 let global_vars_set_constant_type env = function
   | NonPolymorphicType t -> global_vars_set env t
@@ -122,7 +121,7 @@ let global_vars_set_constant_type env = function
 	  (fun t c -> Idset.union (global_vars_set env t) c))
       ctx ~init:Idset.empty
 
-let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
+let build_constant_declaration1 env kn (body,typ,cst,inline_code,inline) =
   let ids =
     match body with
     | Def b | Opaque (Some b) ->
@@ -132,7 +131,7 @@ let build_constant_declaration1 env kn (body,typ,cst,boxed,inline_code,inline) =
 	  
     | _ -> global_vars_set_constant_type env typ
   in
-  let tps = Cemitcodes.from_val (compile_constant_body env body boxed) in
+  let tps = Cemitcodes.from_val (compile_constant_body env body) in
   let hyps = keep_hyps env ids in
   let cb = { const_hyps = hyps;
       const_body = body;

@@ -86,10 +86,6 @@ let is_unsafe s = Stringset.mem s !unsafe_set
 
 (* Flags for the virtual machine *)
 
-let boxed_definitions = ref true
-let set_boxed_definitions b = boxed_definitions := b
-let boxed_definitions _ = !boxed_definitions
-
 let vm_draw_opt = ref false
 let set_vm_draw_opt b = vm_draw_opt := b
 let vm_draw_opt _ = !vm_draw_opt 

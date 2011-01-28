@@ -23,7 +23,7 @@ type recipe = {
 
 val cook_constant1 :
   env -> recipe ->
-    constr_substituted Declarations.constant_def * constant_type * constraints * bool * bool * bool
+    constr_substituted Declarations.constant_def * constant_type * constraints * bool * bool
 
 (** {6 Utility functions used in module [Discharge]. } *)
 
