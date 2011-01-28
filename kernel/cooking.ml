@@ -142,4 +142,4 @@ let cook_constant1 env r =
 	Typeops.make_polymorphic_if_constant_for_ind env j
   in
   let boxed = Cemitcodes.is_boxed cb.const_body_code in
-  (body, typ, cb.const_constraints, boxed, cb.const_inline_code,false)
+  (body, typ, cb.const_constraints, cb.const_inline_code,false)

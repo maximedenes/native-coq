@@ -405,15 +405,15 @@ let subst_to_patch s (code,tp,fv as to_patch) =
   if tp == tp' then to_patch else (code, tp', fv)
 
 type body_code =
-  | BCdefined of bool * to_patch
+  | BCdefined of to_patch
   | BCallias of constant
   | BCconstant
 
 let subst_body_code s bc = 
   match bc with
-  | BCdefined (b,tp) -> 
+  | BCdefined tp -> 
       let tp' = subst_to_patch s tp in
-      if tp == tp' then  bc else BCdefined (b,tp')
+      if tp == tp' then  bc else BCdefined tp'
   | BCallias cte -> 
       let cte' = fst (subst_con s cte) in
       if cte == cte' then bc else BCallias cte'
@@ -426,11 +426,6 @@ let from_val = from_val
 let force = force subst_body_code
 
 let subst_to_patch_subst = subst_substituted
-
-let is_boxed tps =
-  match force tps with
-  | BCdefined(b,_) -> b
-  | _ -> false
 
 let to_memory (init_code, fun_code, fv) =
   init();

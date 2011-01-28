@@ -54,7 +54,6 @@ type definition_entry = {
   const_entry_body        : constr;
   const_entry_type        : types option;
   const_entry_opaque      : bool;
-  const_entry_boxed       : bool;
   const_entry_inline_code : bool }
 
 type parameter_entry = types * bool  (*inline flag*)

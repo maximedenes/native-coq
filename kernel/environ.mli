@@ -193,8 +193,7 @@ type unsafe_type_judgment = {
 (** {6 Compilation of global declaration } *)
 
 val compile_constant_body :
-    env -> constr_substituted constant_def -> bool -> Cemitcodes.body_code
-                                 (* boxed *)
+    env -> constr_substituted constant_def -> Cemitcodes.body_code
 
 exception Hyp_not_found
 

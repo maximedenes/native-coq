@@ -67,9 +67,6 @@ val is_unsafe : string -> bool
 
 (** Options for the virtual machine *)
 
-val set_boxed_definitions : bool -> unit
-val boxed_definitions : unit -> bool
-
 val set_vm_draw_opt : bool -> unit
 val vm_draw_opt : unit -> bool
 

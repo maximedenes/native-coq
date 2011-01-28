@@ -383,7 +383,6 @@ let generate_functional_principle
 	  { const_entry_body = value;
 	    const_entry_type = None;
 	    const_entry_opaque = false;
-	    const_entry_boxed = Flags.boxed_definitions();
 	    const_entry_inline_code = false
 	  }
 	in

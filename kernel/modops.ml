@@ -262,7 +262,7 @@ let strengthen_const env mp_from l cb resolver =
       let cb = { cb with 
 	const_body = const_subs;
 	const_body_code = Cemitcodes.from_val
-	  (compile_constant_body env const_subs false);
+	  (compile_constant_body env const_subs);
 	const_inline_code = false
       }
         in cb
