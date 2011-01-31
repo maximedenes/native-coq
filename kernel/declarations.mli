@@ -40,6 +40,8 @@ type 'a constant_def =
   | Opaque of 'a option (* None means parameter *)
   | Primitive of Native.op
  
+type inline = int option (* inlining level, None for no inlining *)
+
 type constant_body = {
     const_hyps : section_context; (** New: younger hyp at top *)
     const_body : constr_substituted constant_def;
@@ -47,7 +49,7 @@ type constant_body = {
     const_body_code : to_patch_substituted;
    (*i const_type_code : to_patch;i*)
     const_constraints : constraints;
-    const_inline : bool;
+    const_inline : inline;
     const_inline_code : bool}
 
 val subst_const_body : substitution -> constant_body -> constant_body

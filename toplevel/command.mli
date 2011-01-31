@@ -45,11 +45,11 @@ val interp_assumption :
 
 val declare_assumption : coercion_flag -> assumption_kind -> types ->
   manual_implicits ->
-  bool (** implicit *) -> bool (* inline *) -> variable located -> unit
+  bool (** implicit *) -> inline -> variable located -> unit
 
 val declare_assumptions : variable located list ->
   coercion_flag -> assumption_kind -> types -> manual_implicits ->
-  bool -> bool -> unit
+  bool -> inline -> unit
 
 
 val declare_register : variable located -> types -> Native.op_or_type ->  manual_implicits -> unit

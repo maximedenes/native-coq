@@ -60,8 +60,9 @@ type definition_entry = {
   const_entry_opaque      : bool;
   const_entry_inline_code : bool }
 
-(* type and the inlining flag *)
-type parameter_entry = types * bool
+type inline = int option (* inlining level, None for no inlining *)
+
+type parameter_entry = types * inline
 
 type primitive_entry = types * Native.op_or_type
 

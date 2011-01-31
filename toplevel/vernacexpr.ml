@@ -201,6 +201,8 @@ type register_kind =
   | PrimInd of Native.prim_ind 
   | PrimInline
 
+type inline = int option (* inlining level, none for no inlining *)
+
 type vernac_expr =
   (* Control *)
   | VernacList of located_vernac_expr list
@@ -231,7 +233,7 @@ type vernac_expr =
         bool * declaration_hook
   | VernacEndProof of proof_end
   | VernacExactProof of constr_expr
-  | VernacAssumption of assumption_kind * bool * simple_binder with_coercion list
+  | VernacAssumption of assumption_kind * inline * simple_binder with_coercion list
   | VernacRegister of lident * register_kind
   | VernacInductive of inductive_flag * infer_flag * (inductive_expr * decl_notation list) list
   | VernacFixpoint of (fixpoint_expr * decl_notation list) list

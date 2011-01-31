@@ -96,7 +96,7 @@ let infer_declaration1 env dcl =
       let cd = 
 	let cb = Declarations.from_val j.uj_val in
 	if c.const_entry_opaque then Opaque (Some cb) else Def cb in
-      cd, typ, cst, c.const_entry_inline_code, false
+      cd, typ, cst, c.const_entry_inline_code, None
   | ParameterEntry (t,nl) ->
       let (j,cst) = infer env t in
       Opaque None, NonPolymorphicType (Typeops.assumption_of_judgment env j),
@@ -110,8 +110,7 @@ let infer_declaration1 env dcl =
 	| Native.OT_op op -> Primitive op
 	| Native.OT_type _ -> Opaque None in
       cd, NonPolymorphicType (Typeops.assumption_of_judgment env j), 
-      cst, 
-      false, false
+      cst, false, None
 
 let global_vars_set_constant_type env = function
   | NonPolymorphicType t -> global_vars_set env t

@@ -54,6 +54,7 @@ type 'a constant_def =
   | Opaque of 'a option (* None means parameter *)
   | Primitive of Native.op
  
+type inline = int option (* inlining level, None for no inlining *)
 
 type constant_body = {
     const_hyps : section_context; (* New: younger hyp at top *)
@@ -62,7 +63,7 @@ type constant_body = {
     const_body_code : Cemitcodes.to_patch_substituted;
    (* const_type_code : Cemitcodes.to_patch; *)
     const_constraints : constraints;
-    const_inline : bool;
+    const_inline : inline;
     const_inline_code : bool}
 
 (*s Inductive types (internal representation with redundant

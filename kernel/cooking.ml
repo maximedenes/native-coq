@@ -141,4 +141,4 @@ let cook_constant1 env r =
 	let j = make_judge (force (Option.get c)) typ in
 	Typeops.make_polymorphic_if_constant_for_ind env j
   in
-  (body, typ, cb.const_constraints, cb.const_inline_code,false)
+  (body, typ, cb.const_constraints, cb.const_inline_code, None)
