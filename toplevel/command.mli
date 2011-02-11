@@ -52,7 +52,8 @@ val declare_assumptions : variable located list ->
   bool -> inline -> unit
 
 
-val declare_register : variable located -> types -> Native.op_or_type ->  manual_implicits -> unit
+val declare_register : variable located -> types -> Native.op_or_type ->
+  Impargs.manual_implicits -> unit
 
 (** {6 Inductive and coinductive types} *)
 
