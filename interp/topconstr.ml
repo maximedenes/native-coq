@@ -204,18 +204,9 @@ let compare_glob_constr f add t1 t2 = match t1,t2 with
   | GSort (_,s1), GSort (_,s2) -> s1 = s2
   | GLetIn (_,na1,b1,c1), GLetIn (_,na2,b2,c2) when na1 = na2 ->
       on_true_do (f b1 b2 & f c1 c2) add na1
-<<<<<<< HEAD
-  | RNativeInt(_,i1), RNativeInt(_,i2) -> Uint31.eq i1 i2
-  | RNativeArr(_,t1,p1),RNativeArr(_,t2,p2) -> 
+  | GNativeInt(_,i1), GNativeInt(_,i2) -> Uint31.eq i1 i2
+  | GNativeArr(_,t1,p1),GNativeArr(_,t2,p2) -> 
       f t1 t2 & array_for_all2 f p1 p2 
-  | (RCases _ | RRec _ | RDynamic _
-    | RPatVar _ | REvar _ | RLetTuple _ | RIf _ | RCast _),_
-  | _,(RCases _ | RRec _ | RDynamic _
-      | RPatVar _ | REvar _ | RLetTuple _ | RIf _ | RCast _)
-      -> error "Unsupported construction in recursive notations."
-  | (RRef _ | RVar _ | RApp _ | RLambda _ | RProd _
-    | RHole _ | RSort _ | RLetIn _ | RNativeInt _ | RNativeArr _), _
-=======
   | (GCases _ | GRec _ | GDynamic _
     | GPatVar _ | GEvar _ | GLetTuple _ | GIf _ | GCast _),_
   | _,(GCases _ | GRec _ | GDynamic _
@@ -223,7 +214,6 @@ let compare_glob_constr f add t1 t2 = match t1,t2 with
       -> error "Unsupported construction in recursive notations."
   | (GRef _ | GVar _ | GApp _ | GLambda _ | GProd _
     | GHole _ | GSort _ | GLetIn _), _
->>>>>>> Change of nomenclature: rawconstr -> glob_constr
       -> false
 
 let rec eq_glob_constr t1 t2 = compare_glob_constr eq_glob_constr (fun _ -> ()) t1 t2
@@ -334,21 +324,13 @@ let aconstr_and_vars_of_glob_constr a =
   | GCast (_,c,k) -> ACast (aux c,
 			    match k with CastConv (k,t) -> CastConv (k,aux t)
 			      | CastCoerce -> CastCoerce)
-<<<<<<< HEAD
-  | RSort (_,s) -> ASort s
-  | RHole (_,w) -> AHole w
-  | RRef (_,r) -> ARef r
-  | RPatVar (_,(_,n)) -> APatVar n
-  | RNativeInt(_,i) -> ANativeInt i
-  | RNativeArr(_,t,p) -> ANativeArr(aux t, Array.map aux p)
-  | RDynamic _ | REvar _ ->
-=======
   | GSort (_,s) -> ASort s
   | GHole (_,w) -> AHole w
   | GRef (_,r) -> ARef r
   | GPatVar (_,(_,n)) -> APatVar n
+  | GNativeInt(_,i) -> ANativeInt i
+  | GNativeArr(_,t,p) -> ANativeArr(aux t, Array.map aux p)
   | GDynamic _ | GEvar _ ->
->>>>>>> Change of nomenclature: rawconstr -> glob_constr
       error "Existential variables not allowed in notations."
 
   in

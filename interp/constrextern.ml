@@ -902,7 +902,7 @@ let rec glob_of_pat env = function
   | PSort s -> GSort (loc,s)
   | PNativeInt i -> GNativeInt(loc,i)
   | PNativeArr(t,p) ->
-      GNativeArr(loc,raw_of_pat env t, Array.map (raw_of_pat env) p)
+      GNativeArr(loc,glob_of_pat env t, Array.map (glob_of_pat env) p)
 
 let extern_constr_pattern env pat =
   extern true (None,[]) Idset.empty (glob_of_pat env pat)

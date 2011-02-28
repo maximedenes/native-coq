@@ -382,7 +382,6 @@ let hcons_term (sh_sort,sh_con,sh_kn,sh_na,sh_id) =
     (* [h] must be positive. *)
     let h = h land 0x3FFFFFFF in
     (H.may_add_and_get h y, h)
->>>>>>> * Kernel/Term
 
   in
   fun t -> fst (sh_rec t)

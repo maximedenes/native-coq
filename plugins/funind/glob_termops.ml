@@ -373,9 +373,9 @@ let rec alpha_rt excluded rt =
 	     alpha_rt excluded f,
 	     List.map (alpha_rt excluded) args
 	    )
-    | RNativeInt _ -> rt
-    | RNativeArr (loc,t,p) ->
-	RNativeArr(loc,alpha_rt excluded t, Array.map (alpha_rt excluded) p)
+    | GNativeInt _ -> rt
+    | GNativeArr (loc,t,p) ->
+	GNativeArr(loc,alpha_rt excluded t, Array.map (alpha_rt excluded) p)
   in
   new_rt
 
@@ -522,9 +522,10 @@ let replace_var_by_term x_id term =
       | GCast(loc,b,CastCoerce) ->
 	  GCast(loc,replace_var_by_pattern b,CastCoerce)
       | GDynamic _ -> raise (UserError("",str "Not handled GDynamic"))
-      | RNativeInt _ -> rt
-      | RNativeArr(loc,t,p) ->
-	  RNativeArr(loc, replace_var_by_pattern t, 
+      | GNativeInt _ -> rt
+      | GNativeArr(loc,t,p) ->
+  	      GNativeArr(loc, replace_var_by_pattern t,
+          Array.map replace_var_by_pattern p)
   and replace_var_by_pattern_br ((loc,idl,patl,res) as br) =
     if List.exists (fun id -> id_ord id x_id == 0) idl
     then br
@@ -742,8 +743,8 @@ let expand_as =
       | GCases(loc,sty,po,el,brl) ->
 	  GCases(loc, sty, Option.map (expand_as map) po, List.map (fun (rt,t) -> expand_as map rt,t) el,
 		List.map (expand_as_br map) brl)
-      | RNativeArr(loc,t,p) ->
-	  RNativeArr(loc,expand_as map t, Array.map (expand_as map) p)
+      | GNativeArr(loc,t,p) ->
+	  GNativeArr(loc,expand_as map t, Array.map (expand_as map) p)
   and expand_as_br map (loc,idl,cpl,rt) =
     (loc,idl,cpl, expand_as (List.fold_left add_as map cpl) rt)
   in
