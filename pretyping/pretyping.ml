@@ -665,7 +665,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	    (*inh_conv_coerce_to_tycon loc env evdref j tycon*)
 	else
 	  user_err_loc (loc,"pretype",(str "Not a constr tagged Dynamic."))
-    | RNativeInt (loc,i) ->
+    | GNativeInt (loc,i) ->
 	let resj = 
 	  try judge_of_int env i
 	  with Invalid_argument _ ->
@@ -674,7 +674,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	in
 	inh_conv_coerce_to_tycon loc env evdref resj tycon
 
-    | RNativeArr(loc,t,a) -> 
+    | GNativeArr(loc,t,a) -> 
 	let jt = pretype_type empty_valcon env evdref lvar t in	
 	let ja = 
 	  Array.map (pretype (mk_tycon jt.utj_val) env evdref lvar) a in

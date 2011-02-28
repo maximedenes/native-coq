@@ -209,7 +209,7 @@ let rec is_rec names =
     | GCases(_,_,_,el,brl) ->
 	List.exists (fun (e,_) -> lookup names e) el ||
 	  List.exists (lookup_br names) brl
-    | RNativeArr(_,t,p) ->
+    | GNativeArr(_,t,p) ->
 	lookup names t || 
 	array_exists (lookup names) p
 

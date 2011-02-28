@@ -69,7 +69,7 @@ type glob_constr =
   | GCast of loc * glob_constr * glob_constr cast_type
   | GDynamic of loc * Dyn.t
   | GNativeInt of loc * Uint31.t
-  | GNativeArr of loc * rawconstr * rawconstr array
+  | GNativeArr of loc * glob_constr * glob_constr array
 
 
 and glob_decl = name * binding_kind * glob_constr option * glob_constr

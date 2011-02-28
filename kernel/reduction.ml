@@ -627,7 +627,7 @@ let nat_conv = ref (fun cv_pb -> fconv cv_pb (fun _->None))
 let set_nat_conv f = nat_conv := f
 
 let native_conv cv_pb env t1 t2 =
-  if eq_constr t1 t2 then Constraint.empty
+  if eq_constr t1 t2 then empty_constraint
   else begin
      try
         let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in

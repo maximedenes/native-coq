@@ -188,7 +188,7 @@ let nconv pb env t1 t2 =
                 let t1 = Sys.time () in
                 Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
                 (* TODO change 0 when we can have deBruijn *)
-                conv_val pb 0 !rt1 !rt2 Constraint.empty
+                conv_val pb 0 !rt1 !rt2 empty_constraint
               with _ -> raise NotConvertible
             end
         | _ -> anomaly "Compilation failure" 

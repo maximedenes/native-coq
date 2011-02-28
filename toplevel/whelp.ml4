@@ -169,7 +169,7 @@ let rec uri_of_constr c =
       anomaly "Written w/o parenthesis"
 
   | GPatVar _ | GDynamic _ ->
-      anomaly "Found constructors not supported in constr") ()
+      anomaly "Found constructors not supported in constr"
   | GNativeInt _ | GNativeArr _ ->
       anomaly "Found native constructor not supported in constr") ()
 
