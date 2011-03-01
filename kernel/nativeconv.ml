@@ -169,8 +169,8 @@ let nconv pb env t1 t2 =
   code2]@conv_main_code in
   fconv_result := FCRNone;
   Nativelib.comp_result := None;
-  let comp_thread = Thread.create (compile_terms mp) code in
-  let fconv_thread = Thread.create (async_fconv pb env t1) t2 in
+  let _ = Thread.create (compile_terms mp) code in
+  let _ = Thread.create (async_fconv pb env t1) t2 in
   while (!fconv_result = FCRNone && !Nativelib.comp_result = None) do
     Thread.yield ()
   done;

@@ -642,9 +642,9 @@ let vm_conv cv_pb env t1 t2 =
   try
     (*native_conv cv_pb env t1 t2*)
     !vm_conv cv_pb env t1 t2
-  with Not_found | Invalid_argument _ -> anomaly "compilation error";
-      (* If compilation fails, fall-back to closure conversion *)
-      fconv cv_pb (fun _->None) env t1 t2
+  with Not_found | Invalid_argument _ -> anomaly "compilation error"
+      (* If compilation fails, fall-back to closure conversion
+      fconv cv_pb (fun _->None) env t1 t2 *)
 
 
 let default_conv = ref (fun cv_pb -> fconv cv_pb (fun _->None))
