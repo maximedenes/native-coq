@@ -1446,7 +1446,7 @@ Proof.
      rewrite <-bit_half; auto; rewrite ltb_spec; auto with zarith.
  rewrite (bit_split (x lor y)), lor_lsr, <- F1, lor_spec.
  replace (b2i (bit x 0 || bit y 0)) with (bit x 0 + bit y 0)%int31.
- 2: generalize (Hn 0%int31); do 2 case bit; auto; intros []; auto.
+ 2: generalize (Hn 0%int31); do 2 case bit; auto ; intro H ; case H ; auto.
  rewrite lsl_add_distr.
  rewrite (bit_split x) at 1; rewrite (bit_split y) at 1.
  rewrite <-!add_assoc; apply f_equal2 with (f := add); auto.
