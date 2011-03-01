@@ -211,11 +211,13 @@ Add Ring BigNr : BigNring
   power_tac BigNpower [BigN_to_N],
   div BigNdiv).
 
+(*
 Section TestRing.
 Let test : forall x y, 1 + x*y^1 + x^2 + 1 == 1*1 + 1 + y*x + 1*x*x.
 intros. ring_simplify. reflexivity.
 Qed.
 End TestRing.
+*)
 
 (** We benefit also from an "order" tactic *)
 
