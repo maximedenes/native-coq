@@ -213,7 +213,7 @@ let compare_glob_constr f add t1 t2 = match t1,t2 with
       | GPatVar _ | GEvar _ | GLetTuple _ | GIf _ | GCast _)
       -> error "Unsupported construction in recursive notations."
   | (GRef _ | GVar _ | GApp _ | GLambda _ | GProd _
-    | GHole _ | GSort _ | GLetIn _), _
+    | GHole _ | GSort _ | GLetIn _ | GNativeInt _ | GNativeArr _), _
       -> false
 
 let rec eq_glob_constr t1 t2 = compare_glob_constr eq_glob_constr (fun _ -> ()) t1 t2

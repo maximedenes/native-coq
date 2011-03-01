@@ -143,7 +143,7 @@ let map_glob_constr_left_to_right f = function
       let comp2 = match k with CastConv (k,t) -> CastConv (k, f t) | x -> x in
       GCast (loc,comp1,comp2)
   | GNativeArr(loc,t,p) -> GNativeArr(loc, f t, Array.map f p)
-  | (GVar _ | GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic _) as x -> x
+  | (GNativeInt _ | GVar _ | GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic _) as x -> x
 
 let map_glob_constr = map_glob_constr_left_to_right
 
@@ -207,7 +207,8 @@ let fold_glob_constr f acc =
     | GCast (_,c,k) -> fold (match k with CastConv (_, t) -> fold acc t | CastCoerce -> acc) c
     | GNativeArr(_,t,a) ->
 	Array.fold_left fold (fold acc t) a
-    | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic _) -> acc
+    | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic
+    _ | GNativeInt _) -> acc
 
   and fold_pattern acc (_,idl,p,c) = fold acc c
 

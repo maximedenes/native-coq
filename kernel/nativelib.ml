@@ -34,7 +34,7 @@ let emit_comp_stack () =
   comp_stack := []; res
 
 let compile_terms base_mp terms_code =
-  let ast = emit_comp_stack () in
+(*  let ast = emit_comp_stack () in *)
 (*  let terms_code =
     [<:str_item< open Nativelib >>;
      <:str_item< open Nativevalues >>;
