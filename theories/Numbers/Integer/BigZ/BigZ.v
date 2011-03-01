@@ -216,6 +216,7 @@ Add Ring BigZr : BigZring
   power_tac BigZpower [BigZ_to_N],
   div BigZdiv).
 
+(*
 Section TestRing.
 Let test : forall x y, 1 + x*y + x^2 + 1 == 1*1 + 1 + (y + 1*x)*x.
 Proof.
@@ -226,6 +227,7 @@ Proof.
 intros. ring_simplify. reflexivity.
 Qed.
 End TestRing.
+*)
 
 (** [BigZ] also benefits from an "order" tactic *)
 
