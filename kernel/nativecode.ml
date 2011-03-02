@@ -964,11 +964,6 @@ let string_of_dirpath = function
 
 let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
-let string_of_kn kn =
-  let (mp,dp,l) = repr_kn kn in
-  (*string_of_dirpath dp ^*) string_of_label l
-
-
 let string_of_name x =
   match x with
     | Anonymous -> "anonymous" (* assert false *)
@@ -985,9 +980,21 @@ let rec list_of_mp acc = function
   | MPfile dp ->
       let dp = repr_dirpath dp in
       string_of_dirpath dp :: acc
-  | MPbound mbid -> string_of_label (label_of_mbid mbid)::acc
+  | MPbound mbid -> ("X"^string_of_label (label_of_mbid mbid))::acc
+
+let rec head_of_mp x = match x with
+  | MPdot (mp,l) -> head_of_mp mp
+  | _ -> x
 
 let list_of_mp mp = list_of_mp [] mp
+
+let string_of_kn kn =
+  let (mp,dp,l) = repr_kn kn in
+  let mp = list_of_mp mp in
+  String.concat "_" mp ^ "_" ^ string_of_label l
+
+let string_of_con c = string_of_kn (canonical_con c)
+let string_of_mind mind = string_of_kn (canonical_mind mind)
 
 let rec strip_common_prefix l1 l2 =
   match l1, l2 with
@@ -997,14 +1004,13 @@ let rec strip_common_prefix l1 l2 =
       if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
 
 let mk_relative_id base_mp (mp,id) =
-  let base_l = list_of_mp base_mp in
-  let l = list_of_mp mp in
-  let _,l = strip_common_prefix base_l l in
-  match l with
-  | [] -> id
-  | hd1::tl1 ->
-      let s = List.fold_left (fun acc x -> acc^"."^x) hd1 tl1 in
-      s^"."^id
+  let base_h = head_of_mp base_mp in
+  let h = head_of_mp mp in
+  match base_h, h with
+    | MPfile dp1, MPfile dp2 when not (dp1 = dp2) ->
+        let dp = repr_dirpath dp2 in
+        string_of_dirpath dp ^ "." ^ id
+    | _ -> id
 
 let relative_list_of_mp base_mp mp =
   let base_l = list_of_mp base_mp in
@@ -1020,15 +1026,15 @@ let pp_gname base_mp fmt g =
   match g with
   | Gind (mind,i) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
-      let id = Format.sprintf "indaccu_%s_%i" (string_of_label l) i in
+      let id = Format.sprintf "indaccu_%s_%i" (string_of_mind mind) i in
       Format.fprintf fmt "%s" (relativize (mp,id))
   | Gconstruct ((mind,i),j) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
-      let id = Format.sprintf "construct_%s_%i_%i" (string_of_label l) i (j-1) in
+      let id = Format.sprintf "construct_%s_%i_%i" (string_of_mind mind) i (j-1) in
       Format.fprintf fmt "%s" (relativize (mp,id))
   | Gconstant c ->
       let (mp,dp,l) = repr_kn (canonical_con c) in 
-      let id = Format.sprintf "const_%s" (string_of_label l) in
+      let id = Format.sprintf "const_%s" (string_of_con c) in
       Format.fprintf fmt "%s" (relativize (mp,id))
   | Gcase (l,i) ->
       Format.fprintf fmt "case_%s_%i" (string_of_label_def l) i
@@ -1066,7 +1072,7 @@ let pp_ldecls fmt ids =
 
 let string_of_construct base_mp ((mind,i),j) =
   let (mp,dp,l) = repr_kn (canonical_mind mind) in
-  let id = Format.sprintf "Construct_%s_%i_%i" (string_of_label l) i (j-1) in
+  let id = Format.sprintf "Construct_%s_%i_%i" (string_of_mind mind) i (j-1) in
   (mk_relative_id base_mp (mp,id))
    
 let pp_int fmt i =
@@ -1096,7 +1102,7 @@ let pp_mllam base_mp fmt l =
     | MLmatch (asw, c, accu_br, br) ->
 	let mind,i = asw.asw_ind in
 	let (mp,dp,l) = repr_kn (canonical_mind mind) in
-	let accu = Format.sprintf "Accu_%s_%i" (string_of_label l) i in
+	let accu = Format.sprintf "Accu_%s_%i" (string_of_mind mind) i in
 	let accu = mk_relative_id base_mp (mp,accu) in
 	Format.fprintf fmt 
 	  "@[begin match Obj.magic (%a) with@\n| %s _ ->@\n  %a@\n%aend@]"
@@ -1300,7 +1306,7 @@ let pp_global base_mp fmt g =
       Format.fprintf fmt "@[open %s@]@." s
   | Gtype ((mind, i), lar) ->
       let (_,_,l) = repr_kn (canonical_mind mind) in
-      let l = string_of_label l in
+      let l = string_of_mind mind in
       let rec aux s ar = 
 	if ar = 0 then s else aux (s^" * Nativevalues.t") (ar-1) in
       let pp_const_sig i fmt j ar =
