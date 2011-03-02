@@ -28,62 +28,14 @@ and mod_expr =
   | MEstruct of mod_field list
   | MEfunctor of string * mod_sig_expr * mod_expr
 
-let rec translate_mod_type mp env typ_expr =
-  match typ_expr with
-  | SEBident mp -> assert false
-(*      <:module_type< $uid:string_of_mp mp$ >>*)
-  | SEBstruct expr_list ->
-      MSEsig (List.fold_right (translate_fields_type mp env) expr_list [])
-  | SEBfunctor (mbid, mtb, mtb') ->
-      let mp' = MPbound mbid in
-      let env' = add_module (module_body_of_type mp' mtb) env in
-      let (_,mbid,_) = repr_mbid mbid in
-      let ast = translate_mod_type mp env' mtb' in
-      let typ_ast = translate_mod_type mp' env mtb.typ_expr in
-      MSEfunctor(mbid, typ_ast, ast)
-  | _ -> assert false
-
-and translate_fields_type mp env (l,e) acc =
-  match e with
-  | SFBconst cb ->
-      MSFglobal (gname_of_con (make_con mp empty_dirpath l))::acc
-  | SFBmodule md ->
-      let mte = translate_mod_type md.mod_mp env md.mod_type in
-      MSFmodule(md.mod_mp,l,mte)::acc
-  | SFBmind mb ->
-      let kn = make_mind mp empty_dirpath l in
-      let tr = compile_mind_sig mb kn [] in
-      let f acc (t,gl) =
-        MSFtype t::(List.map (fun gn -> MSFglobal gn) gl)
-      in
-      List.fold_left f acc tr
-(*  | SFBmodtype mdtyp ->
-      let tr = translate_mod_type mp env mdtyp.typ_expr in
-      <:str_item< module type $uid:string_of_label l$ = $tr$ >>*)
-  | _ -> assert false
-
-
-let rec translate_mod mp env mod_expr =
+let rec translate_mod mp env mod_expr acc =
   match mod_expr with
-  | SEBident mp' ->
-      MEident (String.concat "." (relative_list_of_mp mp mp'))
+  | SEBident mp' -> assert false
   | SEBstruct msb ->
       let env' = add_signature mp msb empty_delta_resolver env in
-      let ast =
-        List.fold_right (translate_fields mp env') msb []
-      in
-      MEstruct ast
-  | SEBfunctor (mbid,mtb,meb) ->
-      let mp' = MPbound mbid in
-      let env' = add_module (module_body_of_type mp' mtb) env in
-      let (_,mbid,_) = repr_mbid mbid in
-      let ast = translate_mod mp env' meb in
-      let typ_ast = translate_mod_type mp' env mtb.typ_expr in
-      MEfunctor(mbid,typ_ast,ast)
-  | SEBapply (f,x,_) ->
-      let tr_f = translate_mod mp env f in
-      let tr_x = translate_mod mp env x in
-      MEapply(tr_f,tr_x)
+      List.fold_right (translate_fields mp env') msb acc
+  | SEBfunctor (mbid,mtb,meb) -> acc
+  | SEBapply (f,x,_) -> assert false
   | SEBwith _ -> assert false
 and translate_fields mp env (l,x) acc =
   match x with
@@ -92,20 +44,14 @@ and translate_fields mp env (l,x) acc =
       let l = optimize_stk (tr::auxdefs) in
       let tr, auxdefs = List.hd l, List.rev (List.tl l) in
       MFglobal(tr,auxdefs)::acc
-(*      List.fold_left (fun acc g -> MFglobal g::acc) acc l *)
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
       let tr = compile_mind mb kn [] in
       List.fold_left (fun acc g -> MFglobal(g,[])::acc) acc tr
   | SFBmodule md ->
-      begin
-        match md.mod_expr with
-        | Some e ->
-            MFmodule(md.mod_mp,l,translate_mod md.mod_mp env e)::acc
-        | None -> assert false
-      end
+      translate_mod md.mod_mp env md.mod_type acc
   | SFBmodtype mdtyp ->
-      MFmodtype(mdtyp.typ_mp, l,translate_mod_type mp env mdtyp.typ_expr)::acc
+      translate_mod mdtyp.typ_mp env mdtyp.typ_expr acc
 
 let dump_library mp env mod_expr =
   print_endline "Compiling library...";
