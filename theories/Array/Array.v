@@ -17,8 +17,8 @@ Register copy : forall {A:Type}, array A -> array A as array_copy.
 Register reroot : forall {A:Type}, array A -> array A as array_reroot.
 
 Delimit Scope array_scope with array.
-Notation "t '.[' i ']'" := (get t i) (at level 50) : array_scope.
-Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 50) : array_scope.
+Notation "t '.[' i ']'" := (get t i) (at level 2, left associativity) : array_scope.
+Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 2) : array_scope.
 
 Local Open Scope int31_scope.
 Local Open Scope array_scope.
@@ -56,10 +56,20 @@ Definition to_list {A:Type} (t:array A) :=
   if 0 == len then nil
   else foldi_down (fun i l => t.[i] :: l)%list (len - 1) 0 nil.
 
-Definition forallb {A:Type} (f:A->bool) (t:array A) :=
+Definition forallbi {A:Type} (f:int-> A->bool) (t:array A) :=
+  let len := length t in
+  if 0 == len then true
+  else forallb (fun i => f i (t.[i])) 0 (len - 1).
+
+Definition forallb {A:Type} (f: A->bool) (t:array A) :=
   let len := length t in
   if 0 == len then true
   else forallb (fun i => f (t.[i])) 0 (len - 1).
+
+Definition existsbi {A:Type} (f:int->A->bool) (t:array A) :=
+  let len := length t in
+  if 0 == len then false
+  else existsb (fun i => f i (t.[i])) 0 (len - 1).
 
 Definition existsb {A:Type} (f:A->bool) (t:array A) :=
   let len := length t in
