@@ -642,7 +642,8 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 			try 
 			  ignore (Reduction.vm_conv Reduction.CUMUL env cty tval); cj
 			with Reduction.NotConvertible -> 
-			  error_actual_type_loc loc env !evdref cj tval 
+			  error_actual_type_loc loc env !evdref cj tval
+			    (ConversionFailed (env,cty,tval))
 		      end
 		  | NATIVEcast when not (occur_existential cty || occur_existential tval) ->
 		      begin 
