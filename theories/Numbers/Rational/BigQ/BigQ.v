@@ -162,13 +162,11 @@ Let ex8 : forall x, x ^ 2 == x*x.
   ring.
 Qed.
 
-(*
 Let ex10 : forall x y, y!=0 -> (x/y)*y == x.
 intros.
 field.
 auto.
 Qed.
-*)
 
 End TestField.
 
