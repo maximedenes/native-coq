@@ -51,24 +51,21 @@ let bigN_scope = "bigN_scope"
 
 (* number of inlined level of bigN (actually the level 0 to n_inlined-1 are inlined) *)
 let n_inlined = of_string "7"
-let bigN_constructor =
+
+let rec int_of_pos_bigint i = 
+  if equal i zero then 0
+  else
+    let (quo,rem) = div2_with_rest i in
+    if rem then 2*(int_of_pos_bigint quo)+1
+    else 2*(int_of_pos_bigint quo)
+
+let bigN_constructor i =
  (* converts a bigint into an int the ugly way *)
-  let rec to_int i =
-    if equal i zero then
-      0
-    else
-      let (quo,rem) = div2_with_rest i in
-      if rem then
-	2*(to_int quo)+1
-      else
-	2*(to_int quo)
-  in
-  fun i ->
   ConstructRef ((bigN_t,0),
 		if less_than i n_inlined then
-		  (to_int i)+1
+		  int_of_pos_bigint i + 1
 		else
-		  (to_int n_inlined)+1
+		  int_of_pos_bigint n_inlined + 1
 	       )
 
 (*bigZ stuff*)
@@ -98,22 +95,28 @@ exception Non_closed
 (* parses a *non-negative* integer (from bigint.ml) into an int31
    wraps modulo 2^31 *)
 
-let interp_int31 dloc n =
-  let sn = to_string n in
-  try GNativeInt (dloc, Uint31.of_string sn)
-  with Failure "int_of_string" ->
-    let msg = 
-      if is_pos_or_zero n then "int31: object to large."
-      else "int31 are only non-negative numbers." in
-    Util.user_err_loc (dloc, "interp_int31", Pp.str msg)
+let int31_of_pos_bigint dloc n =
+  let i = int_of_pos_bigint n in
+  GNativeInt (dloc, Uint31.of_int i)
 
+let error_negative dloc =
+  Util.user_err_loc (dloc, "interp_int31", Pp.str "int31 are only non-negative numbers.")
+
+
+let interp_int31 dloc n = 
+  if is_pos_or_zero n then int31_of_pos_bigint dloc n
+  else error_negative dloc
 
 (* Pretty prints an int31 *)
 
-let uninterp_int31 i =
+let bigint_of_int31 i = 
   match i with
-  | GNativeInt(_,i) -> Some (of_string (Uint31.to_string i))
-  | _ -> None
+  | GNativeInt(_,i) -> of_string (Uint31.to_string i)
+  | _ -> raise Non_closed
+
+let uninterp_int31 i =
+  try Some (bigint_of_int31 i)
+  with Non_closed -> None
 
 
 (* Actually declares the interpreter for int31 *)
@@ -149,9 +152,8 @@ let height bi =
 
 (* n must be a non-negative integer (from bigint.ml) *)
 let word_of_pos_bigint dloc hght n =
-  assert false
-(*  let ref_W0 = RRef (dloc, zn2z_W0) in
-  let ref_WW = RRef (dloc, zn2z_WW) in
+  let ref_W0 = GRef (dloc, zn2z_W0) in
+  let ref_WW = GRef (dloc, zn2z_WW) in
   let rec decomp hgt n =
     if is_neg_or_zero hgt then
       int31_of_pos_bigint dloc n
@@ -163,7 +165,7 @@ let word_of_pos_bigint dloc hght n =
 			   decomp (sub_1 hgt) h;
 			   decomp (sub_1 hgt) l])
   in
-  decomp hght n *)
+  decomp hght n 
 
 let bigN_of_pos_bigint dloc n =
   let ref_constructor i = GRef (dloc, bigN_constructor i) in
@@ -188,34 +190,32 @@ let interp_bigN dloc n =
 
 (* Pretty prints a bigN *)
 
+
 let bigint_of_word =
-(*
   let rec get_height rc =
     match rc with
     | GApp (_,GRef(_,c), [_;lft;rght]) when c = zn2z_WW ->
-	                                  let hleft = get_height lft in
-					  let hright = get_height rght in
-					  add_1
-					    (if less_than hleft hright then
-						 hright
-					     else
-						 hleft)
+	let hleft = get_height lft in
+	let hright = get_height rght in
+	add_1
+	  (if less_than hleft hright then hright
+	   else hleft)
     | _ -> zero
   in
   let rec transform hght rc =
     match rc with
     | GApp (_,GRef(_,c),_) when c = zn2z_W0-> zero
-    | GApp (_,GRef(_,c), [_;lft;rght]) when c=zn2z_WW-> let new_hght = sub_1 hght in
-	                                                add (mult (rank new_hght)
-                                                          (transform (new_hght) lft))
-	                                            (transform (new_hght) rght)
+    | GApp (_,GRef(_,c), [_;lft;rght]) when c=zn2z_WW-> 
+	let new_hght = sub_1 hght in
+	add (mult (rank new_hght)
+               (transform (new_hght) lft))
+	  (transform (new_hght) rght)
     | _ -> bigint_of_int31 rc
   in
-*)
-  fun rc -> assert false (*
+  fun rc ->
     let hght = get_height rc in
     transform hght rc
-*)
+
 let bigint_of_bigN rc =
   match rc with
   | GApp (_,_,[one_arg]) -> bigint_of_word one_arg
