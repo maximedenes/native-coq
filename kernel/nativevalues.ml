@@ -49,15 +49,17 @@ let accumulate_code (k:accumulator) (x:t) =
 let rec accumulate (x:t) =
   accumulate_code (Obj.magic accumulate) x
 
-let raccumulate = ref accumulate 
+let raccumulate = ref accumulate
 
 let mk_accu_gen rcode (a:atom) =
-  let r = Obj.new_block 0 2 in
-  Obj.set_field r 0 (Obj.field (Obj.magic !rcode) 0);
-  Obj.set_field r 1 (Obj.magic a);
+(*  Format.eprintf "size rcode =%i\n" (Obj.size (Obj.magic rcode)); *)
+  let r = Obj.new_block 0 3 in
+  Obj.set_field r 0 (Obj.field (Obj.magic rcode) 0);
+  Obj.set_field r 1 (Obj.field (Obj.magic rcode) 1);
+  Obj.set_field r 2 (Obj.magic a);
   (Obj.magic r:t);;
 
-let mk_accu (a:atom) = mk_accu_gen raccumulate a
+let mk_accu (a:atom) = mk_accu_gen accumulate a
 
 let mk_rel_accu i = 
   mk_accu (Arel i)
@@ -94,16 +96,17 @@ let mk_prod_accu s dom codom =
   mk_accu (Aprod (s,dom,codom))
 
 let atom_of_accu (k:accumulator) =
-  (Obj.magic (Obj.field (Obj.magic k) 1) : atom)
+  (Obj.magic (Obj.field (Obj.magic k) 2) : atom)
 
 let set_atom_of_accu (k:accumulator) (a:atom) =
-  Obj.set_field (Obj.magic k) 1 (Obj.magic a)
+  Obj.set_field (Obj.magic k) 2 (Obj.magic a)
     
 let arg_of_accu (k:accumulator) (i:int) =
-  (Obj.magic (Obj.field (Obj.magic k) (i + 2)) : t)
+  (Obj.magic (Obj.field (Obj.magic k) (i + 3)) : t)
 
 let accu_nargs (k:accumulator) =
-  let nargs = Obj.size (Obj.magic k) - 2 in
+  let nargs = Obj.size (Obj.magic k) - 3 in
+(*  if nargs < 0 then Format.eprintf "nargs = %i\n" nargs; *)
   assert (nargs >= 0);
   nargs
 
@@ -137,10 +140,10 @@ let is_atom_fix (a:atom) =
   | _ -> false
 
 let mk_fix_accu rec_pos pos types bodies =
-  mk_accu_gen raccumulate (Afix(types,bodies,rec_pos, pos))
+  mk_accu_gen accumulate (Afix(types,bodies,rec_pos, pos))
 
 let mk_cofix_accu pos types norm =
-  mk_accu_gen raccumulate (Acofix(types,norm,pos,(Obj.magic 0 : t)))
+  mk_accu_gen accumulate (Acofix(types,norm,pos,(Obj.magic 0 : t)))
 
 let upd_cofix (cofix :t) (cofix_fun : t) =
   let atom = atom_of_accu (Obj.magic cofix) in
