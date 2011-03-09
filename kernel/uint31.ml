@@ -62,7 +62,7 @@ let mulc_64 x y =
   let m = x * y in
   let l = of_int_64 m in
   let h = of_int_64 (m lsr 31) in
-  l, h
+  h, l
 let mulc = select mulc_32 mulc_64
 
     (* division *)
@@ -102,14 +102,24 @@ let div21 = select div21_32 div21_64
     
     (* comparison *)
 let lt_32 x y = 
-  if 0 <= x && 0 <= y then x < y else y <= x
- (*Int32.compare (uint_32 x) (uint_32 y) < 0 *)
+  if 0 <= x then
+    if 0 <= y then x < y
+    else true
+  else if 0 <= y then false
+    else x < y
+	
+ (* if 0 <= x && 0 <= y then x < y else y <= x *)
+(* Int32.compare (uint_32 x) (uint_32 y) < 0 *)
 
 let lt_64 x y = x < y
 let lt = select lt_32 lt_64
     
 let le_32 x y = 
-  if 0 <= x && 0 <= y then x <= y else y <= x
+  if 0 <= x then
+    if 0 <= y then x <= y
+    else true
+  else if 0 <= y then false
+    else x <= y
  (*Int32.compare (uint_32 x) (uint_32 y) <= 0*)
 let le_64 x y = x <= y
 let le = select le_32 le_64
