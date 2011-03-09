@@ -16,6 +16,10 @@ let comp_stack = ref ([] : mllambda list)
 let comp_result = ref (None : (int * string * string) option)
 
 (* Global settings and utilies for interface with OCaml *)
+let compiler_name =
+  if Dynlink.is_native then "ocamlopt.opt"
+  else "ocamlc"
+
 let env_name = "Coq_conv_env"
 
 let include_dirs =
@@ -23,8 +27,8 @@ let include_dirs =
   ^Coq_config.coqlib^"/lib -I "^Coq_config.coqlib^"/kernel "
   ^"-I "^Filename.temp_dir_name^" "
 
-let include_libs =
-  "camlp5.cmxa coq_config.cmx lib.cmxa kernel.cmxa "
+(* Pointer to the function linking an ML object into coq's toplevel *)
+let load_obj = ref (fun x -> () : string -> unit)
 
 let push_comp_stack e =
   comp_stack := !comp_stack@e
@@ -49,19 +53,23 @@ let compile_terms base_mp terms_code =
   let include_dirs =
     include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
   in
-  let filename = Filename.temp_file "coq_native" ".cmxs" in
+  let filename = Filename.temp_file "coq_native" ".cmo" in
+  let filename = Dynlink.adapt_filename filename in
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^filename^" -rectypes "^include_dirs^mod_name
+    Format.sprintf "%s -%s -o %s -rectypes %s %s"
+      compiler_name (if Dynlink.is_native then "shared" else "c")
+      filename include_dirs mod_name
   in
   let res = Sys.command comp_cmd in
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
     comp_result := Some (res, filename, mod_name);
     res, filename, mod_name
 
-let call_linker f mod_name =
-  (try Dynlink.loadfile f
-  with Dynlink.Error e -> print_endline (Dynlink.error_message e)); ()
-  (* open_header := <:str_item< open $list:[mod_name]$ >>::!open_header *)
+let call_linker f =
+  if Dynlink.is_native then
+  try Dynlink.loadfile f
+  with Dynlink.Error e -> print_endline (Dynlink.error_message e)
+  else (!load_obj f; ())
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
@@ -106,12 +114,17 @@ let rt1 = ref (mk_accu dummy_atom)
 let rt2 = ref (mk_accu dummy_atom)
 
 let extern_state s =
-  let f = s^".cmxs" in
+  let f = Dynlink.adapt_filename (s^".cma") in
   let include_dirs = "-I " ^ (String.concat " -I " !load_paths) ^ " " in
-  let imports = List.map (fun s -> s^".cmx") !imports in
+  let aux =
+    if Dynlink.is_native then (fun s -> s^".cmx") else (fun s -> s^".cmo")
+  in
+  let imports = List.map aux !imports in
   let imports = String.concat " " imports in
   let comp_cmd =
-    "ocamlopt.opt -shared -o "^f^" -rectypes "^include_dirs^imports
+    Format.sprintf "%s -%s -o %s -rectypes %s %s"
+      compiler_name (if Dynlink.is_native then "shared" else "a") f
+      include_dirs imports
   in
   let _ = Sys.command comp_cmd in ()
 
@@ -119,6 +132,4 @@ let intern_state s =
   (** WARNING TODO: if a state with the same file name has already been loaded   **)
   (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
 (*  let temp = Filename.temp_file s ".cmxs" in*)
-  try Dynlink.loadfile (s^".cmxs")
-  with Dynlink.Error e -> print_endline (Dynlink.error_message e)
-
+  call_linker (Dynlink.adapt_filename (s^".cma"))

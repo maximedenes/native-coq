@@ -65,7 +65,9 @@ let load = ref WithoutTop
 let is_native = IFDEF Byte THEN false ELSE true END
 
 (* Sets and initializes a toplevel (if any) *)
-let set_top toplevel = load := WithTop toplevel
+let set_top toplevel =
+  load := WithTop toplevel;
+  Nativelib.load_obj := toplevel.load_obj
 
 (* Removes the toplevel (if any) *)
 let remove ()= load := WithoutTop
