@@ -962,6 +962,10 @@ let string_of_dirpath = function
   | [] -> "_"
   | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
 
+(* The first letter of the file name has to be a capital to be accepted by *)
+(* OCaml as a module identifier.                                           *)
+let string_of_dirpath s = "N"^string_of_dirpath s
+
 let mod_uid_of_dirpath dir = string_of_dirpath (repr_dirpath dir)
 
 let string_of_name x =
