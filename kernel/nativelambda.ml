@@ -252,7 +252,7 @@ and simplify_app substf f substa args =
       if can_subst def' then
 	simplify_app (cons def' substf) body substa args
       else 
-	Llet(id, def, simplify_app (lift substf) body (shift substa) args)
+	Llet(id, def', simplify_app (lift substf) body (shift substa) args)
   | Lapp(f, args') ->
       let args = Array.append 
 	  (lam_subst_args substf args') (lam_subst_args substa args) in
