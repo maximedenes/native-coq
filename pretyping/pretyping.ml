@@ -293,11 +293,14 @@ module Pretyping_F (Coercion : Coercion.S) = struct
     let c = constr_of_global ref in
       make_judge c (Retyping.get_type_of env Evd.empty c)
 
-  let pretype_sort = function
+  let pretype_sort evdref = function
     | GProp c -> judge_of_prop_contents c
-    | GType _ -> judge_of_new_Type ()
+    | GType _ -> evd_comb0 judge_of_new_Type evdref
 
   exception Found of fixpoint
+
+  let new_type_evar evdref env loc =
+    evd_comb0 (fun evd -> Evarutil.new_type_evar evd env ~src:(loc,InternalHole)) evdref
 
   (* [pretype tycon env evdref lvar lmeta cstr] attempts to type [cstr] *)
   (* in environment [env], with existential variables [evdref] and *)
@@ -327,8 +330,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	let ty =
           match tycon with
             | Some (None, ty) -> ty
-            | None | Some _ ->
-		e_new_evar evdref env ~src:(loc,InternalHole) (new_Type ()) in
+            | None | Some _ -> new_type_evar evdref env loc in
         let k = MatchingVar (someta,n) in
 	{ uj_val = e_new_evar evdref env ~src:(loc,k) ty; uj_type = ty }
 
@@ -337,7 +339,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
           match tycon with
             | Some (None, ty) -> ty
             | None | Some _ ->
-		e_new_evar evdref env ~src:(loc,InternalHole) (new_Type ()) in
+		new_type_evar evdref env loc in
 	  { uj_val = e_new_evar evdref env ~src:(loc,k) ty; uj_type = ty }
 
     | GRec (loc,fixkind,names,bl,lar,vdef) ->
@@ -404,7 +406,8 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	inh_conv_coerce_to_tycon loc env evdref fixj tycon
 
     | GSort (loc,s) ->
-	inh_conv_coerce_to_tycon loc env evdref (pretype_sort s) tycon
+	let j = pretype_sort evdref s in
+	  inh_conv_coerce_to_tycon loc env evdref j tycon
 
     | GApp (loc,f,args) ->
 	let fj = pretype empty_tycon env evdref lvar f in
@@ -509,47 +512,46 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	    List.map (fun (_,b,t) -> (Anonymous,b,t)) arsgn
 	  else arsgn
 	in
-	let psign = (na,None,build_dependent_inductive env indf)::arsgn in
-	let nar = List.length arsgn in
-	(match po with
-	| Some p ->
-	    let env_p = push_rels psign env in
-	    let pj = pretype_type empty_valcon env_p evdref lvar p in
-	    let ccl = nf_evar !evdref pj.utj_val in
-	    let psign = make_arity_signature env true indf in (* with names *)
-	    let p = it_mkLambda_or_LetIn ccl psign in
-	    let inst =
-	      (Array.to_list cs.cs_concl_realargs)
-	      @[build_dependent_constructor cs] in
-	    let lp = lift cs.cs_nargs p in
-	    let fty = hnf_lam_applist env !evdref lp inst in
-	    let fj = pretype (mk_tycon fty) env_f evdref lvar d in
-	    let f = it_mkLambda_or_LetIn fj.uj_val fsign in
-	    let v =
-	      let mis,_ = dest_ind_family indf in
-	      let ci = make_case_info env mis LetStyle in
-	      mkCase (ci, p, cj.uj_val,[|f|]) in
-	    { uj_val = v; uj_type = substl (realargs@[cj.uj_val]) ccl }
+	    let psign = (na,None,build_dependent_inductive env indf)::arsgn in
+	    let nar = List.length arsgn in
+	      (match po with
+		 | Some p ->
+		     let env_p = push_rels psign env in
+		     let pj = pretype_type empty_valcon env_p evdref lvar p in
+		     let ccl = nf_evar !evdref pj.utj_val in
+		     let psign = make_arity_signature env true indf in (* with names *)
+		     let p = it_mkLambda_or_LetIn ccl psign in
+		     let inst =
+		       (Array.to_list cs.cs_concl_realargs)
+		       @[build_dependent_constructor cs] in
+		     let lp = lift cs.cs_nargs p in
+		     let fty = hnf_lam_applist env !evdref lp inst in
+		     let fj = pretype (mk_tycon fty) env_f evdref lvar d in
+		     let f = it_mkLambda_or_LetIn fj.uj_val fsign in
+		     let v =
+		       let mis,_ = dest_ind_family indf in
+		       let ci = make_case_info env mis LetStyle in
+			 mkCase (ci, p, cj.uj_val,[|f|]) in
+		       { uj_val = v; uj_type = substl (realargs@[cj.uj_val]) ccl }
 
-	| None ->
-	    let tycon = lift_tycon cs.cs_nargs tycon in
-	    let fj = pretype tycon env_f evdref lvar d in
-	    let f = it_mkLambda_or_LetIn fj.uj_val fsign in
-	    let ccl = nf_evar !evdref fj.uj_type in
-	    let ccl =
-	      if noccur_between 1 cs.cs_nargs ccl then
-		lift (- cs.cs_nargs) ccl
-	      else
-		error_cant_find_case_type_loc loc env !evdref
-		  cj.uj_val in
-	    let ccl = refresh_universes ccl in
-	    let p = it_mkLambda_or_LetIn (lift (nar+1) ccl) psign in
-	    let v =
-	      let mis,_ = dest_ind_family indf in
-	      let ci = make_case_info env mis LetStyle in
-	      mkCase (ci, p, cj.uj_val,[|f|] )
-	    in
-	    { uj_val = v; uj_type = ccl })
+		 | None ->
+		     let tycon = lift_tycon cs.cs_nargs tycon in
+		     let fj = pretype tycon env_f evdref lvar d in
+		     let f = it_mkLambda_or_LetIn fj.uj_val fsign in
+		     let ccl = nf_evar !evdref fj.uj_type in
+		     let ccl =
+		       if noccur_between 1 cs.cs_nargs ccl then
+			 lift (- cs.cs_nargs) ccl
+		       else
+			 error_cant_find_case_type_loc loc env !evdref
+			   cj.uj_val in
+		     let ccl = refresh_universes ccl in
+		     let p = it_mkLambda_or_LetIn (lift (nar+1) ccl) psign in
+		     let v =
+		       let mis,_ = dest_ind_family indf in
+		       let ci = make_case_info env mis LetStyle in
+			 mkCase (ci, p, cj.uj_val,[|f|])
+		     in { uj_val = v; uj_type = ccl })
 
     | GIf (loc,c,(na,po),b1,b2) ->
 	let cj = pretype empty_tycon env evdref lvar c in
@@ -559,54 +561,51 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	    let cloc = loc_of_glob_constr c in
 	      error_case_not_inductive_loc cloc env !evdref cj in
 	let cstrs = get_constructors env indf in
-	if Array.length cstrs <> 2 then
-          user_err_loc (loc,"",
-			str "If is only for inductive types with two constructors.");
-	
-	let arsgn =
-	  let arsgn,_ = get_arity env indf in
-	  if not !allow_anonymous_refs then
-	    (* Make dependencies from arity signature impossible *)
-	    List.map (fun (_,b,t) -> (Anonymous,b,t)) arsgn
-	  else arsgn
-	in
-	let nar = List.length arsgn in
-	let psign = (na,None,build_dependent_inductive env indf)::arsgn in
-	let pred,p = 
-	  match po with
-	  | Some p ->
-	      let env_p = push_rels psign env in
-	      let pj = pretype_type empty_valcon env_p evdref lvar p in
-	      let ccl = nf_evar !evdref pj.utj_val in
-	      let pred = it_mkLambda_or_LetIn ccl psign in
-	      let typ = lift (- nar) (beta_applist (pred,[cj.uj_val])) in
-	      let jtyp = 
-		inh_conv_coerce_to_tycon loc env evdref 
-		  {uj_val = pred; uj_type = typ} tycon in
-	      jtyp.uj_val, jtyp.uj_type
-	  | None ->
-	      let p = 
-		match tycon with
-		| Some (None, ty) -> ty
-		| None | Some _ ->
-                    e_new_evar evdref env ~src:(loc,InternalHole) (new_Type ())
-	      in
-	      it_mkLambda_or_LetIn (lift (nar+1) p) psign, p in
-	let pred = nf_evar !evdref pred in
-	let p = nf_evar !evdref p in
-	let f cs b =
-	  let n = rel_context_length cs.cs_args in
-	  let pi = lift n pred in (* liftn n 2 pred ? *)
-	  let pi = beta_applist (pi, [build_dependent_constructor cs]) in
-	  let csgn =
-	    if not !allow_anonymous_refs then
-	      List.map (fun (_,b,t) -> (Anonymous,b,t)) cs.cs_args
-	    else
-	      List.map
-		(fun (n, b, t) ->
-		  match n with
-                    Name _ -> (n, b, t)
-                  | Anonymous -> (Name (id_of_string "H"), b, t))
+	  if Array.length cstrs <> 2 then
+            user_err_loc (loc,"",
+			  str "If is only for inductive types with two constructors.");
+
+	  let arsgn =
+	    let arsgn,_ = get_arity env indf in
+	      if not !allow_anonymous_refs then
+		(* Make dependencies from arity signature impossible *)
+		List.map (fun (_,b,t) -> (Anonymous,b,t)) arsgn
+	      else arsgn
+	  in
+	  let nar = List.length arsgn in
+	  let psign = (na,None,build_dependent_inductive env indf)::arsgn in
+	  let pred,p = match po with
+	    | Some p ->
+		let env_p = push_rels psign env in
+		let pj = pretype_type empty_valcon env_p evdref lvar p in
+		let ccl = nf_evar !evdref pj.utj_val in
+		let pred = it_mkLambda_or_LetIn ccl psign in
+		let typ = lift (- nar) (beta_applist (pred,[cj.uj_val])) in
+		let jtyp = inh_conv_coerce_to_tycon loc env evdref {uj_val = pred;
+								     uj_type = typ} tycon
+		in
+		  jtyp.uj_val, jtyp.uj_type
+	    | None ->
+		let p = match tycon with
+		  | Some (None, ty) -> ty
+		  | None | Some _ -> new_type_evar evdref env loc
+		in
+		  it_mkLambda_or_LetIn (lift (nar+1) p) psign, p in
+	  let pred = nf_evar !evdref pred in
+	  let p = nf_evar !evdref p in
+	  let f cs b =
+	    let n = rel_context_length cs.cs_args in
+	    let pi = lift n pred in (* liftn n 2 pred ? *)
+	    let pi = beta_applist (pi, [build_dependent_constructor cs]) in
+	    let csgn =
+	      if not !allow_anonymous_refs then
+		List.map (fun (_,b,t) -> (Anonymous,b,t)) cs.cs_args
+	      else
+		List.map
+		  (fun (n, b, t) ->
+		     match n with
+                         Name _ -> (n, b, t)
+                       | Anonymous -> (Name (id_of_string "H"), b, t))
 		cs.cs_args
 	  in
 	  let env_c = push_rels csgn env in
@@ -707,7 +706,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 		 { utj_val = v;
 		   utj_type = s }
 	   | None ->
-	       let s = new_Type_sort () in
+	       let s = evd_comb0 new_sort_variable evdref in
 		 { utj_val = e_new_evar evdref env ~src:loc (mkSort s);
 		   utj_type = s})
     | c ->
