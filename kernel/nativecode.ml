@@ -38,6 +38,7 @@ type gname =
   | Gnorm of label option * int
   | Gnormtbl of label option * int
   | Ginternal of string
+  | Gval of label option * int
 
 let gname_of_con c =
   Gconstant c
@@ -82,6 +83,13 @@ let fresh_gnormtbl l =
   incr normtbl_ctr;
   Gnormtbl (l,!normtbl_ctr)
 
+let val_ctr = ref (-1)
+
+let reset_gval () = val_ctr := -1
+
+let fresh_gval l =
+  incr val_ctr;
+  Gval (l,!val_ctr)
 (*s Mllambda *)
   
 type primitive =
@@ -243,6 +251,7 @@ type global =
   | Gopen of string
   | Gtype of inductive * int array
     (* ind name, arities of constructors *)
+  | Gletval of gname * Nativevalues.t
   
 let global_stack = ref ([] : global list)
 
@@ -257,6 +266,9 @@ let push_global_norm name params body =
 
 let push_global_case name params annot a accu bs =
   global_stack := Gletcase(name,params, annot, a, accu, bs)::!global_stack
+
+let push_global_val name v =
+  global_stack := Gletval(name,v)::!global_stack
 
 (*s Compilation environment *)
 
@@ -803,7 +815,10 @@ let rec ml_of_lam env l t =
       MLglobal (Gconstruct cn)
   | Lint i -> MLint (false,Uint31.to_int i)
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
-  | Lval v -> MLval v
+  | Lval v ->
+      let gn = fresh_gval l in
+      push_global_val gn v;
+      MLglobal gn
   | Lsort s -> MLprimitive(Mk_sort s)
   | Lind i -> MLglobal (Gind i)
 
@@ -1051,6 +1066,8 @@ let pp_gname base_mp fmt g =
   | Ginternal s -> Format.fprintf fmt "%s" s
   | Gnormtbl (l,i) -> 
       Format.fprintf fmt "normtbl_%s_%i" (string_of_label_def l) i
+  | Gval (l,i) -> 
+      Format.fprintf fmt "val_%s_%i" (string_of_label_def l) i
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -1332,6 +1349,10 @@ let pp_global base_mp fmt g =
       Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@\n@."
 	(pp_gname None) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
+  | Gletval(g,v) ->
+      Format.fprintf fmt "@[let %a =@\n  %a@]@\n@."
+	(pp_gname None) g (pp_mllam base_mp) (MLval v)
+
 
 let pp_global_aux base_mp fmt g auxdefs = 
   if auxdefs = [] then pp_global base_mp fmt g
