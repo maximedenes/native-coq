@@ -17,8 +17,8 @@ Register copy : forall {A:Type}, array A -> array A as array_copy.
 Register reroot : forall {A:Type}, array A -> array A as array_reroot.
 
 Delimit Scope array_scope with array.
-Notation "t '.[' i ']'" := (get t i) (at level 2, left associativity) : array_scope.
-Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 2) : array_scope.
+Notation "t '.[' i ']'" := (get t i) (at level 50) : array_scope.
+Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 50) : array_scope.
 
 Local Open Scope int31_scope.
 Local Open Scope array_scope.
@@ -38,6 +38,7 @@ Axiom default_set : forall A t i (a:A), default (t.[i<-a]) = default t.
 Axiom get_make : forall A (a:A) size i, (make size a).[i] = a.
 Axiom default_make : forall A (a:A) size, (default (make size a)) = a.
 
+Axiom ltb_length : forall A (t:array A), length t <= max_array_length = true.
 
 Axiom length_make : forall A size (a:A), 
   length (make size a) = if size <= max_array_length then size else max_array_length.
@@ -143,40 +144,87 @@ Proof.
  elim Hd;rewrite get_outofbound;trivial.
 Qed.
 
-(* Move *)
-Lemma leb_negb_gtb : forall x y, x <= y = negb (y < x).
+Lemma foldi_left_Ind : 
+     forall A B (P : int -> A -> Prop) (f : int -> A -> B -> A) (t:array B),
+     (forall a i, i < length t = true -> P i a -> P (i+1) (f i a (t.[i]))) ->
+     forall a, P 0 a ->
+     P (length t) (foldi_left f a t).
 Proof.
- intros x y;apply Bool.eq_true_iff_eq;split;intros.
- apply Bool.eq_true_not_negb;apply leb_not_gtb;trivial.
- rewrite Bool.negb_true_iff, <- Bool.not_true_iff_false in H.
- rewrite leb_spec; rewrite ltb_spec in H;omega.
+ intros;unfold foldi_left.
+ destruct (reflect_eqb 0 (length t)).
+  rewrite <- e;trivial.
+ assert ((length t - 1) + 1 = length t) by ring.
+ rewrite <- H1 at 1;apply foldi_Ind;auto.
+ assert (W:= leb_max_int (length t));rewrite leb_spec in W.
+ rewrite ltb_spec, to_Z_sub_1_diff;auto with zarith.
+ intros Hlt;elim (ltb_0 _ Hlt).
+ intros;apply H;trivial. rewrite ltb_leb_sub1;auto.
 Qed.
 
-Lemma ltb_negb_geb : forall x y, x < y = negb (y <= x).
+Lemma fold_left_Ind : 
+     forall A B (P : int -> A -> Prop) (f : A -> B -> A) (t:array B),
+     (forall a i, i < length t = true -> P i a -> P (i+1) (f a (t.[i]))) ->
+     forall a, P 0 a ->
+     P (length t) (fold_left f a t).
 Proof.
- intros;rewrite leb_negb_gtb, Bool.negb_involutive;trivial.
+ intros.
+ apply (foldi_left_Ind A B P (fun i => f));trivial.
 Qed.
-  
+
 Lemma fold_left_ind : 
      forall A B (P : A -> Prop) (f : A -> B -> A) (t:array B),
      (forall a i, i < length t = true -> P a -> P (f a (t.[i]))) ->
      forall a, P a ->
      P (fold_left f a t).
 Proof.
- intros;unfold fold_left.
- case_eq (0 == (length t));intros Heq;trivial.
- apply foldi_ind;trivial.
- cut (0 < length t = true);[ | 
-  (generalize (leb_0 (length t));rewrite leb_ltb_eqb, Heq, Bool.orb_false_r;trivial)].
- intros;apply H;trivial.
- rewrite leb_spec in *;rewrite ltb_spec in *. rewrite to_Z_0 in H1.
- assert (W:= to_Z_bounded (length t));rewrite sub_spec, to_Z_1, Zmod_small in H3;omega.
+ intros;apply (fold_left_Ind A B (fun _ => P));trivial.
 Qed.
 
-Lemma forallb_spec : forall A (f : A -> bool) t,
-  forallb f t = true <-> forall i, i < length t = true -> f (t.[i]) = true.
+Lemma foldi_right_Ind : 
+     forall A B (P : int -> A -> Prop) (f : int -> B -> A -> A) (t:array B),
+     (forall a i, i < length t = true -> P (i+1) a -> P i (f i (t.[i]) a)) ->
+     forall a, P (length t) a ->
+     P 0 (foldi_right f t a).
 Proof.
- unfold forallb;intros A f t.
+ intros;unfold foldi_right.
+ destruct (reflect_eqb 0 (length t)).
+  rewrite e;trivial.
+ set (P' z a := (*-1 <= z < [|length t|] ->*) P (of_Z (z + 1)) a).
+ assert (P' ([|0|] - 1)%Z (foldi_down (fun (i : int) (b : A) => f i (t .[ i]) b) (length t - 1) 0 a)).
+ apply foldi_down_ZInd;unfold P'.
+ intros Hlt;elim (ltb_0 _ Hlt).
+ rewrite to_Z_sub_1_diff;auto.
+ ring_simplify ([|length t|] - 1 + 1)%Z;rewrite of_to_Z;trivial.
+ intros;ring_simplify ([|i|] - 1 + 1)%Z;rewrite of_to_Z;auto.
+ assert (i < length t = true).
+   rewrite ltb_leb_sub1;auto.
+ apply H;trivial.
+ rewrite <-(to_Z_add_1 _ _ H4), of_to_Z in H3;auto.
+ exact H1.
+Qed.
+ 
+Lemma fold_right_Ind : 
+     forall A B (P : int -> A -> Prop) (f : B -> A -> A) (t:array B),
+     (forall a i, i < length t = true -> P (i+1) a -> P i (f (t.[i]) a)) ->
+     forall a, P (length t) a ->
+     P 0 (fold_right f t a).
+Proof.
+ intros;apply (foldi_right_Ind A B P (fun i => f));trivial.
+Qed.
+
+Lemma fold_right_ind : 
+     forall A B (P : A -> Prop) (f : B -> A -> A) (t:array B),
+     (forall a i, i < length t = true -> P a -> P (f (t.[i]) a)) ->
+     forall a, P a ->
+     P (fold_right f t a).
+Proof.
+ intros;apply (fold_right_Ind A B (fun i => P));trivial.
+Qed.
+
+Lemma forallbi_spec : forall A (f : int -> A -> bool) t,
+  forallbi f t = true <-> forall i, i < length t = true -> f i (t.[i]) = true.
+Proof.
+ unfold forallbi;intros A f t.
  destruct (reflect_eqb 0 (length t)).
  split;[intros | trivial].
  elim (ltb_0 i);rewrite e;trivial.
@@ -184,15 +232,29 @@ Proof.
  apply leb_0. rewrite <- ltb_leb_sub1;auto. rewrite ltb_leb_sub1;auto.
 Qed.
 
-Lemma existsb_spec : forall A (f : A -> bool) t,
-  existsb f t = true <-> exists i, i < length t = true /\ f (t.[i]) = true.
+Lemma forallb_spec : forall A (f : A -> bool) t,
+  forallb f t = true <-> forall i, i < length t = true -> f (t.[i]) = true.
 Proof.
- unfold existsb;intros A f t.
+ intros A f;apply (forallbi_spec A (fun i => f)).
+Qed.
+
+Lemma existsbi_spec : forall A (f : int -> A -> bool) t,
+  existsbi f t = true <-> exists i, i < length t = true /\ f i (t.[i]) = true.
+Proof.
+ unfold existsbi;intros A f t.
  destruct (reflect_eqb 0 (length t)).
  split;[discriminate | intros [i [Hi _]];rewrite <- e in Hi;elim (ltb_0 _ Hi)].
  rewrite existsb_spec. repeat setoid_rewrite Bool.andb_true_iff.
  split;intros [i H];decompose [and] H;clear H;exists i;repeat split;trivial.
  rewrite ltb_leb_sub1;auto. apply leb_0. rewrite <- ltb_leb_sub1;auto.
 Qed.
+
+Lemma existsb_spec : forall A (f : A -> bool) t,
+  existsb f t = true <-> exists i, i < length t = true /\ f (t.[i]) = true.
+Proof.
+ intros A f;apply (existsbi_spec A (fun i => f)).
+Qed.
+
+
 
 

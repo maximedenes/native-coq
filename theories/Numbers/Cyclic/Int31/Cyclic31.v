@@ -964,52 +964,8 @@ Section Int31_Specs.
 
  Lemma spec_tail00:  forall x, [|x|] = 0 -> [|tail031 x|] = Zpos Pdigits.
  Proof.
-<<<<<<< HEAD
   change 0 with [|0|];intros x Heq.
   apply to_Z_inj in Heq;rewrite Heq;trivial.
-=======
- intros.
- case_eq (iszero x); intros.
- rewrite (iszero_eq0 _ H).
- simpl; auto.
-
- unfold tail031, recr.
- change On with (phi_inv (Z_of_nat (31-size))).
- replace (tail031_alt size x) with
-   (tail031_alt size x + (31 - size))%nat by auto.
- assert (size <= 31)%nat by auto with arith.
-
- revert x H; induction size; intros.
- simpl; auto.
- unfold recr_aux; fold recr_aux.
- unfold tail031_alt; fold tail031_alt.
- rewrite H.
- assert ([|phi_inv (Z_of_nat (31-S n))|] = Z_of_nat (31 - S n)).
-  rewrite phi_phi_inv.
-  apply Zmod_small.
-  split.
-  change 0 with (Z_of_nat O); apply inj_le; omega.
-  apply Zle_lt_trans with (Z_of_nat 31).
-  apply inj_le; omega.
-  compute; auto.
- case_eq (firstr x); intros; auto.
- rewrite plus_Sn_m, plus_n_Sm.
- replace (S (31 - S n)) with (31 - n)%nat by omega.
- rewrite <- IHn; [ | omega | ].
- f_equal; f_equal.
- unfold add31.
- rewrite H1.
- f_equal.
- change [|In|] with 1.
- replace (31-n)%nat with (S (31 - S n))%nat by omega.
- rewrite inj_S; ring.
-
- clear - H H2.
- rewrite (sneakl_shiftr x) in H.
- rewrite H2 in H.
- case_eq (iszero (shiftr x)); intros; auto.
- rewrite (iszero_eq0 _ H0) in H; discriminate.
->>>>>>> First release of Vector library.
  Qed.
 
  Axiom spec_tail0  : forall x, 0 < [|x|] ->
