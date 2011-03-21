@@ -111,7 +111,7 @@ and fterm =
   | FLetIn of name * fconstr * fconstr * constr * fconstr subs
   | FEvar of existential * fconstr subs
   | FNativeInt of Uint31.t
-  | FNativeArr of fconstr * fconstr Native.Parray.t
+  | FNativeArr of fconstr * fconstr Parray.t
   | FLIFT of int * fconstr
   | FCLOS of constr * fconstr subs
   | FLOCKED

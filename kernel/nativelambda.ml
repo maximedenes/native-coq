@@ -369,11 +369,12 @@ let make_args start _end =
 (* Translation of constructors *)	
 
 let makeblock cn tag args =
-  if array_for_all is_value args then
-    if Array.length args = 0 then Lval (Nativevalues.mk_const tag)
-    else let args = Array.map get_value args in
+  if array_for_all is_value args && Array.length args > 0 then
+    let args = Array.map get_value args in
     Lval (Nativevalues.mk_block tag args)
-  else Lmakeblock(cn, tag, args)
+  else
+    Lmakeblock(cn, tag, args)
+
   
 let makearray args =   
   try

@@ -90,8 +90,6 @@ module type PARRAY =
 
   end
 
-(* Implementation using persistant array *)
-module Parray : PARRAY
 
 (* Implementation using array. Warning, the set operation copies array *)
 module Narray : PARRAY with type 'a t = 'a array

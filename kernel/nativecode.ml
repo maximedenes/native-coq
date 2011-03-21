@@ -102,6 +102,7 @@ type primitive =
   | Mk_cofix of int
   | Is_accu
   | Is_int
+  | Is_array
   | Cast_accu
   | Upd_cofix
   | Force_cofix
@@ -582,7 +583,41 @@ let compile_prim decl cond paux =
     List.fold_left (fun body (x,d) -> MLlet(x,d,body)) body decl in
   add_decl decl (compile_cond cond paux)
 
+let compile_cprim kn p args =
+  match p with
+  | Native.ArrayGet when Array.length args = 3 -> 
+      let t = fresh_lname Anonymous in
+      let mlt = MLlocal t in
+      let i = fresh_lname Anonymous in
+      let mli = MLlocal i in
+      MLlet(t, args.(1),
+      MLlet(i, args.(2),
+      MLif (
+	    MLapp(MLprimitive MLand,
+  		  [|MLapp(MLprimitive Is_int,[|mli|]);
+		    MLapp(MLprimitive Is_array,[|mlt|]) |]),
+	    MLapp(MLprimitive (Carrayget None),[|mlt;mli|]),
+	    MLapp(MLglobal (Gconstant kn),[|args.(0);mlt;mli|]))))
+  | Native.ArraySet when Array.length args = 4 -> 
+      let t = fresh_lname Anonymous in
+      let mlt = MLlocal t in
+      let i = fresh_lname Anonymous in
+      let mli = MLlocal i in
+      let v = fresh_lname Anonymous in
+      let mlv = MLlocal v in
+      MLlet(t, args.(1),
+      MLlet(i, args.(2),
+      MLlet(v, args.(3),
+      MLif (
+	    MLapp(MLprimitive MLand,
+  		  [|MLapp(MLprimitive Is_int,[|mli|]);
+		    MLapp(MLprimitive Is_array,[|mlt|]) |]),
+	    MLapp(MLprimitive (Carrayset None),[|mlt;mli;mlv|]),
+	    MLapp(MLglobal (Gconstant kn),[|args.(0);mlt;mli;mlv|])))))
+  | _ ->
+      MLapp(MLprimitive (mlprim_of_cprim p kn), args)
 
+ 
 	  
 
 
@@ -615,8 +650,7 @@ let rec ml_of_lam env l t =
       let decl,cond,paux = extract_prim (ml_of_lam env l) t in
       compile_prim decl cond paux
   | Lcprim (kn,p,args) ->
-      MLapp(MLprimitive (mlprim_of_cprim p kn),
-	    Array.map (ml_of_lam env l) args)
+      compile_cprim kn p (Array.map (ml_of_lam env l) args)
   | Lcase (annot,p,a,bs) ->
       (* let predicate_uid fv_pred = compilation of p 
          let rec case_uid fv a_uid = 
@@ -1248,6 +1282,7 @@ let pp_mllam base_mp fmt l =
     | Mk_cofix(start) -> Format.fprintf fmt "mk_cofix_accu %i" start
     | Is_accu -> Format.fprintf fmt "is_accu"
     | Is_int -> Format.fprintf fmt "is_int"
+    | Is_array -> Format.fprintf fmt "is_parray"
     | Cast_accu -> Format.fprintf fmt "cast_accu"
     | Upd_cofix -> Format.fprintf fmt "upd_cofix"
     | Force_cofix -> Format.fprintf fmt "force_cofix"

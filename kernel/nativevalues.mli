@@ -80,7 +80,7 @@ type kind_of_value =
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
-  | Varray of t Native.Parray.t 
+  | Varray of t Parray.t 
 
 val kind_of_value : t -> kind_of_value
 
@@ -175,6 +175,10 @@ val lt_b : t -> t -> bool
 val le_b : t -> t -> bool
 
 val parray_of_array : t array -> t
+val is_parray : t -> bool
+val no_check_arrayget : t -> t -> t
+val no_check_arrayset : t -> t -> t -> t
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a
+

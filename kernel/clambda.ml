@@ -609,7 +609,7 @@ let makeblock tag nparams arity args =
 let makearray args =
   try
     let p = Array.map get_value args in
-    Lval ((Obj.magic (Native.Parray.of_array p)):values)
+    Lval ((Obj.magic (Parray.of_array p)):values)
   with Not_found ->
     let ar = Lmakeblock(0, args) in (* build the ocaml array *)
     let kind = Lmakeblock(0, [|ar|]) in (* Parray.Array *)

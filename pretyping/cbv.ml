@@ -56,7 +56,7 @@ type cbv_value =
   | COFIXP of cofixpoint * cbv_value subs * cbv_value array
   | CONSTR of constructor * cbv_value array
   | NATIVEINT of Uint31.t
-  | NATIVEARR of cbv_value * cbv_value Native.Parray.t
+  | NATIVEARR of cbv_value * cbv_value Parray.t
   | PRIMITIVE of Native.op * constr * cbv_value array
 
                   
@@ -674,7 +674,7 @@ and cbv_norm_value info = function (* reduction under binders *)
   | NATIVEINT i -> mkInt i
   | NATIVEARR(t,p) ->
       let ct = cbv_norm_value info t in
-      let len = Uint31.to_int (Native.Parray.length p) in
+      let len = Uint31.to_int (Parray.length p) in
       let cdef = cbv_norm_value info (Parray.default p) in
       let cp = Array.create (len + 1) cdef in  
       for i = 0 to len - 1 do

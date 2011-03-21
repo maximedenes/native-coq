@@ -203,7 +203,7 @@ type kind_of_value =
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
-  | Varray of t Native.Parray.t 
+  | Varray of t Parray.t 
 	
 let kind_of_value (v:t) =
   let o = Obj.repr v in
@@ -501,41 +501,47 @@ let of_parray t = Obj.magic t
 
 let arraymake accu vA n def = 
   if is_int n then 
-    of_parray (Native.Parray.make (to_uint n) def)
+    of_parray (Parray.make (to_uint n) def)
   else accu vA n def
+
+let no_check_arrayget t n =
+   Parray.get (to_parray t) (to_uint n)
 
 let arrayget accu vA t n =
   if is_parray t && is_int n then
-    Native.Parray.get (to_parray t) (to_uint n)
+    Parray.get (to_parray t) (to_uint n)
   else accu vA t n
 
 let arraydefault accu vA t =
   if is_parray t then  
-    Native.Parray.default (to_parray t) 
+    Parray.default (to_parray t) 
   else accu vA t 
+
+let no_check_arrayset t n v =
+  of_parray (Parray.set (to_parray t) (to_uint n) v)
 
 let arrayset accu vA t n v =
   if is_parray t && is_int n then
-    of_parray (Native.Parray.set (to_parray t) (to_uint n) v)
+    of_parray (Parray.set (to_parray t) (to_uint n) v)
   else accu vA t n v
 
 let arraycopy accu vA t = 
   if is_parray t then
-    of_parray (Native.Parray.copy (to_parray t))
+    of_parray (Parray.copy (to_parray t))
   else accu vA t 
 
 let arrayreroot accu vA t =
   if is_parray t then
-    of_parray (Native.Parray.reroot (to_parray t))
+    of_parray (Parray.reroot (to_parray t))
   else accu vA t 
 
 let arraylength accu vA t =
   if is_parray t then
-    of_uint (Native.Parray.length (to_parray t))
+    of_uint (Parray.length (to_parray t))
   else accu vA t
 
 let parray_of_array t =
-  (Obj.magic (Native.Parray.of_array t) : t)
+  (Obj.magic (Parray.of_array t) : t)
 
 
 
