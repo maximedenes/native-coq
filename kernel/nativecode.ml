@@ -520,7 +520,7 @@ let check_bound v b1 b2 =
   | MLint(_,x) -> if 0 <= x && x < 31 then b1 else b2
   | _ -> 
       let t1 = app_prim MLle [|MLint(true,0); v|] in
-      let t2 = app_prim MLlt [|MLint(true,31); v|] in
+      let t2 = app_prim MLlt [|v; MLint(true,31)|] in
       MLif(app_prim MLand [|t1;t2|], b1, b2)
       
 let mk_lsl args = 
