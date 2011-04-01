@@ -186,7 +186,7 @@ sp is a local copy of the global variable extern_sp. */
 #define AllocCarry(cond) Alloc_small(accu, 1, (cond)? coq_tag_C1 : coq_tag_C0)
 #define AllocPair() Alloc_small(accu, 2, coq_tag_pair)
 
-/* For signal handling, we highjack some code from the caml runtime */
+/* For signal handling, we hijack some code from the caml runtime */
 
 extern intnat caml_signals_are_pending;
 extern intnat caml_pending_signals[];
