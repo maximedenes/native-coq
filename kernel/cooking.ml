@@ -117,28 +117,34 @@ type recipe = {
   d_abstract : named_context;
   d_modlist : work_list }
 
-let cook_constant1 env r =
+let on_body f = function
+  | Undef inl -> Undef inl
+  | Def cs -> Def (Declarations.from_val (f (Declarations.force cs)))
+  | OpaqueDef lc ->
+    OpaqueDef (Declarations.opaque_from_val (f (Declarations.force_opaque lc)))
+  | Primitive op -> Primitive op
+
+let constr_of_def = function
+  | Undef _ -> assert false
+  | Def cs -> Declarations.force cs
+  | OpaqueDef lc -> Declarations.force_opaque lc
+  | Primitive _ -> assert false
+
+let cook_constant env r =
   let cb = r.d_from in
   let hyps = Sign.map_named_context (expmod_constr r.d_modlist) r.d_abstract in
-  let body, c =
-    let f = (fun c -> abstract_constant_body (expmod_constr r.d_modlist c) hyps) in
-    match cb.const_body with
-    | Def c -> 
-	let c = Declarations.from_val (f (Declarations.force c)) in
-	Def c, Some c 
-    | Opaque (Some c) -> 
-	let c = Declarations.from_val (f (Declarations.force c)) in
-	Opaque (Some c), Some c
-    | Opaque None | Primitive _ -> cb.const_body, None in
-  let typ = 
-    match cb.const_type with
+  let body = on_body
+    (fun c -> abstract_constant_body (expmod_constr r.d_modlist c) hyps)
+    cb.const_body
+  in
+  let typ = match cb.const_type with
     | NonPolymorphicType t ->
 	let typ = abstract_constant_type (expmod_constr r.d_modlist t) hyps in
 	NonPolymorphicType typ
     | PolymorphicArity (ctx,s) ->
 	let t = mkArity (ctx,Type s.poly_level) in
 	let typ = abstract_constant_type (expmod_constr r.d_modlist t) hyps in
-	let j = make_judge (force (Option.get c)) typ in
+	let j = make_judge (constr_of_def body) typ in
 	Typeops.make_polymorphic_if_constant_for_ind env j
   in
-  (body, typ, cb.const_constraints, cb.const_inline_code, None)
+  (body, typ, cb.const_constraints, cb.const_inline_code)

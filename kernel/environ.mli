@@ -130,8 +130,7 @@ type const_evaluation_result = CteNoBody | CteOpaque | CtePrim of Native.op
 
 exception NotEvaluableConst of const_evaluation_result
 
-val constant_value1     : env -> constant -> constr_substituted constant_def
-val constant_value_def     : env -> constant -> constr
+val constant_value     : env -> constant -> constr
 val constant_type      : env -> constant -> constant_type
 val constant_opt_value1 : env -> constant -> constr option
 
@@ -194,8 +193,8 @@ type unsafe_type_judgment = {
 val compile_constant : Pre_env.env -> module_path -> label -> constant_body ->
     Nativecode.global * Nativecode.global list
 
-val compile_constant_body :
-    env -> constr_substituted constant_def -> Cemitcodes.body_code
+val compile_constant_body : env -> constr_substituted constant_def ->
+    Cemitcodes.body_code
 
 exception Hyp_not_found
 

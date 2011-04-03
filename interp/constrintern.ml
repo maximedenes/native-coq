@@ -888,7 +888,7 @@ let find_constructor ref f aliases pats scopes =
   | TrueGlobal r ->
       let rec unf = function
         | ConstRef cst ->
-	    let v = Environ.constant_value_def (Global.env()) cst in
+	    let v = Environ.constant_value (Global.env()) cst in
 	    unf (global_of_constr v)
         | ConstructRef cstr ->
 	    Dumpglob.add_glob loc r;

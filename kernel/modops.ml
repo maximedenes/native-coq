@@ -279,22 +279,17 @@ and add_module mb env =
 
 let strengthen_const env mp_from l cb resolver = 
   match cb.const_body with
-  | Def _ -> cb
-  | _ ->
+    | Def _ -> cb
+    | _ ->
       let con = make_con mp_from empty_dirpath l in
       let con =  constant_of_delta resolver con in
       let const = mkConst con in 
-      let const_subs = Def (Declarations.from_val const) in
-      let cb = { cb with 
-	const_body = const_subs;
-	const_body_code = Cemitcodes.from_val
-	  (compile_constant_body env const_subs);
-	const_inline_code = false
+      let def = Def (Declarations.from_val const) in
+      { cb with
+	const_body = def;
+    const_body_code = Cemitcodes.from_val (compile_constant_body env def);
+    const_inline_code = false
       }
-        in
-        let tr, auxdefs = compile_constant (pre_env env) mp_from l cb in
-        Nativelib.push_comp_stack tr auxdefs;
-        cb
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then
@@ -389,14 +384,15 @@ let inline_delta_resolver env inl mp mbid mtb delta =
 	let con' = constant_of_delta delta con in
 	try
 	  let constant = lookup_constant con' env in
-	  match constant.Declarations.const_body with
-	  | Def csubst ->
-	      let constr =  Declarations.force csubst in
-	      add_inline_constr_delta_resolver con lev constr (make_inline delta r)
-	  | _ -> make_inline delta r
-	with 
-	  Not_found -> error_no_such_label_sub (con_label con) 
-	      (string_of_mp (con_modpath con))
+	  let l = make_inline delta r in
+	  match constant.const_body with
+	    | Undef _ | OpaqueDef _ | Primitive _ -> l
+	    | Def body ->
+	      let constr = Declarations.force body in
+	      add_inline_constr_delta_resolver con lev constr l
+	with Not_found ->
+	  error_no_such_label_sub (con_label con)
+	    (string_of_mp (con_modpath con))
   in
   make_inline delta constants
 

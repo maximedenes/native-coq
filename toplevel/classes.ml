@@ -298,7 +298,8 @@ let rec declare_subclasses gr (rels, (tc, args)) =
     let ce = {
       const_entry_body   = it_mkLambda_or_LetIn (mkApp (p, projargs)) rels;
       const_entry_type   = None;
-      const_entry_opaque = false }
+      const_entry_opaque = false;
+      const_entry_inline_code = false }
     in
     let cst = Declare.declare_constant ~internal:Declare.KernelSilent 
       (Nameops.add_suffix (Nameops.add_suffix (id_of_string (string_of_global gr)) "_") 

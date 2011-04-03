@@ -721,7 +721,7 @@ let check_one_fix renv recpos def =
             if evaluable_constant1 kn renv.env then
               try List.iter (check_rec_call renv []) l
               with (FixGuardError _ ) ->
-		let value = (applist(constant_value_def renv.env kn, l)) in
+		let value = (applist(constant_value renv.env kn, l)) in
 	        check_rec_call renv stack value
 	    else List.iter (check_rec_call renv []) l
 

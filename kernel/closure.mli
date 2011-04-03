@@ -81,7 +81,7 @@ val unfold_red : evaluable_global_reference -> reds
 type table_key = id_key
 
 type 'a infos
-val ref_value_cache: 'a infos -> table_key -> 'a  Declarations.constant_def
+val ref_value_cache: 'a infos -> table_key -> 'a Declarations.constant_def
 val info_flags: 'a infos -> reds
 val create: ('a infos -> constr -> 'a) -> reds -> env ->
   (existential -> constr option) -> 'a infos

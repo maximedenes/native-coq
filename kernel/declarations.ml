@@ -49,22 +49,68 @@ let force = force subst_mps
 
 let subst_constr_subst = subst_substituted
 
+(** Opaque proof terms are not loaded immediately, but are there
+    in a lazy form. Forcing this lazy may trigger some unmarshal of
+    the necessary structure. The ['a substituted] type isn't really great
+    here, so we store "manually" a substitution list, the younger one at top.
+*)
+
+type lazy_constr = constr_substituted Lazy.t * substitution list
+
+let force_lazy_constr (c,l) =
+  List.fold_right subst_constr_subst l (Lazy.force c)
+
+let lazy_constr_is_val (c,_) = Lazy.lazy_is_val c
+
+let make_lazy_constr c = (c, [])
+
+let force_opaque lc = force (force_lazy_constr lc)
+
+let opaque_from_val c = (Lazy.lazy_from_val (from_val c), [])
+
+let subst_lazy_constr sub (c,l) = (c,sub::l)
+
+(** Inlining level of parameters at functor applications.
+    None means no inlining *)
+
+type inline = int option
+
+(** A constant can have no body (axiom/parameter), or a
+    transparent body, or an opaque one *)
+
 type 'a constant_def =
+  | Undef of inline
   | Def of 'a
-  | Opaque of 'a option (* None means parameter *)
+  | OpaqueDef of lazy_constr
   | Primitive of Native.op
- 
-type inline = int option (* inlining level, None for no inlining *)
+
+let subst_constant_def sub = function
+  | Undef inl -> Undef inl
+  | Def c -> Def (subst_constr_subst sub c)
+  | OpaqueDef lc -> OpaqueDef (subst_lazy_constr sub lc)
+  | Primitive op -> Primitive op
 
 type constant_body = {
     const_hyps : section_context; (* New: younger hyp at top *)
     const_body : constr_substituted constant_def;
     const_type : constant_type;
     const_body_code : Cemitcodes.to_patch_substituted;
-   (* const_type_code : Cemitcodes.to_patch; *)
     const_constraints : constraints;
-    const_inline : inline;
-    const_inline_code : bool}
+    const_inline_code : bool }
+
+let body_of_constant cb = match cb.const_body with
+  | Undef _ -> None
+  | Def c -> Some c
+  | OpaqueDef lc -> Some (force_lazy_constr lc)
+  | Primitive _ -> None
+
+let constant_has_body cb = match cb.const_body with
+  | Undef _ | Primitive _ -> false
+  | Def _ | OpaqueDef _ -> true
+
+let is_opaque cb = match cb.const_body with
+  | OpaqueDef _ -> true
+  | Undef _ | Def _ | Primitive _ -> false
 
 (*s Inductive types (internal representation with redundant
     information). *)
@@ -222,22 +268,15 @@ let subst_arity sub arity =
     | PolymorphicArity (ctx,s) -> PolymorphicArity (subst_rel_context sub ctx,s)
 	
 (* TODO: should be changed to non-coping after Term.subst_mps *)
-let subst_constant_def sub d =
-  match d with
-  | Def cs -> Def (subst_constr_subst sub cs)
-  | Opaque o -> Opaque (Option.map (subst_constr_subst sub) o)
-  | Primitive op -> d
+let subst_const_body sub cb = {
+  const_hyps = (assert (cb.const_hyps=[]); []);
+  const_body = subst_constant_def sub cb.const_body;
+  const_type = subst_arity sub cb.const_type;
+  const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
+  (*const_type_code = Cemitcodes.subst_to_patch sub cb.const_type_code;*)
+  const_constraints = cb.const_constraints;
+  const_inline_code = cb.const_inline_code }
 
-let subst_const_body sub cb = 
-  {
-   const_hyps = (assert (cb.const_hyps=[]); []);
-   const_body = subst_constant_def sub cb.const_body;
-   const_type = subst_arity sub cb.const_type;
-   const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
-   const_constraints = cb.const_constraints;
-   const_inline = cb.const_inline;
-   const_inline_code = cb.const_inline_code
- } 
 let subst_arity sub = function
 | Monomorphic s ->
     Monomorphic {

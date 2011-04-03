@@ -122,10 +122,9 @@ let kind_of_head env t =
 
 let compute_head = function
 | EvalConstRef cst ->
-    (match constant_value1 (Global.env()) cst with
-    | Declarations.Def c -> kind_of_head (Global.env()) (Declarations.force c)
-    | Declarations.Opaque _ -> RigidHead (RigidParameter cst)
-    | Declarations.Primitive _ -> NotImmediatelyComputableHead)
+    (try kind_of_head (Global.env()) (constant_value (Global.env()) cst) with
+    | NotEvaluableConst (CtePrim _) -> NotImmediatelyComputableHead
+    | _ -> RigidHead (RigidParameter cst))
 | EvalVarRef id ->
     (match pi2 (Global.lookup_named id) with
      | Some c when not (Decls.variable_opacity id) ->

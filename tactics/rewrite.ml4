@@ -703,7 +703,7 @@ let fold_match ?(force=false) env sigma c =
 let unfold_match env sigma sk app =
   match kind_of_term app with
   | App (f', args) when f' = mkConst sk ->
-      let v = Environ.constant_value_def (Global.env ()) sk in
+      let v = Environ.constant_value (Global.env ()) sk in
 	Reductionops.whd_beta sigma (mkApp (v, args))
   | _ -> app
 

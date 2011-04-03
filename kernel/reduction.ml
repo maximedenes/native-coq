@@ -95,8 +95,8 @@ let pr_state (f,stk) =
 
 let unfold_reference ((ids, csts), infos) k =
   match k with
-    | VarKey id when not (Idpred.mem id ids) -> Opaque None
-    | ConstKey cst when not (Cpred.mem cst csts) ->Opaque None
+    | VarKey id when not (Idpred.mem id ids) -> Undef None
+    | ConstKey cst when not (Cpred.mem cst csts) -> Undef None
     | _ -> unfold_reference infos k
 
 let rec is_empty_stack = function

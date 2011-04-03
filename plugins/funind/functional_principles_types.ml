@@ -447,8 +447,8 @@ let get_funs_constant mp dp =
   in
   function const ->
     let find_constant_body const =
-      match (Global.lookup_constant const ).const_body with
-	| Def b | Opaque (Some b) ->
+      match body_of_constant (Global.lookup_constant const) with
+	| Some b ->
 	    let body = force b in
 	    let body = Tacred.cbv_norm_flags
 	      (Closure.RedFlags.mkflags [Closure.RedFlags.fZETA])
@@ -457,8 +457,7 @@ let get_funs_constant mp dp =
 	      body
 	    in
 	    body
-	| Opaque None -> error ( "Cannot define a principle over an axiom ")
-	| Primitive _ -> error ( "Cannot define a principle over an primitive ")
+	| None -> error ( "Cannot define a principle over an axiom or primitive ")
     in
     let f = find_constant_body const in
     let l_const = get_funs_constant const f in
@@ -582,9 +581,7 @@ let make_scheme (fas : (constant*Glob_term.glob_sort) list) : Entries.definition
     let finfos = find_Function_infos this_block_funs.(0) in
     try
       let equation =  Option.get finfos.equation_lemma in
-      match (Global.lookup_constant equation).const_body with
-      | Opaque _ -> true
-      | _ -> false
+      Declarations.is_opaque (Global.lookup_constant equation)
     with Option.IsNone -> (* non recursive definition *)
       false
   in

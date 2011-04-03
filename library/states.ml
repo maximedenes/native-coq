@@ -20,7 +20,11 @@ let unfreeze (fl,fs) =
 let (extern_state,intern_state) =
   let (raw_extern, raw_intern) =
     extern_intern Coq_config.state_magic_number ".coq" in
-  (fun s -> Nativelib.extern_state s; raw_extern s (freeze())),
+  (fun s ->
+    if !Flags.load_proofs <> Flags.Force then
+      Util.error "Write State only works with option -force-load-proofs";
+    Nativelib.extern_state s;
+    raw_extern s (freeze())),
   (fun s ->
       let paths = Library.get_load_paths () in
       let _,linkfn = find_file_in_path ~warn:true paths (make_suffix s ".coq") in

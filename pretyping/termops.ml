@@ -1149,28 +1149,30 @@ let assumptions ?(add_opaque=false) st (* t env *) =
     try_and_go (Variable id) (add_id id env)
 
   and add_kn kn env s acc =
-    let cb = lookup_constant kn env in 
+    let cb = lookup_constant kn env in
     let do_type cst =
       let ctype =
 	match cb.Declarations.const_type with
-	| Declarations.PolymorphicArity (ctx,a) -> mkArity (ctx, Type a.Declarations.poly_level)
+	| Declarations.PolymorphicArity (ctx,a) ->
+        mkArity (ctx, Type a.Declarations.poly_level)
 	| Declarations.NonPolymorphicType t -> t
-      in (s,ContextObjectMap.add cst ctype acc)
+      in
+	(s,ContextObjectMap.add cst ctype acc)
+    in
+    let (s,acc) =
+      if Declarations.constant_has_body cb
+	&& (Declarations.is_opaque cb || not (Cpred.mem kn knst))
+	&& add_opaque
+      then
+	do_type (Opaque kn)
+      else (s,acc)
     in
     match cb.Declarations.const_body with
-    | Declarations.Def body ->
-	let (s,acc) = 
-	  if not (Cpred.mem kn knst) && add_opaque (* ??? *) then
-	    do_type (Opaque kn)
-	  else (s,acc) in
-	aux (Declarations.force body) env s acc	
-    | Declarations.Opaque None -> do_type (Axiom kn)
-    | Declarations.Opaque (Some body) ->
-	let (s,acc) =
-	  if add_opaque  (* ??? *) then do_type (Opaque kn) 
-	  else (s,acc) in
-	aux (Declarations.force body) env s acc
-    | Declarations.Primitive _ -> (s, acc) (* ??? *)
+    | Declarations.Primitive _ -> (s,acc) (* ??? *)
+    | _ ->
+      match Declarations.body_of_constant cb with
+      | None -> do_type (Axiom kn)
+      | Some body -> aux (Declarations.force body) env s acc
 
   and aux_memoize_kn kn env =
     try_and_go (Axiom kn) (add_kn kn env)

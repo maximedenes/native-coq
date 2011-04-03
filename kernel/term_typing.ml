@@ -93,24 +93,25 @@ let infer_declaration1 env dcl =
   | DefinitionEntry c ->
       let (j,cst) = infer env c.const_entry_body in
       let (typ,cst) = constrain_type env j cst c.const_entry_type in
-      let cd = 
-	let cb = Declarations.from_val j.uj_val in
-	if c.const_entry_opaque then Opaque (Some cb) else Def cb in
-      cd, typ, cst, c.const_entry_inline_code, None
+      let def =
+	if c.const_entry_opaque
+	then OpaqueDef (Declarations.opaque_from_val j.uj_val)
+	else Def (Declarations.from_val j.uj_val)
+      in
+      def, typ, cst, c.const_entry_inline_code
   | ParameterEntry (t,nl) ->
       let (j,cst) = infer env t in
-      Opaque None, NonPolymorphicType (Typeops.assumption_of_judgment env j),
-      cst,
-      false, nl
+      Undef nl, NonPolymorphicType (Typeops.assumption_of_judgment env j), cst,
+      false
   | PrimitiveEntry (t,op_t) ->
       let (j,cst) = infer env t in
       check_primitive_type env op_t t; 
       let cd = 
 	match op_t with
 	| Native.OT_op op -> Primitive op
-	| Native.OT_type _ -> Opaque None in
+	| Native.OT_type _ -> Undef None in
       cd, NonPolymorphicType (Typeops.assumption_of_judgment env j), 
-      cst, false, None
+      cst, false
 
 let global_vars_set_constant_type env = function
   | NonPolymorphicType t -> global_vars_set env t
@@ -120,33 +121,22 @@ let global_vars_set_constant_type env = function
 	  (fun t c -> Idset.union (global_vars_set env t) c))
       ctx ~init:Idset.empty
 
-let build_constant_declaration1 env kn (body,typ,cst,inline_code,inline) =
-  let ids =
-    match body with
-    | Def b | Opaque (Some b) ->
-	Idset.union
-	  (global_vars_set env (Declarations.force b))
-	  (global_vars_set_constant_type env typ)
-	  
-    | _ -> global_vars_set_constant_type env typ
+let build_constant_declaration1 env kn (def,typ,cst,inline_code) =
+  let ids_typ = global_vars_set_constant_type env typ in
+  let ids_def = match def with
+    | Undef _ -> Idset.empty
+    | Def cs -> global_vars_set env (Declarations.force cs)
+    | OpaqueDef lc -> global_vars_set env (Declarations.force_opaque lc)
+    | Primitive _ -> Idset.empty
   in
-  let tps = Cemitcodes.from_val (compile_constant_body env body) in
-  let hyps = keep_hyps env ids in
-  let cb = { const_hyps = hyps;
-      const_body = body;
-      const_type = typ;
-      const_body_code = tps;
-     (* const_type_code = to_patch env typ;*)
-      const_constraints = cst;
-      const_inline = inline;
-      const_inline_code = inline_code
-    }
-  in
-  let kn = canonical_con kn in
-  let (mp,_,l) = repr_kn kn in
-  let tr, auxdefs = compile_constant (pre_env env) mp l cb in
-  Nativelib.push_comp_stack tr auxdefs;
-  cb
+  let hyps = keep_hyps env (Idset.union ids_typ ids_def) in
+  let tps = Cemitcodes.from_val (compile_constant_body env def) in
+  { const_hyps = hyps;
+    const_body = def;
+    const_type = typ;
+    const_body_code = tps;
+    const_constraints = cst;
+    const_inline_code = inline_code }
 
 (*s Global and local constant declaration. *)
 
@@ -154,7 +144,7 @@ let translate_constant env kn ce =
   build_constant_declaration1 env kn (infer_declaration1 env ce)
 
 let translate_recipe env kn r =
-  build_constant_declaration1 env kn (Cooking.cook_constant1 env r)
+  build_constant_declaration1 env kn (Cooking.cook_constant env r)
 
 (* Insertion of inductive types. *)
 

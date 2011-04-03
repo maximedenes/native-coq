@@ -22,11 +22,10 @@ val translate_local_assum : env -> types ->
   types * Univ.constraints
 
 val infer_declaration1 : env -> constant_entry ->
-   constr_substituted constant_def * constant_type * constraints * bool * inline
+  constr_substituted constant_def * constant_type * constraints * bool
 
-val build_constant_declaration1 : env -> constant ->
-  constr_substituted constant_def * constant_type * constraints * bool * inline
-    -> constant_body
+val build_constant_declaration1 : env -> 'a ->
+  constr_substituted constant_def * constant_type * constraints * bool -> constant_body
 
 val translate_constant : env -> constant -> constant_entry -> constant_body
 

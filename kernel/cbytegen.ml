@@ -636,10 +636,8 @@ let compile_opt opt env c =
 
 let compile env c = compile_opt (Flags.vm_optimize ()) env c
 
-let compile_constant_body env body =
-  match body with
-  | Opaque _ -> BCconstant
-  | Primitive _op -> BCconstant
+let compile_constant_body env = function
+  | Undef _ | OpaqueDef _ | Primitive _ -> BCconstant
   | Def sb ->
       let body = Declarations.force sb in
       match kind_of_term body with

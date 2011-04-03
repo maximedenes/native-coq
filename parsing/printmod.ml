@@ -97,25 +97,29 @@ and print_modtype locals mty =
 	       str "Module"++ spc() ++ str s ++ spc() ++ str ":="++ spc())
 
 and print_sig locals sign = 
-  let print_spec (l,spec) = (match spec with
-    | SFBconst {const_body=Def _} -> str "Definition "
-    | SFBconst {const_body=Opaque _} -> str "Parameter "
-    | SFBconst {const_body=Primitive _} -> str "Primitive "
-    | SFBmind _ -> str "Inductive "
-    | SFBmodule _ -> str "Module "
-    | SFBmodtype _ -> str "Module Type ") ++ str (string_of_label l)
+  let print_spec (l,spec) = str (match spec with
+    | SFBconst cb ->
+      (match cb.const_body with
+	| Def _ -> "Definition "
+	| Undef _ | OpaqueDef _ -> "Parameter "
+    | Primitive _ -> "Primitive")
+    | SFBmind _ -> "Inductive "
+    | SFBmodule _ -> "Module "
+    | SFBmodtype _ -> "Module Type ") ++ str (string_of_label l)
   in
     prlist_with_sep spc print_spec sign
 
 and print_struct locals struc = 
-  let print_body (l,body) = (match body with
-    | SFBconst {const_body=Def _} -> str "Definition "
-    | SFBconst {const_body=Opaque (Some _)} -> str "Theorem "
-    | SFBconst {const_body=Opaque None} -> str "Parameter "
-    | SFBconst {const_body=Primitive _} -> str "Primitive "
-    | SFBmind _ -> str "Inductive "
-    | SFBmodule _ -> str "Module "
-    | SFBmodtype _ -> str "Module Type ") ++ str (string_of_label l)
+  let print_body (l,body) = str (match body with
+    | SFBconst cb ->
+      (match cb.const_body with
+	| Undef _ -> "Parameter "
+	| Def _ -> "Definition "
+	| OpaqueDef _ -> "Theorem "
+    | Primitive _ -> "Primitive")
+    | SFBmind _ -> "Inductive "
+    | SFBmodule _ -> "Module "
+    | SFBmodtype _ -> "Module Type ") ++ str (string_of_label l)
   in
     prlist_with_sep spc print_body struc
 

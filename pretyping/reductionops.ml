@@ -540,9 +540,9 @@ let rec whd_state_gen flags env sigma =
 	     | Some body -> whrec (body, stack)
 	     | None -> s)
       | Const const when red_delta flags ->
-	  begin match constant_value1 env const with
-	  | Def body ->  whrec (force body, stack)
-	  | Primitive op when check_native_args op stack ->
+      (try
+	    whrec (constant_value env const, stack) with
+      | NotEvaluableConst (CtePrim op) when check_native_args op stack ->
 	      let rargs, a, nargs, stk = get_native_args1 op const stack in
 	      let rec aux rargs a nargs = 
 		let (f1,args1) = whrec (a, empty_stack) in
@@ -556,8 +556,7 @@ let rec whd_state_gen flags env sigma =
 	      | Some m -> whrec (m,stk)
 	      | None -> s
 	      end
-	  | _ -> s
-	  end
+	  | _ -> s)
       | LetIn (_,b,_,c) when red_zeta flags -> stacklam whrec [b] c stack
       | Cast (c,_,_) -> whrec (c, stack)
       | App (f,cl)  -> whrec (f, append_stack cl stack)

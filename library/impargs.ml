@@ -155,7 +155,9 @@ let is_flexible_reference env bound depth f =
     | Rel n when n >= bound+depth -> (* inductive type *) false
     | Rel n when n >= depth -> (* previous argument *) true
     | Rel n -> (* since local definitions have been expanded *) false
-    | Const kn -> evaluable_constant1 kn env
+    | Const kn ->
+        let cb = Environ.lookup_constant kn env in
+	(match cb.const_body with Def _ -> true | _ -> false)
     | Var id ->
         let (_,value,_) = Environ.lookup_named id env in value <> None
     | Ind _ | Construct _ -> false

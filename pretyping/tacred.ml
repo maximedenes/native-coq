@@ -52,7 +52,7 @@ let is_evaluable env = function
   | EvalVarRef id -> is_evaluable_var env id
 
 let value_of_evaluable_ref env = function
-  | EvalConstRef con -> constant_value_def env con
+  | EvalConstRef con -> constant_value env con
   | EvalVarRef id -> Option.get (pi2 (lookup_named id env))
 
 let constr_of_evaluable_ref = function

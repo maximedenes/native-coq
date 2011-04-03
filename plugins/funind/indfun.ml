@@ -842,10 +842,9 @@ let make_graph (f_ref:global_reference) =
       | _ -> raise (UserError ("", str "Not a function reference") )
   in
   Dumpglob.pause ();
-  (match c_body.const_body with
-    | Primitive _ -> error "Cannot build a graph over a primitive !"
-    | Opaque None -> error "Cannot build a graph over an axiom !"
-    | Opaque (Some b) | Def b ->
+  (match body_of_constant c_body with
+     | None -> error "Cannot build a graph over an axiom or primitive !"
+     | Some b ->
 	 let env = Global.env () in
 	 let body = (force b) in
 	 let extern_body,extern_type =

@@ -109,7 +109,7 @@ let get_obligation_body expand obl =
   let c = Option.get obl.obl_body in
     if expand && obl.obl_status = Expand then
       match kind_of_term c with
-      | Const c -> constant_value_def (Global.env ()) c
+      | Const c -> constant_value (Global.env ()) c
       | _ -> c
     else c
 
@@ -471,7 +471,7 @@ let rec solve_obligation prg num tac =
 		    match obl.obl_status with
 		    | Expand ->
 			if not transparent then error_not_transp ()
-			else constant_value_def (Global.env ()) cst
+			else constant_value (Global.env ()) cst
 		    | Define opaque ->
 			if not opaque && not transparent then
 			  error_not_transp ()

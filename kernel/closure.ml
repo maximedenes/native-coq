@@ -217,26 +217,27 @@ let env_info info = info.i_env
 let info_flags info = info.i_flags
 
 let ref_value_cache info ref =
-  try  
+  try
     Hashtbl.find info.i_tab ref
   with Not_found ->
-    let v =
+  let v =
+  try
+    let body =
       match ref with
-      | RelKey n ->
-	  let (s,l) = info.i_rels in 
-	  (try Def (info.i_repr info (lift n (List.assoc (s-n) l)))
-	  with Not_found -> Opaque None)
-      | VarKey id -> 
-	  (try Def (info.i_repr info (List.assoc id info.i_vars))
-	  with Not_found -> Opaque None)
-      | ConstKey cst -> 
-	  begin match constant_value1 info.i_env cst with
-	  | Def t -> Def (info.i_repr info (force t))
-	  | Opaque _ -> Opaque None
-	  | Primitive op -> Primitive op
-	  end
-    in 
-    Hashtbl.add info.i_tab ref v; v
+	| RelKey n ->
+	    let (s,l) = info.i_rels in lift n (List.assoc (s-n) l)
+	| VarKey id -> List.assoc id info.i_vars
+	| ConstKey cst -> constant_value info.i_env cst
+    in
+    Def (info.i_repr info body)
+  with
+    | NotEvaluableConst (CtePrim op) -> Primitive op
+    | Not_found (* List.assoc *)
+    | NotEvaluableConst _ (* Const *)
+      -> Undef None
+  in
+  Hashtbl.add info.i_tab ref v; v
+
 
 let evar_value info ev =
   info.i_sigma ev

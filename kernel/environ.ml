@@ -174,26 +174,25 @@ type const_evaluation_result = CteNoBody | CteOpaque | CtePrim of Native.op
 
 exception NotEvaluableConst of const_evaluation_result
 
-let constant_value1 env kn = (lookup_constant kn env).const_body 
-
-let constant_value_def env kn =
-  match constant_value1 env kn with
-  | Def l_body -> Declarations.force l_body
-  | Opaque None -> raise (NotEvaluableConst CteNoBody)
-  | Opaque (Some _) -> raise (NotEvaluableConst CteOpaque)
-  | Primitive op -> raise (NotEvaluableConst (CtePrim op))
+let constant_value env kn =
+  let cb = lookup_constant kn env in
+  match cb.const_body with
+    | Def l_body -> Declarations.force l_body
+    | OpaqueDef _ -> raise (NotEvaluableConst CteOpaque)
+    | Undef _ -> raise (NotEvaluableConst CteNoBody)
+    | Primitive op -> raise (NotEvaluableConst (CtePrim op))
 
 let constant_opt_value1 env cst =
-  try Some (constant_value_def env cst)
+  try Some (constant_value env cst)
   with NotEvaluableConst _ -> None
 
 (* A global const is evaluable if it is defined and not opaque *)
 let evaluable_constant1 cst env =
-  try let _  = constant_value_def env cst in true
+  try let _  = constant_value env cst in true
   with NotEvaluableConst _ -> false
 
 let evaluable_constant_prim cst env =
-  try let _  = constant_value_def env cst in true
+  try let _  = constant_value env cst in true
   with NotEvaluableConst (CtePrim _) -> true
   | NotEvaluableConst _ -> false
 (* Mutual Inductives *)

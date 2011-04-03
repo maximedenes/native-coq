@@ -769,7 +769,8 @@ and lambda_of_app env f args =
       | Primitive op -> lambda_of_prim kn op (lambda_of_args env 0 args)
       | Def csubst when cb.const_inline_code ->
 	  lambda_of_app env (force csubst) args
-      | Def _ | Opaque _ -> mkLapp (Lconst kn) (lambda_of_args env 0 args)
+      | Def _ | OpaqueDef _ | Undef _ ->
+          mkLapp (Lconst kn) (lambda_of_args env 0 args)
       end
   | Construct c ->
       let tag, nparams, arity = Renv.get_construct_info env c in

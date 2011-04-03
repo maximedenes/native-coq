@@ -938,9 +938,7 @@ let generate_equation_lemma fnames f fun_num nb_params nb_args rec_args_num =
   let f_def = Global.lookup_constant (destConst f) in
   let eq_lhs = mkApp(f,Array.init (nb_params + nb_args) (fun i -> mkRel(nb_params + nb_args - i))) in
   let f_body =
-    match f_def.const_body with
-    | Def b | Opaque (Some b) -> force b
-    | _ -> assert false
+    force (Option.get (body_of_constant f_def))
   in
   let params,f_body_with_params = decompose_lam_n nb_params f_body in
   let (_,num),(_,_,bodies) = destFix f_body_with_params in
@@ -1056,16 +1054,15 @@ let prove_princ_for_struct interactive_proof fun_num fnames all_funs _nparams : 
       }
     in
     let get_body const =
-      match (Global.lookup_constant const ).const_body with
-      | Def b | Opaque (Some b) ->
+      match body_of_constant (Global.lookup_constant const) with
+	| Some b ->
 	     let body = force b in
 	     Tacred.cbv_norm_flags
 	       (Closure.RedFlags.mkflags [Closure.RedFlags.fZETA])
 	       (Global.env ())
 	       (Evd.empty)
 	       body
-      | Opaque None -> error ( "Cannot define a principle over an axiom ")
-      | Primitive _ -> error ( "Cannot define a principle over a primitive ")
+      | None -> error ( "Cannot define a principle over an axiom or primitive ")
     in
     let fbody = get_body fnames.(fun_num) in
     let f_ctxt,f_body = decompose_lam fbody in
