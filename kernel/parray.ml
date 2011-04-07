@@ -78,7 +78,7 @@ let init n f def =
     if 0 <= n && n < max_array_length32 then n + 1 
     else max_array_length32 in
   let t = Array.make n def in
-  for i = 0 to n - 2 do t.(i) <- f i done;
+  for i = 0 to n - 2 do Array.unsafe_set t i (f i) done;
   ref (Array t)
     
 let rec copy_updated p =
@@ -103,7 +103,7 @@ let rec rerootk t k =
 	begin match !t' with
 	| Array a as n ->
 	    let v' = a.(i) in
-	    a.(i) <- v;
+	    Array.unsafe_set a i v;
 	    t := n;
 	    t' := Updated (i, v', t)
 	| Updated _ -> assert false 

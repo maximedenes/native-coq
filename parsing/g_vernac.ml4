@@ -252,6 +252,9 @@ GEXTEND Gram
       | "array_copy" -> Native.Ocaml_prim Native.ArrayCopy
       | "array_reroot" -> Native.Ocaml_prim Native.ArrayReroot
       | "array_length" -> Native.Ocaml_prim Native.ArrayLength
+      | "array_init" -> Native.Ocaml_prim Native.ArrayInit
+      | "array_map" -> Native.Ocaml_prim Native.ArrayMap
+
      
       | "int31_foldi" -> Native.Oiterator Native.Int31foldi
       | "int31_foldi_down" -> Native.Oiterator Native.Int31foldi_down

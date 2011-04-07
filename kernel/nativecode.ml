@@ -143,6 +143,8 @@ type primitive =
   | Carraycopy of constant option
   | Carrayreroot of constant option
   | Carraylength of constant option
+  | Carrayinit of constant option
+  | Carraymap of constant option
   (* Caml primitive *)
   | MLand
   | MLle
@@ -457,6 +459,8 @@ let mlprim_of_cprim p kn =
   | Native.ArrayCopy       -> Carraycopy (Some kn)
   | Native.ArrayReroot     -> Carrayreroot (Some kn)
   | Native.ArrayLength     -> Carraylength (Some kn)
+  | Native.ArrayInit       -> Carrayinit (Some kn)
+  | Native.ArrayMap        -> Carraymap (Some kn)
 
 type prim_aux = 
   | PAprim of constant option * Native.prim_op * prim_aux array
@@ -1322,6 +1326,8 @@ let pp_mllam base_mp fmt l =
     | Carraycopy o -> pp_vprim o "arraycopy"
     | Carrayreroot o -> pp_vprim o "arrayreroot"
     | Carraylength o -> pp_vprim o "arraylength"
+    | Carrayinit o -> pp_vprim o "arrayinit"
+    | Carraymap o -> pp_vprim o "arraymap"
 	  (* Caml primitive *)
     | MLand -> Format.fprintf fmt "(&&)"
     | MLle -> Format.fprintf fmt "(<=)"

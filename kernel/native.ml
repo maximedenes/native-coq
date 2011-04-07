@@ -10,6 +10,8 @@ type caml_prim =
   | ArrayCopy
   | ArrayReroot
   | ArrayLength
+  | ArrayInit
+  | ArrayMap
 
 type iterator =
   | Int31foldi
@@ -64,6 +66,8 @@ let caml_prim_to_string = function
   | ArrayCopy -> "copy"
   | ArrayReroot -> "reroot"
   | ArrayLength -> "length"
+  | ArrayInit -> "init"
+  | ArrayMap -> "map"
   
 let iterator_to_string = function
   | Int31foldi -> "foldi"
@@ -123,6 +127,8 @@ let caml_prim_kind = function
   | ArraySet    -> [Kparam;Kwhnf;Kwhnf;Karg]
   | ArrayGetdefault | ArrayCopy | ArrayReroot 
   | ArrayLength -> [Kparam;Kwhnf]
+  | ArrayInit -> [Kparam;Kwhnf;Karg;Karg]
+  | ArrayMap -> [Kparam;Kparam;Karg;Kwhnf]
 	
 let iterator_kind _ = [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
     
@@ -154,6 +160,8 @@ let caml_prim_arity = function
   | ArrayCopy | ArrayReroot -> (1,1)
   | ArrayLength -> (1,1)
   | Int31print -> (0,1)
+  | ArrayInit -> (1,3)
+  | ArrayMap -> (2,2)
 	
 let iterator_arity _ = (2, 4)
     

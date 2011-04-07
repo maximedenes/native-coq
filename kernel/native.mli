@@ -9,6 +9,8 @@ type caml_prim =
   | ArrayCopy
   | ArrayReroot
   | ArrayLength
+  | ArrayInit
+  | ArrayMap
 
 type iterator =
   | Int31foldi

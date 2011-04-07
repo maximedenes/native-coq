@@ -543,6 +543,15 @@ let arraylength accu vA t =
 let parray_of_array t =
   (Obj.magic (Parray.of_array t) : t)
 
+let arrayinit accu vA n (f:t->t) def =
+  if is_int n then 
+    of_parray (Parray.init (to_uint n) (Obj.magic f) def)
+  else accu vA n f def
+
+let arraymap accu vA vB f t =
+  if is_parray t then
+    of_parray (Parray.map f (to_parray t))
+  else accu vA vB f t
 
 
 

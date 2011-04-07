@@ -16,6 +16,10 @@ Register copy : forall {A:Type}, array A -> array A as array_copy.
 
 Register reroot : forall {A:Type}, array A -> array A as array_reroot.
 
+Register init : forall {A:Type}, int -> (int -> A) -> A -> array A as array_init.
+
+Register map : forall {A B:Type}, (A -> B) -> array A -> array B as array_map.
+
 Delimit Scope array_scope with array.
 Notation "t '.[' i ']'" := (get t i) (at level 50) : array_scope.
 Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 50) : array_scope.
@@ -85,8 +89,10 @@ Definition mapi {A B:Type} (f:int->A->B) (t:array A) :=
   if size == 0 then tb
   else foldi (fun i tb => tb.[i<- f i (t.[i])]) 0 (size - 1) tb.
 
+(*
 Definition map {A B:Type} (f:A->B) :=
   Eval lazy beta delta [mapi] in (mapi (fun i => f)).
+*)
 
 Definition foldi_left {A B:Type} (f:int -> A -> B -> A) a (t:array B) :=
   let len := length t in
