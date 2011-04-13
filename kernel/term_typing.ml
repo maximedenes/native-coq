@@ -92,7 +92,9 @@ let infer_declaration env dcl =
   match dcl with
   | DefinitionEntry c ->
       let (j,cst) = infer env c.const_entry_body in
-      let (typ,cst) = constrain_type env j cst c.const_entry_type in
+      let (typ,cst) = constrain_type env j cst 
+	c.const_entry_polymorphic c.const_entry_type 
+      in
       let def =
 	if c.const_entry_opaque
 	then OpaqueDef (Declarations.opaque_from_val j.uj_val)
@@ -141,7 +143,7 @@ let build_constant_declaration1 env kn (def,typ,cst,inline_code) =
 (*s Global and local constant declaration. *)
 
 let translate_constant env kn ce =
-  build_constant_declaration1 env kn (infer_declaration1 env ce)
+  build_constant_declaration1 env kn (infer_declaration env ce)
 
 let translate_recipe env kn r =
   build_constant_declaration1 env kn (Cooking.cook_constant env r)
