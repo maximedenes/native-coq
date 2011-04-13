@@ -321,7 +321,7 @@ type unsafe_type_judgment = {
   utj_type : sorts }
 
 (*s Compilation of global declaration *)
-
+let compile_constant = Nativecode.compile_constant
 let compile_constant_body = Cbytegen.compile_constant_body
 
 

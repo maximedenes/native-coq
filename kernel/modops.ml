@@ -265,7 +265,10 @@ let strengthen_const env mp_from l cb resolver =
 	  (compile_constant_body env const_subs);
 	const_inline_code = false
       }
-        in cb
+        in
+        let tr, auxdefs = compile_constant (pre_env env) mp_from l cb in
+        Nativelib.push_comp_stack tr auxdefs;
+        cb
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then

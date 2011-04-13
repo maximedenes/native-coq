@@ -162,14 +162,12 @@ let nconv pb env t1 t2 =
   let code2 = lambda_of_constr env t2 in
   let (gl,_,code1) = mllambda_of_lambda [] None code1 in
   let (gl,_,code2) = mllambda_of_lambda gl None code2 in
-  let header =
-    mk_opens ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
+  let main_code =
+    mk_internal_let "t1" code1::mk_internal_let "t2"code2::conv_main_code
   in
-  let code = header@List.rev gl@[mk_internal_let "t1" code1;mk_internal_let "t2"
-  code2]@conv_main_code in
   fconv_result := FCRNone;
   Nativelib.comp_result := None;
-  let _ = Thread.create (compile_terms mp) code in
+  let _ = Thread.create (compile_terms mp (List.rev gl)) main_code in
   let _ = Thread.create (async_fconv pb env t1) t2 in
   while (!fconv_result = FCRNone && !Nativelib.comp_result = None) do
     Thread.yield ()

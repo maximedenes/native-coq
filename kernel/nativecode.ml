@@ -1457,8 +1457,7 @@ let compile_mind_sig mb mind stack =
   in
   array_fold_left_i f stack mb.mind_packets
 
-let mk_opens l =
-  List.map (fun s -> Gopen s) l
+let mk_open s = Gopen s
 
 let mk_internal_let s code =
   Glet(Ginternal s, code)

@@ -121,7 +121,7 @@ let pp_toplevel_field mp fmt t =
   | _ -> pp_mod_field mp fmt t
 
 let compile_module code mp load_paths f =
-  let header = mk_opens ["Nativevalues";"Nativecode";"Nativeconv"] in
+  let header = List.map mk_open ["Nativevalues";"Nativecode";"Nativeconv"] in
 (*  let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
      <:str_item< open Names >>]

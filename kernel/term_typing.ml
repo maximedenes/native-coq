@@ -141,7 +141,13 @@ let build_constant_declaration1 env kn (body,typ,cst,inline_code,inline) =
       const_constraints = cst;
       const_inline = inline;
       const_inline_code = inline_code
-    } in cb
+    }
+  in
+  let kn = canonical_con kn in
+  let (mp,_,l) = repr_kn kn in
+  let tr, auxdefs = compile_constant (pre_env env) mp l cb in
+  Nativelib.push_comp_stack tr auxdefs;
+  cb
 
 (*s Global and local constant declaration. *)
 

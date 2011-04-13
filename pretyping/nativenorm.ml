@@ -417,12 +417,13 @@ let native_norm env c ty =
   let penv = Environ.pre_env env in 
   let mp = penv.Pre_env.current_mp in
   let code1 = Nativelambda.lambda_of_constr penv c in
-  let (gl,_,code1) = Nativecode.mllambda_of_lambda [] None code1 in
-  let header =
-    mk_opens ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
-  in
-  let code = header@List.rev gl@[mk_internal_let "t1" code1]@norm_main_code in
-  match Nativelib.compile_terms mp code with
+  let (gl,(vl1,vl2),code1) = Nativecode.mllambda_of_lambda [] None code1 in
+  (*
+  Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
+  Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
+  *)
+  let main_code = mk_internal_let "t1" code1::norm_main_code in
+  match Nativelib.compile_terms mp (List.rev gl) main_code with
     | 0,fn,modname ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in

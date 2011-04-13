@@ -191,6 +191,8 @@ type unsafe_type_judgment = {
 
 
 (** {6 Compilation of global declaration } *)
+val compile_constant : Pre_env.env -> module_path -> label -> constant_body ->
+    Nativecode.global * Nativecode.global list
 
 val compile_constant_body :
     env -> constr_substituted constant_def -> Cemitcodes.body_code

@@ -22,7 +22,7 @@ val pp_global : module_path -> Format.formatter -> global -> unit
 val pp_global_aux : module_path -> Format.formatter -> global -> global list -> unit
 val pp_globals : module_path -> Format.formatter -> global list -> unit
 
-val mk_opens : string list -> global list
+val mk_open : string -> global
 val mk_internal_let : string -> mllambda -> global
 
 val compile_constant : env -> module_path -> label ->

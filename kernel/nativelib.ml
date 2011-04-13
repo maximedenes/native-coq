@@ -10,8 +10,9 @@ exception NotConvertible
 let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
 
-let open_header = ref ([] : mllambda list)
-let comp_stack = ref ([] : mllambda list)
+let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
+let open_header = ref (init_opens : global list)
+let comp_stack = ref ([] : global list)
 
 let comp_result = ref (None : (int * string * string) option)
 
@@ -30,20 +31,16 @@ let include_dirs =
 (* Pointer to the function linking an ML object into coq's toplevel *)
 let load_obj = ref (fun x -> () : string -> unit)
 
-let push_comp_stack e =
-  comp_stack := !comp_stack@e
+let push_comp_stack e l =
+  comp_stack := e::l@(!comp_stack)
 
 let emit_comp_stack () =
-  let res = !comp_stack in
+  let res = List.rev !comp_stack in
   comp_stack := []; res
 
-let compile_terms base_mp terms_code =
-(*  let ast = emit_comp_stack () in *)
-(*  let terms_code =
-    [<:str_item< open Nativelib >>;
-     <:str_item< open Nativevalues >>;
-     <:str_item< open Names >>] @ (List.rev !open_header) @ ast @ terms_code
-  in*)
+let compile_terms base_mp terms_code main_code =
+  let ast = emit_comp_stack () in
+  let terms_code = !open_header@terms_code@ast@main_code in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
   let fmt = Format.formatter_of_out_channel ch_out in
@@ -62,8 +59,9 @@ let compile_terms base_mp terms_code =
   in
   let res = Sys.command comp_cmd in
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
-    comp_result := Some (res, filename, mod_name);
-    res, filename, mod_name
+  open_header := !open_header@[mk_open mod_name];
+  comp_result := Some (res, filename, mod_name);
+  res, filename, mod_name
 
 let call_linker f =
   if Dynlink.is_native then
