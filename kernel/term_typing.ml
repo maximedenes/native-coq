@@ -26,14 +26,17 @@ open Type_errors
 open Indtypes
 open Typeops
 
-let constrain_type env j cst1 = function
-  | None ->
-      make_polymorphic_if_constant_for_ind env j, cst1
+let constrain_type env j cst1 poly = function
+  | None -> make_polymorphic env j, cst1
   | Some t ->
       let (tj,cst2) = infer_type env t in
       let (_,cst3) = judge_of_cast env j DEFAULTcast tj in
-      assert (t = tj.utj_val);
-      NonPolymorphicType t, union_constraints (union_constraints cst1 cst2) cst3
+	assert (t = tj.utj_val);
+	let cstrs = union_constraints (union_constraints cst1 cst2) cst3 in
+	  if poly then 
+	    make_polymorphic env { j with uj_type = tj.utj_val }, cstrs
+	  else
+	    NonPolymorphicType t, cstrs
 
 let local_constrain_type env j cst1 = function
   | None ->
@@ -88,7 +91,7 @@ let push_rels_with_univ vars env =
 
 (* Insertion of constants and parameters and primitives in environment. *)
 
-let infer_declaration1 env dcl =
+let infer_declaration env dcl =
   match dcl with
   | DefinitionEntry c ->
       let (j,cst) = infer env c.const_entry_body in
