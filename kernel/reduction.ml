@@ -730,4 +730,3 @@ let is_arity env c =
     let _ = dest_arity env c in
     true
   with NotArity -> false
-
