@@ -36,30 +36,12 @@ type atom =
 
 let accumulate_tag = 0
 
-let accumulate_code (k:accumulator) (x:t) =
-  let o = Obj.repr k in
-  let osize = Obj.size o in
-  let r = Obj.new_block accumulate_tag (osize + 1) in
-  for i = 0 to osize - 1 do
-    Obj.set_field r i (Obj.field o i)
-  done;
-  Obj.set_field r osize (Obj.repr x);
-  (Obj.obj r:t)
+let rec accu atom args =
+  let res = fun v -> accu atom (v::args) in
+  Obj.set_tag (Obj.repr res) accumulate_tag;
+  (res : t)
 
-let rec accumulate (x:t) =
-  accumulate_code (Obj.magic accumulate) x
-
-let raccumulate = ref accumulate
-
-let mk_accu_gen rcode (a:atom) =
-(*  Format.eprintf "size rcode =%i\n" (Obj.size (Obj.magic rcode)); *)
-  let r = Obj.new_block 0 3 in
-  Obj.set_field r 0 (Obj.field (Obj.magic rcode) 0);
-  Obj.set_field r 1 (Obj.field (Obj.magic rcode) 1);
-  Obj.set_field r 2 (Obj.magic a);
-  (Obj.magic r:t);;
-
-let mk_accu (a:atom) = mk_accu_gen accumulate a
+let rec mk_accu (a:atom) = accu a []
 
 let mk_rel_accu i = 
   mk_accu (Arel i)
@@ -96,19 +78,16 @@ let mk_prod_accu s dom codom =
   mk_accu (Aprod (s,dom,codom))
 
 let atom_of_accu (k:accumulator) =
-  (Obj.magic (Obj.field (Obj.magic k) 2) : atom)
+  (Obj.magic (Obj.field (Obj.magic k) 3) : atom)
 
 let set_atom_of_accu (k:accumulator) (a:atom) =
-  Obj.set_field (Obj.magic k) 2 (Obj.magic a)
+  Obj.set_field (Obj.magic k) 3 (Obj.magic a)
     
-let arg_of_accu (k:accumulator) (i:int) =
-  (Obj.magic (Obj.field (Obj.magic k) (i + 3)) : t)
+let args_of_accu (k:accumulator) =
+  (Obj.magic (Obj.field (Obj.magic k) 4) : t list)
 
 let accu_nargs (k:accumulator) =
-  let nargs = Obj.size (Obj.magic k) - 3 in
-(*  if nargs < 0 then Format.eprintf "nargs = %i\n" nargs; *)
-  assert (nargs >= 0);
-  nargs
+  List.length (args_of_accu k)
 
 let is_accu x =
   let o = Obj.repr x in
@@ -140,10 +119,10 @@ let is_atom_fix (a:atom) =
   | _ -> false
 
 let mk_fix_accu rec_pos pos types bodies =
-  mk_accu_gen accumulate (Afix(types,bodies,rec_pos, pos))
+  mk_accu (Afix(types,bodies,rec_pos, pos))
 
 let mk_cofix_accu pos types norm =
-  mk_accu_gen accumulate (Acofix(types,norm,pos,(Obj.magic 0 : t)))
+  mk_accu (Acofix(types,norm,pos,(Obj.magic 0 : t)))
 
 let upd_cofix (cofix :t) (cofix_fun : t) =
   let atom = atom_of_accu (Obj.magic cofix) in
@@ -159,10 +138,8 @@ let force_cofix (cofix : t) =
     match atom with
     | Acofix(typ,norm,pos,f) ->
 	let f = ref f in
-	let nargs = accu_nargs accu in
-	for i = 0 to nargs - 1 do 
-	  f := !f (arg_of_accu accu i)
-	done;
+    let args = List.rev (args_of_accu accu) in
+    List.iter (fun x -> f := !f x) args;
 	let v = !f (Obj.magic ()) in
 	set_atom_of_accu accu (Acofixe(typ,norm,pos,v));
 	v

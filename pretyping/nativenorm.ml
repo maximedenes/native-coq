@@ -271,7 +271,7 @@ and nf_accu env accu =
   else
     let a,typ = nf_atom_type env atom in
     let _, args = nf_args env accu typ in
-    mkApp(a,args)
+    mkApp(a,Array.of_list args)
 
 and nf_accu_type env accu =
   let atom = atom_of_accu accu in
@@ -279,18 +279,15 @@ and nf_accu_type env accu =
   else
     let a,typ = nf_atom_type env atom in
     let t, args = nf_args env accu typ in
-    mkApp(a,args), t
+    mkApp(a,Array.of_list args), t
 
 and nf_args env accu t =
-  let t = ref t in
-  let len = accu_nargs accu in
-  let args = 
-    Array.init len 
-      (fun i ->
-	let _,dom,codom = try decompose_prod env !t with _ -> exit 123 in
-	let c = nf_val env (arg_of_accu accu i) dom in
-	t := subst1 c codom; c) in
-  !t,args
+  let aux (t,l) arg = 
+	let _,dom,codom = try decompose_prod env t with _ -> exit 123 in
+	let c = nf_val env arg dom in
+	(subst1 c codom, c::l)
+  in
+  List.fold_left aux (t,[]) (args_of_accu accu)
 
 and nf_bargs env b t =
   let t = ref t in

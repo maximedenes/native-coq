@@ -64,14 +64,7 @@ and conv_accu pb lvl k1 k2 cu =
     conv_atom pb lvl (atom_of_accu k1) (atom_of_accu k2) cu
   else
     let cu = conv_atom pb lvl (atom_of_accu k1) (atom_of_accu k2) cu in
-    let rec aux lvl max k1 k2 i cu =
-      if i = max then 
-	conv_val CONV lvl (arg_of_accu k1 i) (arg_of_accu k2 i) cu
-      else
-	let cu =
-	  conv_val CONV lvl (arg_of_accu k1 i) (arg_of_accu k2 i) cu in
-	aux lvl max k1 k2 (i+1) cu in
-    aux lvl (n1-1) k1 k2 0 cu
+    List.fold_right2 (conv_val CONV lvl) (args_of_accu k1) (args_of_accu k2) cu
 
 and conv_atom pb lvl a1 a2 cu =
   if a1 == a2 then cu
