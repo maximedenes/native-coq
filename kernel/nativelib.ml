@@ -34,13 +34,11 @@ let load_obj = ref (fun x -> () : string -> unit)
 let push_comp_stack e l =
   comp_stack := e::l@(!comp_stack)
 
-let emit_comp_stack () =
-  let res = List.rev !comp_stack in
-  comp_stack := []; res
+let clear_comp_stack () =
+  comp_stack := []
 
 let compile_terms base_mp terms_code main_code =
-  let ast = emit_comp_stack () in
-  let terms_code = !open_header@terms_code@ast@main_code in
+  let terms_code = !open_header@terms_code@(!comp_stack)@main_code in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
   let fmt = Format.formatter_of_out_channel ch_out in
@@ -65,9 +63,9 @@ let compile_terms base_mp terms_code main_code =
 
 let call_linker f =
   if Dynlink.is_native then
-  try Dynlink.loadfile f
-  with Dynlink.Error e -> print_endline (Dynlink.error_message e)
-  else (!load_obj f; ())
+    try (Dynlink.loadfile f; clear_comp_stack ())
+    with Dynlink.Error e -> print_endline (Dynlink.error_message e)
+  else (!load_obj f; clear_comp_stack ())
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
