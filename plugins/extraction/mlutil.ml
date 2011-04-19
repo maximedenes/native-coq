@@ -368,7 +368,8 @@ let ast_iter_rel f =
     | MLapp (a,l) -> iter n a; List.iter (iter n) l
     | MLcons (_,_,l) ->  List.iter (iter n) l
     | MLmagic a -> iter n a
-    | MLglob _ | MLexn _ | MLdummy | MLaxiom -> ()
+    | MLparray p -> Array.iter (iter n) p
+    | MLglob _ | MLexn _ | MLdummy | MLaxiom | MLuint _ -> ()
   in iter 0
 
 (*s Map over asts. *)
@@ -383,7 +384,8 @@ let ast_map f = function
   | MLapp (a,l) -> MLapp (f a, List.map f l)
   | MLcons (i,c,l) -> MLcons (i,c, List.map f l)
   | MLmagic a -> MLmagic (f a)
-  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom as a -> a
+  | MLparray p -> MLparray (Array.map f p)
+  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom | MLuint _ as a -> a
 
 (*s Map over asts, with binding depth as parameter. *)
 
@@ -398,7 +400,8 @@ let ast_map_lift f n = function
   | MLapp (a,l) -> MLapp (f n a, List.map (f n) l)
   | MLcons (i,c,l) -> MLcons (i,c, List.map (f n) l)
   | MLmagic a -> MLmagic (f n a)
-  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom as a -> a
+  | MLparray p -> MLparray (Array.map (f n) p)
+  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom | MLuint _ as a -> a
 
 (*s Iter over asts. *)
 
@@ -412,7 +415,8 @@ let ast_iter f = function
   | MLapp (a,l) -> f a; List.iter f l
   | MLcons (_,c,l) -> List.iter f l
   | MLmagic a -> f a
-  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom  -> ()
+  | MLparray p -> Array.iter f p
+  | MLrel _ | MLglob _ | MLexn _ | MLdummy | MLaxiom  | MLuint _ -> ()
 
 (*S Operations concerning De Bruijn indices. *)
 
@@ -448,7 +452,8 @@ let nb_occur_match =
     | MLapp (a,l) -> List.fold_left (fun r a -> r+(nb k a)) (nb k a) l
     | MLcons (_,_,l) -> List.fold_left (fun r a -> r+(nb k a)) 0 l
     | MLmagic a -> nb k a
-    | MLglob _ | MLexn _ | MLdummy | MLaxiom -> 0
+    | MLparray p -> Array.fold_left (fun r a -> r+(nb k a)) 0 p
+    | MLglob _ | MLexn _ | MLdummy | MLaxiom | MLuint _ -> 0
   in nb 1
 
 (*s Lifting on terms.

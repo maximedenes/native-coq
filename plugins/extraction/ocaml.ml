@@ -40,6 +40,11 @@ let pp_tuple f = function
   | [x] -> f x
   | l -> pp_par true (prlist_with_sep (fun () -> str "," ++ spc ()) f l)
 
+let pp_array f = function
+  | [] -> mt ()
+  | [x] -> f x
+  | l -> pp_par true (prlist_with_sep (fun () -> str ";" ++ spc ()) f l)
+
 let pp_boxed_tuple f = function
   | [] -> mt ()
   | [x] -> f x
@@ -216,6 +221,7 @@ let rec pp_expr par env args =
         when kn = ind_ascii && check_extract_ascii () & is_list_cons l ->
 	assert (args=[]);
 	pp_char l
+  	
     | MLcons ({c_kind = Coinductive},r,[]) ->
 	assert (args=[]);
 	pp_par par (str "lazy " ++ pp_global Cons r)
@@ -302,6 +308,14 @@ let rec pp_expr par env args =
 	pp_apply (str "Obj.magic") par (pp_expr true env [] a :: args)
     | MLaxiom ->
 	pp_par par (str "failwith \"AXIOM TO BE REALIZED\"")
+    | MLuint i ->
+	assert (args=[]);
+	str "(ExtrNative.of_uint(" ++ int (Uint31.to_int i) ++ str "))"
+    | MLparray p ->
+	assert (args=[]);
+	let tuple = pp_array (pp_expr true env []) (Array.to_list p) in
+	str "(ExtrNative.of_array [|" ++ tuple ++ str "|])"
+
 
 
 and pp_record_pat (projs, args) =

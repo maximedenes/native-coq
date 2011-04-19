@@ -250,8 +250,7 @@ let rec extract_type env db j c args =
 	   | (Info, TypeScheme) ->
 	       let mlt = extract_type_app env db (r, type_sign env typ) args in
 	       (match cb.const_body with
-	       | Primitive _ -> assert false
-	       | Declarations.Opaque None -> mlt
+	       | Primitive _ | Declarations.Opaque None -> mlt
 	       | Declarations.Opaque (Some _) | Def _ when is_custom r -> mlt
 	       | Declarations.Opaque (Some lbody) | Def lbody ->
 		   let newc = applist (Declarations.force lbody, args) in
@@ -264,8 +263,7 @@ let rec extract_type env db j c args =
 		   if expand env mlt = expand env mlt' then mlt else mlt')
 	   | _ -> (* only other case here: Info, Default, i.e. not an ML type *)
 	       (match cb.const_body with
-	       | Primitive _ -> assert false
-	       | Declarations.Opaque None -> 
+	       | Primitive _ | Declarations.Opaque None ->
 		   Tunknown (* Brutal approximation ... *)
 	       | Declarations.Opaque (Some lbody) | Def lbody ->
 		      (* We try to reduce. *)
@@ -486,8 +484,7 @@ and mlt_env env r = match r with
 	 let cb = Environ.lookup_constant kn env in
 	 let typ = Typeops.type_of_constant_type env cb.const_type in
 	 match cb.const_body with
-	 | Primitive _ -> assert false
-	 | Declarations.Opaque None -> None
+	 | Primitive _ | Declarations.Opaque None -> None
 	 | Def l_body | Declarations.Opaque (Some l_body)->
 	       (match flag_of_type env typ with
 		  | Info,TypeScheme ->
@@ -519,7 +516,10 @@ let record_constant_type env kn opt_typ =
     in let schema = (type_maxvar mlt, mlt)
     in add_type kn schema; schema
 
+
 (*S Extraction of a term. *)
+(* TODO MOVE THIS *)
+let dummy_global_ref = Libnames.VarRef (id_of_string "dummy_global_ref")
 
 (* Precondition: [(c args)] is not a type scheme, and is informative. *)
 
@@ -578,9 +578,19 @@ let rec extract_term env mle mlt c args =
     | CoFix (i,recd) ->
  	extract_app env mle mlt (extract_fix env mle i recd) args
     | Cast (c,_,_) -> extract_term env mle mlt c args
-    | Ind _ | Prod _ | Sort _ | Meta _ | Evar _ | Var _
-    | NativeInt _ | NativeArr _ -> assert false
+    | Ind _ | Prod _ | Sort _ | Meta _ | Evar _ | Var _ -> assert false
+    | NativeInt i -> 
+	assert (args = []);
+	MLuint i
+    | NativeArr (t,arr) -> 
+	assert (args = []); 
+	let a = new_meta () in
+	let ml_arr = 
+	  Array.map (fun c -> extract_term env mle a c []) arr in	
+	MLparray ml_arr
 
+
+	       
 (*s [extract_maybe_term] is [extract_term] for usual terms, else [MLdummy] *)
 
 and extract_maybe_term env mle mlt c =
@@ -914,8 +924,7 @@ let extract_constant env kn cb =
   let r = ConstRef kn in
   let typ = Typeops.type_of_constant_type env cb.const_type in
   match cb.const_body with
-  | Primitive _ -> assert false
-  | Declarations.Opaque None ->
+  | Primitive _ | Declarations.Opaque None ->
         (* A logical axiom is risky, an informative one is fatal. *)
         (match flag_of_type env typ with
 	   | (Info,TypeScheme) ->
@@ -953,8 +962,7 @@ let extract_constant_spec env kn cb =
     | (Info, TypeScheme) ->
 	let s,vl = type_sign_vl env typ in
 	(match cb.const_body with
-	| Primitive _ -> assert false
-	| Declarations.Opaque None -> Stype (r, vl, None)
+	| Primitive _ | Declarations.Opaque None -> Stype (r, vl, None)
 	| Declarations.Opaque (Some body) | Def body ->
 	      let db = db_from_sign s in
 	      let t = extract_type_scheme env db (force body) (List.length s)

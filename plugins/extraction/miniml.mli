@@ -133,6 +133,8 @@ and ml_ast =
   | MLdummy
   | MLaxiom
   | MLmagic  of ml_ast
+  | MLparray of ml_ast array
+  | MLuint   of Uint31.t
 
 (*s ML declarations. *)
 

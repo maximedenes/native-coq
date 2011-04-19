@@ -119,7 +119,10 @@ let rec pp_expr env args =
     | MLmagic a ->
 	pp_expr env args a
     | MLaxiom -> paren (str "error \"AXIOM TO BE REALIZED\"")
-
+    | MLuint _ ->
+	paren (str "error \"EXTRACTION OF UINT NOT IMPLEMENTED\"") 
+    | MLparray _ ->
+	paren (str "error \"EXTRACTION OF PARRAY NOT IMPLEMENTED\"") 	
 and pp_cons_args env = function
   | MLcons (info,r,args) when info.c_kind<>Coinductive ->
       paren (pp_global Cons r ++
