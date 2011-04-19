@@ -1918,16 +1918,75 @@ Qed.
 
 Lemma of_pos_spec : forall p, [|of_pos p|] = Zpos p mod wB. 
 Proof.
-Admitted.
+ unfold of_pos.
+ unfold wB.
+ assert (forall k, (k <= size)%nat -> 
+   forall p : positive, [|of_pos_rec k p|] = Zpos p mod 2 ^ Z_of_nat k).
+  induction k.
+  simpl;intros;rewrite to_Z_0,Zmod_1_r;trivial.
+Opaque Z_of_nat.
+  destruct p;simpl.
+  destruct (bit_add_or (of_pos_rec k p << 1) 1) as (H1, _).
+  rewrite <- H1;clear H1.
+  change (Zpos p~1) with (2*(Zpos p) + 1)%Z.
+  rewrite add_spec,lsl_spec, IHk, to_Z_1.
+  rewrite Zmult_comm, Zplus_mod_idemp_l, Zmod_small.
+  change 2%Z with (2^1)%Z.
+  rewrite Zmod_distr.
+  rewrite inj_S, Zpower_Zsucc;[ | apply Zle_0_nat].
+  repeat change (2^1)%Z with 2%Z.
+  rewrite Zmult_mod_distr_l;trivial.
+Transparent Z_of_nat.
+  rewrite inj_S;omega.
+  discriminate.
+  split;[discriminate | trivial].
+  compute;trivial.
+  assert (W:0 <= Zpos p mod 2 ^ Z_of_nat k < 2 ^ Z_of_nat k).
+   apply Z.mod_pos_bound;auto with zarith.
+  change (2^1)%Z with 2%Z;split;try omega.
+  apply Zlt_le_trans with (2 ^ Z_of_nat (S k)).
+  rewrite inj_S, Zpower_Zsucc;omega.
+  unfold wB;apply Zpower_le_monotone;auto with zarith.
+  split;auto using inj_le with zarith.
+  auto with zarith.
+  intros n H1 H2.
+  rewrite bit_1, eqb_spec in H2;subst.
+  rewrite bit_lsl in H1;discriminate H1.
+  
+  change (Zpos p~0) with (2*(Zpos p))%Z.
+  rewrite lsl_spec, IHk, to_Z_1.
+  rewrite Zmult_comm, Zmod_small.
+  rewrite inj_S, Zpower_Zsucc;[ | apply Zle_0_nat].
+  rewrite Zmult_mod_distr_l;trivial.
+  assert (W:0 <= Zpos p mod 2 ^ Z_of_nat k < 2 ^ Z_of_nat k).
+   apply Z.mod_pos_bound;auto with zarith.
+  change (2^1)%Z with 2%Z;split;try omega.
+  apply Zlt_le_trans with (2 ^ Z_of_nat (S k)).
+  rewrite inj_S, Zpower_Zsucc;omega.
+  unfold wB;apply Zpower_le_monotone;auto with zarith.
+  split;auto using inj_le with zarith.
+  auto with zarith.
+
+  rewrite to_Z_1, Zmod_small;trivial.
+  split;auto with zarith.
+  apply Zpower_gt_1;auto with zarith.
+  rewrite inj_S;auto with zarith.
+  
+  apply H;auto with zarith.
+Qed.
 
 Lemma of_Z_spec : forall z, [|of_Z z|] = z mod wB.
 Proof.
- assert (W:= to_Z_bounded 0).
  unfold of_Z;destruct z.
- rewrite Zmod_small;trivial.
+ assert (W:= to_Z_bounded 0);rewrite Zmod_small;trivial.
  apply of_pos_spec.
  rewrite opp_spec, of_pos_spec.
-Admitted.
+ rewrite <- Zmod_opp_opp.
+ change (- Zpos p)%Z with (Zneg p).
+ destruct (Z_eq_dec (Zneg p mod wB) 0).
+ rewrite e, Z_mod_zero_opp_r;trivial.
+ rewrite Z_mod_nz_opp_r, Zminus_mod, Z_mod_same_full, Zmod_mod, Zminus_0_r, Zmod_mod;trivial.
+Qed.
 
 Lemma foldi_cont_Ind : forall A B (P: int -> (A -> B) -> Prop) (f:int -> (A -> B) -> (A -> B)) min max cont,
    max < max_int = true ->
@@ -2256,6 +2315,100 @@ Proof.
  apply foldi_down_ZInd2;unfold P';intros;subst;auto.
  apply H0.
 Qed.
+
+Lemma foldi_down_Ind :
+   forall A (P: int -> A -> Prop) (f:int -> A -> A) max min a,
+   0 < min = true ->
+   (max < min = true -> P (min - 1) a) ->
+   (P max a) -> 
+   (forall i a, min <= i = true -> i <= max = true -> P i a -> P (i - 1) (f i a)) ->
+   P (min - 1) (foldi_down f max min a).
+Proof.
+ intros.
+ set (P' z a := (0 <= z < wB)%Z -> P (of_Z z) a).
+ assert (W:= to_Z_sub_1 _ _ H). 
+ assert (P' ([|min|]-1)%Z (foldi_down f max min a)).
+ apply foldi_down_ZInd;unfold P';intros.
+ rewrite <- W, of_to_Z;auto.
+ rewrite of_to_Z;trivial.
+ assert (0 < i = true).
+   apply ltb_leb_trans with min;trivial.
+ rewrite <- (to_Z_sub_1 _ _ H7), of_to_Z;apply H2;trivial.
+ rewrite of_to_Z in H5;apply H5;apply to_Z_bounded.
+ unfold P' in H3;rewrite <- W, of_to_Z in H3;apply H3;apply to_Z_bounded.
+Qed.
+
+Lemma foldi_down_min : 
+  forall A f min max (a:A),
+  min < max_int = true->
+  (min <= max) = true ->
+  foldi_down f max min a = f min (foldi_down f max (min + 1) a).
+Proof.
+  intros. 
+  set (P:= fun i => i <= max - min = true ->
+       forall a, foldi_down f (min + i) min a = f min (foldi_down f (min + i) (min + 1) a)).
+  assert (min < min + 1 = true).
+   rewrite ltb_leb_add1 with (y:=max_int), leb_refl;trivial.
+  assert (P (max - min)).
+    apply int_ind;unfold P.
+      replace (min + 0) with min.
+      intros _ a'; rewrite foldi_down_eq, foldi_down_lt;trivial.
+      apply to_Z_inj;rewrite add_spec, to_Z_0, Zplus_0_r, Zmod_small;auto using to_Z_bounded.
+    intros i Hi Hrec Hi1 a'.
+    rewrite add_assoc.
+    assert (Wi:= to_Z_add_1 _ _ Hi).
+    assert (Wmin:= to_Z_add_1 _ _ H). 
+    assert ((min + 1) <= (min + i + 1) = true).
+      assert (W1 := to_Z_bounded min); assert (W2:= to_Z_bounded max); assert (W3:= to_Z_bounded i).
+      replace (min + i + 1) with (min + 1 + i).
+      rewrite leb_spec, (add_spec (min+1)).
+      unfold is_true in Hi1;rewrite leb_spec in *; rewrite ltb_spec in *.
+      rewrite sub_spec in Hi1;rewrite Zmod_small in Hi1;[ | omega].
+      rewrite Zmod_small;omega.
+      rewrite <- !add_assoc, (add_comm 1 i);trivial.
+    rewrite leb_ltb_eqb in H2;revert H2.
+    case_eq (min + 1 < min + i + 1).
+      intros Hlt _;rewrite foldi_down_gt.
+      rewrite foldi_down_gt with (from := min + i + 1);trivial.
+      replace (min + i + 1 - 1) with (min + i).
+      apply Hrec.
+      apply leb_trans with (i+1);[rewrite leb_spec;omega | trivial].
+      apply to_Z_inj;rewrite sub_spec, (add_spec (min + i)), to_Z_1, Zminus_mod_idemp_l.
+      replace ([|min + i|] + 1 - 1)%Z with [|min + i|] by ring.
+      rewrite Zmod_small;auto using to_Z_bounded.
+      apply leb_ltb_trans with (2:= Hlt).
+      rewrite leb_spec;omega.
+    simpl;rewrite eqb_spec;intros _ Heq.
+    rewrite <- Heq.
+    rewrite foldi_down_gt.
+     replace (min + 1 - 1) with min.
+     rewrite !foldi_down_eq;trivial.
+     apply to_Z_inj;rewrite sub_spec, add_spec, to_Z_1, Zminus_mod_idemp_l.
+     replace ([|min|] + 1 - 1)%Z with [|min|] by ring.
+     rewrite Zmod_small;auto using to_Z_bounded.
+     rewrite ltb_spec;omega.
+  generalize (H2 (leb_refl _) a).
+  replace (min + (max - min)) with max;trivial.
+  apply to_Z_inj;rewrite add_spec, sub_spec, Zplus_mod_idemp_r.
+  ring_simplify ([|min|] + ([|max|] - [|min|]))%Z.
+  rewrite Zmod_small;auto using to_Z_bounded.
+Qed.
+
+Definition foldi_ntr A f min max (a:A) :=
+  foldi_cont (fun i cont _ => f i (cont tt)) min max (fun _ => a) tt.
+
+Lemma foldi_ntr_foldi_down : forall A f min max (a:A),
+  max < max_int = true ->
+  foldi_down f max min a = foldi_ntr _ f min max a.
+Proof.
+ intros;unfold foldi_ntr.
+ apply foldi_cont_Ind;trivial.
+   intros;apply foldi_down_lt;trivial.
+ intros i cont Hmin Hmax Heq;rewrite <- Heq;clear Heq.
+ apply foldi_down_min;trivial.
+ apply leb_ltb_trans with (1:= Hmax);trivial.
+Qed.
+
 
 Lemma forallb_spec : forall f from to, 
   forallb f from to = true <->

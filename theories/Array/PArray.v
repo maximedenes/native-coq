@@ -89,11 +89,6 @@ Definition mapi {A B:Type} (f:int->A->B) (t:array A) :=
   if size == 0 then tb
   else foldi (fun i tb => tb.[i<- f i (t.[i])]) 0 (size - 1) tb.
 
-(*
-Definition map {A B:Type} (f:A->B) :=
-  Eval lazy beta delta [mapi] in (mapi (fun i => f)).
-*)
-
 Definition foldi_left {A B:Type} (f:int -> A -> B -> A) a (t:array B) :=
   let len := length t in
   if 0 == len then a 
@@ -261,6 +256,45 @@ Proof.
  intros A f;apply (existsbi_spec A (fun i => f)).
 Qed.
 
+Local Open Scope list_scope.
 
+Definition to_list_ntr A (t:array A) := 
+  let len := length t in
+  if 0 == len then nil
+  else foldi_ntr _ (fun i l => t.[i] :: l) 0 (len - 1) nil.
+
+Lemma to_list_to_list_ntr : forall A (t:array A),
+   to_list t = to_list_ntr _ t.
+Proof.
+ unfold to_list, to_list_ntr; intros A t.
+ destruct (reflect_eqb 0 (length t));trivial.
+ rewrite foldi_ntr_foldi_down;trivial.
+ apply leb_ltb_trans with max_array_length;[ | trivial].
+ apply leb_trans with (length t);[ | apply ltb_length].
+ rewrite leb_spec, sub_spec.
+ rewrite to_Z_1, Zmod_small;try omega.
+ generalize (to_Z_bounded (length t)).
+ assert (0%Z <> [|length t|]);[ | omega].
+   intros Heq;elim n;apply to_Z_inj;trivial.
+Qed.
+    
+Lemma fold_left_to_list : forall (A B:Type) (t:array A) (f: B -> A -> B) b,
+   fold_left f b t = List.fold_left f (to_list t) b.
+Proof.
+  intros A B t f;rewrite to_list_to_list_ntr.
+  unfold fold_left, to_list_ntr; destruct (reflect_eqb 0 (length t));[trivial | ].
+  set (P1 := fun i => forall b,
+      foldi (fun (i : int) (a : B) => f a (t .[ i])) i (length t - 1) b =
+      List.fold_left f
+        (foldi_ntr (list A) (fun (i : int) (l : list A) => t .[ i] :: l) i
+           (length t - 1) nil) b).
+  assert (W: P1 0);[ | trivial].
+  apply int_ind_bounded with (max := length t - 1);unfold P1.
+  apply leb_0.
+  intros b;unfold foldi_ntr;rewrite foldi_eq, foldi_cont_eq;trivial.
+  intros i _ Hlt Hrec b.
+  unfold foldi_ntr;rewrite foldi_lt, foldi_cont_lt;trivial;simpl.
+  apply Hrec.
+Qed.
 
 
