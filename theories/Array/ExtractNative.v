@@ -1,5 +1,5 @@
 Require Import Int31.
-Require Import Array.
+Require Import PArray.
 
 Extract Inductive bool => "bool" ["true" "false"].
 Extract Inductive comparison => "ExtrNative.comparison" ["ExtrNative.Eq" "ExtrNative.Lt" "ExtrNative.Gt"].
@@ -49,3 +49,5 @@ Extract Constant set => "ExtrNative.parray_set".
 Extract Constant length => "ExtrNative.parray_length".
 Extract Constant copy => "ExtrNative.parray_copy".
 Extract Constant reroot => "ExtrNative.parray_reroot".
+Extract Constant init => "ExtrNative.parray_init".
+Extract Constant map => "ExtrNative.parray_map".
