@@ -1012,7 +1012,7 @@ and lambda_of_app env f args =
   | Const kn ->
       let kn = get_allias !global_env kn in
       let cb = lookup_constant kn !global_env in
-      begin match (lookup_constant kn !global_env).const_body with
+      begin match cb.const_body with
       | Primitive op -> lambda_of_prim kn op (lambda_of_args env 0 args)
       | Def csubst when cb.const_inline_code ->
 	  lambda_of_app env (force csubst) args

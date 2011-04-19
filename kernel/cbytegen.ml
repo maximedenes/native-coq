@@ -642,10 +642,18 @@ let compile_constant_body env body =
   | Primitive _op -> BCconstant
   | Def sb ->
       let body = Declarations.force sb in
-	match kind_of_term body with
-	| Const kn' -> BCallias (get_allias env kn')
-	| _ -> 
-	    let res = compile env body in
-	    let to_patch = to_memory res in
-	    BCdefined to_patch
+      match kind_of_term body with
+      | Const kn' -> 
+	  let kn' = get_allias env kn' in
+	  begin match (lookup_constant kn' env).const_body with
+	  | Primitive _ -> 
+	      let res = compile env body in
+	      let to_patch = to_memory res in
+	      BCdefined to_patch
+          | _ -> BCallias kn'
+	  end
+      | _ -> 
+	  let res = compile env body in
+	  let to_patch = to_memory res in
+	  BCdefined to_patch
 
