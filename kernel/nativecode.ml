@@ -1208,13 +1208,12 @@ let pp_mllam base_mp fmt l =
     | _ -> pp_mllam fmt l
 
   and pp_args sep fmt args =
-    let pp_mllam = if sep then pp_blam else pp_mllam in
     let sep = if sep then " " else "," in
     let len = Array.length args in
     if len > 0 then begin
-      Format.fprintf fmt "%a" pp_mllam args.(0);
+      Format.fprintf fmt "%a" pp_blam args.(0);
       for i = 1 to len - 1 do
-	Format.fprintf fmt "%s%a" sep pp_mllam args.(i)
+	Format.fprintf fmt "%s%a" sep pp_blam args.(i)
       done
     end 
 
