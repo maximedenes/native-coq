@@ -32,7 +32,7 @@ let include_dirs =
 let load_obj = ref (fun x -> () : string -> unit)
 
 let push_comp_stack e l =
-  comp_stack := e::l@(!comp_stack)
+  comp_stack := List.rev_append (e::l) !comp_stack
 
 let clear_comp_stack () =
   comp_stack := []
