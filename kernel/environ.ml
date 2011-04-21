@@ -354,21 +354,6 @@ let rec apply_to_hyp_and_dependent_on (ctxt,vals) id f g =
     | _,_ -> assert false
   in aux ctxt vals
 
-let insert_after_hyp (ctxt,vals) id d check =
-  let rec aux ctxt vals =
-    match  ctxt, vals with
-    | (idc,c,ct)::ctxt', v::vals' ->
-	if idc = id then begin
-	  check ctxt;
-	  push_named_context_val d (ctxt,vals)
-	end else
-	  let ctxt,vals = aux ctxt vals in
-	  d::ctxt, v::vals
-    | [],[] -> raise Hyp_not_found
-    | _, _ -> assert false
-  in aux ctxt vals
-
-
 (* To be used in Logic.clear_hyps *)
 let remove_hyps ids check_context check_value (ctxt, vals) =
   List.fold_right2 (fun (id,_,_ as d) (id',v) (ctxt,vals) ->
