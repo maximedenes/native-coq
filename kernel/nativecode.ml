@@ -4,6 +4,8 @@ open Declarations
 open Util
 open Nativevalues
 open Nativelambda
+open Pre_env
+open Sign
 
 (*s Local names *)
 
@@ -39,6 +41,8 @@ type gname =
   | Gnormtbl of label option * int
   | Ginternal of string
   | Gval of label option * int
+  | Grel of int
+  | Gnamed of identifier
 
 let gname_of_con c =
   Gconstant c
@@ -100,6 +104,8 @@ type primitive =
   | Mk_sw of annot_sw
   | Mk_fix of rec_pos * int 
   | Mk_cofix of int
+  | Mk_rel of int
+  | Mk_var of identifier
   | Is_accu
   | Is_int
   | Is_array
@@ -873,8 +879,60 @@ let mllambda_of_lambda auxdefs l t =
    | _ -> assert false in
   let params = 
     List.append (List.map get_name fv_rel) (List.map get_name fv_named) in
+  if params = [] then
+    (!global_stack, ([],[]), ml)
   (* final result : global list, fv, ml *)
-  (!global_stack, (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
+  else
+    (!global_stack, (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
+
+let rec compile_with_fv env auxdefs l t =
+  let (auxdefs,(fv_named,fv_rel),ml) = mllambda_of_lambda auxdefs l t in
+  if fv_named = [] && fv_rel = [] then (auxdefs,ml)
+  else apply_fv env (fv_named,fv_rel) auxdefs ml
+
+and apply_fv env (fv_named,fv_rel) auxdefs ml =
+  let get_rel_val (n,_) auxdefs =
+    match !(lookup_rel_native_val n env) with
+    | NVKnone ->
+        compile_rel env auxdefs n
+    | NVKvalue (v,d) -> assert false
+  in
+  let get_named_val (id,_) auxdefs =
+    match !(lookup_named_native_val id env) with
+    | NVKnone ->
+        compile_named env auxdefs id
+    | NVKvalue (v,d) -> assert false
+  in
+  let auxdefs = List.fold_right get_rel_val fv_rel auxdefs in
+  let auxdefs = List.fold_right get_named_val fv_named auxdefs in
+  let lvl = rel_context_length env.env_rel_context in
+  let fv_rel = List.map (fun (n,_) -> MLglobal (Grel (lvl-n))) fv_rel in
+  let fv_named = List.map (fun (id,_) -> MLglobal (Gnamed id)) fv_named in
+  let aux_name = fresh_lname Anonymous in
+  auxdefs, MLlet(aux_name, ml, mkMLapp (MLlocal aux_name) (Array.of_list (fv_rel@fv_named)))
+
+and compile_rel env auxdefs n =
+  let (_,body,_) = lookup_rel n env.env_rel_context in
+  let n = rel_context_length env.env_rel_context - n in
+  match body with
+  | Some t ->
+      let code = lambda_of_constr ~opt:true env t in
+      let auxdefs,code = compile_with_fv env auxdefs None code in
+      Glet(Grel n, code)::auxdefs
+  | None -> 
+      Glet(Grel n, MLprimitive (Mk_rel n))::auxdefs
+
+and compile_named env auxdefs id =
+  let (_,body,_) = lookup_named id env.env_named_context in
+  match body with
+  | Some t ->
+      let code = lambda_of_constr ~opt:true env t in
+      let auxdefs,code = compile_with_fv env auxdefs None code in
+      Glet(Gnamed id, code)::auxdefs
+  | None -> 
+      Glet(Gnamed id, MLprimitive (Mk_var id))::auxdefs
+
+
 
 (** Optimization of match and fix *)
 
@@ -1106,6 +1164,10 @@ let pp_gname base_mp fmt g =
       Format.fprintf fmt "normtbl_%s_%i" (string_of_label_def l) i
   | Gval (l,i) -> 
       Format.fprintf fmt "val_%s_%i" (string_of_label_def l) i
+  | Grel i ->
+      Format.fprintf fmt "rel_%i" i
+  | Gnamed id ->
+      Format.fprintf fmt "named_%s" (string_of_id id)
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -1283,6 +1345,9 @@ let pp_mllam base_mp fmt l =
 	  Format.fprintf fmt " |]@]" in
 	Format.fprintf fmt "mk_fix_accu %a %i" pp_rec_pos rec_pos start
     | Mk_cofix(start) -> Format.fprintf fmt "mk_cofix_accu %i" start
+    | Mk_rel i -> Format.fprintf fmt "mk_rel_accu %i" i
+    | Mk_var id ->
+        Format.fprintf fmt "mk_var_accu (Names.id_of_string \"%s\")" (string_of_id id)
     | Is_accu -> Format.fprintf fmt "is_accu"
     | Is_int -> Format.fprintf fmt "is_int"
     | Is_array -> Format.fprintf fmt "is_parray"
@@ -1417,13 +1482,11 @@ let compile_constant env mp l cb =
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
-      let auxdefs,_,code = mllambda_of_lambda [] (Some l) code in
-      (* TODO : Dans le cas des sections il faut prendre en compte les variables libres *)
+      let auxdefs,code = compile_with_fv env [] (Some l) code in
       Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
   | _ -> 
       let kn = make_con mp empty_dirpath l in
       Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
-
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")

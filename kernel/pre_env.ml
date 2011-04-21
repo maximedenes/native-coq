@@ -53,25 +53,35 @@ type val_kind =
     | VKvalue of values * Idset.t
     | VKnone
 
+type native_val_kind =
+    | NVKvalue of Nativevalues.t * Idset.t
+    | NVKnone
+
 type lazy_val = val_kind ref
 
+type lazy_native_val = native_val_kind ref
+
 type named_vals = (identifier * lazy_val) list
+
+type named_native_vals = (identifier * lazy_native_val) list
 
 type env = {
   env_globals        : globals;
   env_named_context  : named_context;
   env_named_vals     : named_vals;
+  env_named_native_vals : named_native_vals;
   env_rel_context    : rel_context;
   env_rel_val        : lazy_val list;
+  env_rel_native_vals : lazy_native_val list;
   env_nb_rel         : int;
   env_stratification : stratification;
   env_retroknowledge : retroknowledge;
   current_mp : module_path
 }
 
-type named_context_val = named_context * named_vals
+type named_context_val = named_context * named_vals * named_native_vals
 
-let empty_named_context_val = [],[]
+let empty_named_context_val = [],[],[]
 
 let empty_retroknowledge = {
     retro_int31 = None;
@@ -91,8 +101,10 @@ let empty_env = {
     env_modtypes = MPmap.empty};
   env_named_context = empty_named_context;
   env_named_vals = [];
+  env_named_native_vals = [];
   env_rel_context = empty_rel_context;
   env_rel_val = [];
+  env_rel_native_vals = [];
   env_nb_rel = 0;
   env_stratification = {
     env_universes = initial_universes;
@@ -108,28 +120,36 @@ let nb_rel env = env.env_nb_rel
 
 let push_rel d env =
   let rval = ref VKnone in
+  let nrval = ref NVKnone in
     { env with
       env_rel_context = add_rel_decl d env.env_rel_context;
       env_rel_val = rval :: env.env_rel_val;
+      env_rel_native_vals = nrval :: env.env_rel_native_vals;
       env_nb_rel = env.env_nb_rel + 1 }
 
 let lookup_rel_val n env =
   try List.nth env.env_rel_val (n - 1)
   with _ -> raise Not_found
 
+let lookup_rel_native_val n env =
+  try List.nth env.env_rel_native_vals (n - 1)
+  with _ -> raise Not_found
+
 let env_of_rel n env =
   { env with
     env_rel_context = Util.list_skipn n env.env_rel_context;
     env_rel_val = Util.list_skipn n env.env_rel_val;
+    env_rel_native_vals = Util.list_skipn n env.env_rel_native_vals;
     env_nb_rel = env.env_nb_rel - n
   }
 
 (* Named context *)
 
-let push_named_context_val d (ctxt,vals) =
+let push_named_context_val d (ctxt,vals,nvals) =
   let id,_,_ = d in
   let rval = ref VKnone in
-    Sign.add_named_decl d ctxt, (id,rval)::vals
+  let nrval = ref NVKnone in
+    Sign.add_named_decl d ctxt, (id,rval)::vals, (id,nrval)::nvals
 
 exception ASSERT of rel_context
 
@@ -138,12 +158,17 @@ let push_named d env =
   assert (env.env_rel_context = []); *)
   let id,body,_ = d in
   let rval = ref VKnone in
+  let nrval = ref NVKnone in
     { env with
       env_named_context = Sign.add_named_decl d env.env_named_context;
-      env_named_vals =  (id,rval):: env.env_named_vals }
+      env_named_vals =  (id,rval):: env.env_named_vals;
+      env_named_native_vals =  (id,nrval):: env.env_named_native_vals}
 
 let lookup_named_val id env =
   snd(List.find (fun (id',_) -> id = id') env.env_named_vals)
+
+let lookup_named_native_val id env =
+  snd(List.find (fun (id',_) -> id = id') env.env_named_native_vals)
 
 (* Warning all the names should be different *)
 let env_of_named id env = env

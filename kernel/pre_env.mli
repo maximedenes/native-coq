@@ -46,23 +46,33 @@ type val_kind =
     | VKvalue of values * Idset.t
     | VKnone
 
+type native_val_kind =
+    | NVKvalue of Nativevalues.t * Idset.t
+    | NVKnone
+
 type lazy_val = val_kind ref
 
+type lazy_native_val = native_val_kind ref
+
 type named_vals = (identifier * lazy_val) list
+
+type named_native_vals = (identifier * lazy_native_val) list
 
 type env = {
     env_globals        : globals;
     env_named_context  : named_context;
     env_named_vals     : named_vals;
+    env_named_native_vals : named_native_vals;
     env_rel_context    : rel_context;
     env_rel_val        : lazy_val list;
+    env_rel_native_vals : lazy_native_val list;
     env_nb_rel         : int;
     env_stratification : stratification;
     env_retroknowledge : retroknowledge;
     current_mp : module_path
 }
 
-type named_context_val = named_context * named_vals
+type named_context_val = named_context * named_vals * named_native_vals
 
 val empty_named_context_val : named_context_val
 
@@ -75,6 +85,7 @@ val empty_env : env
 val nb_rel         : env -> int
 val push_rel       : rel_declaration -> env -> env
 val lookup_rel_val : int -> env -> lazy_val
+val lookup_rel_native_val : int -> env -> lazy_native_val
 val env_of_rel     : int -> env -> env
 
 (** Named context *)
@@ -83,6 +94,7 @@ val push_named_context_val  :
     named_declaration -> named_context_val -> named_context_val
 val push_named       : named_declaration -> env -> env
 val lookup_named_val : identifier -> env -> lazy_val
+val lookup_named_native_val : identifier -> env -> lazy_native_val
 val env_of_named     : identifier -> env -> env
 
 (** Global constants *)

@@ -44,7 +44,8 @@ let empty_env = empty_env
 let engagement env = env.env_stratification.env_engagement
 let universes env = env.env_stratification.env_universes
 let named_context env = env.env_named_context
-let named_context_val env = env.env_named_context,env.env_named_vals
+let named_context_val env =
+  env.env_named_context,env.env_named_vals,env.env_named_native_vals
 let rel_context env = env.env_rel_context
 
 let empty_context env =
@@ -85,16 +86,17 @@ let fold_rel_context f env ~init =
 
 (* Named context *)
 
-let named_context_of_val = fst
-let named_vals_of_val = snd
+let named_context_of_val (x,_,_) = x
+let named_vals_of_val (_,x,_) = x
+let named_native_vals_of_val (_,_,x) = x
 
 (* [map_named_val f ctxt] apply [f] to the body and the type of
    each declarations.
    *** /!\ ***   [f t] should be convertible with t *)
-let map_named_val f (ctxt,ctxtv) =
+let map_named_val f (ctxt,ctxtv,ctxtnv) =
   let ctxt =
     List.map (fun (id,body,typ) -> (id, Option.map f body, f typ)) ctxt in
-  (ctxt,ctxtv)
+  (ctxt,ctxtv,ctxtnv)
 
 let empty_named_context = empty_named_context
 
@@ -106,7 +108,7 @@ let val_of_named_context ctxt =
 
 
 let lookup_named id env = Sign.lookup_named id env.env_named_context
-let lookup_named_val id (ctxt,_) = Sign.lookup_named id ctxt
+let lookup_named_val id (ctxt,_,_) = Sign.lookup_named id ctxt
 
 let eq_named_context_val c1 c2 =
    c1 == c2 || named_context_of_val c1 = named_context_of_val c2
@@ -124,12 +126,14 @@ let evaluable_named id env =
   | Some _      -> true
   | _          -> false
 
-let reset_with_named_context (ctxt,ctxtv) env =
+let reset_with_named_context (ctxt,ctxtv,ctxtnv) env =
   { env with
     env_named_context = ctxt;
     env_named_vals = ctxtv;
+    env_named_native_vals = ctxtnv;
     env_rel_context = empty_rel_context;
     env_rel_val = [];
+    env_rel_native_vals = [];
     env_nb_rel = 0 }
 
 let reset_context = reset_with_named_context empty_named_context_val
@@ -140,7 +144,9 @@ let fold_named_context f env ~init =
     | [] -> init
     | d::ctxt ->
 	let env =
-	  reset_with_named_context (ctxt,List.tl env.env_named_vals) env in
+	  reset_with_named_context (ctxt,List.tl env.env_named_vals,List.tl
+      env.env_named_native_vals) env
+    in
 	f env d (fold_right env)
   in fold_right env
 
@@ -327,43 +333,44 @@ let compile_constant_body = Cbytegen.compile_constant_body
 
 exception Hyp_not_found
 
-let rec apply_to_hyp (ctxt,vals) id f =
-  let rec aux rtail ctxt vals =
-    match ctxt, vals with
-    | (idc,c,ct as d)::ctxt, v::vals ->
+let rec apply_to_hyp (ctxt,vals,nvals) id f =
+  let rec aux rtail ctxt vals nvals =
+    match ctxt, vals, nvals with
+    | (idc,c,ct as d)::ctxt, v::vals, nv::nvals ->
 	if idc = id then
-	  (f ctxt d rtail)::ctxt, v::vals
+	  (f ctxt d rtail)::ctxt, v::vals, nv::nvals
 	else
-	  let ctxt',vals' = aux (d::rtail) ctxt vals in
-	  d::ctxt', v::vals'
-    | [],[] -> raise Hyp_not_found
-    | _, _ -> assert false
-  in aux [] ctxt vals
+	  let ctxt',vals',nvals' = aux (d::rtail) ctxt vals nvals in
+	  d::ctxt', v::vals', nv::nvals'
+    | [],[],_ -> raise Hyp_not_found
+    | _, _, _ -> assert false
+  in aux [] ctxt vals nvals
 
-let rec apply_to_hyp_and_dependent_on (ctxt,vals) id f g =
-  let rec aux ctxt vals =
-    match ctxt,vals with
-    | (idc,c,ct as d)::ctxt, v::vals ->
+let rec apply_to_hyp_and_dependent_on (ctxt,vals,nvals) id f g =
+  let rec aux ctxt vals nvals =
+    match ctxt,vals,nvals with
+    | (idc,c,ct as d)::ctxt, v::vals, nv::nvals ->
 	if idc = id then
-	  let sign = ctxt,vals in
+	  let sign = ctxt,vals,nvals in
 	  push_named_context_val (f d sign) sign
 	else
-	  let (ctxt,vals as sign) = aux ctxt vals in
+	  let (ctxt,vals,nvals as sign) = aux ctxt vals nvals in
 	  push_named_context_val (g d sign) sign
-    | [],[] -> raise Hyp_not_found
-    | _,_ -> assert false
-  in aux ctxt vals
+    | [],[],[] -> raise Hyp_not_found
+    | _,_,_ -> assert false
+  in aux ctxt vals nvals
 
 (* To be used in Logic.clear_hyps *)
-let remove_hyps ids check_context check_value (ctxt, vals) =
-  List.fold_right2 (fun (id,_,_ as d) (id',v) (ctxt,vals) ->
+let remove_hyps ids check_context check_value (ctxt,vals,nvals) =
+  List.fold_right2 (fun (id,_,_ as d) ((id',v),(id'',nval)) (ctxt,vals,nvals) ->
       if List.mem id ids then
-	(ctxt,vals)
+	(ctxt,vals,nvals)
       else
 	let nd = check_context d in
 	let nv = check_value v in
-	  (nd::ctxt,(id',nv)::vals))
-		     ctxt vals ([],[])
+	let nnval = match !nv with VKnone -> ref NVKnone | _ -> nval in
+	  (nd::ctxt,(id',nv)::vals,(id'',nnval)::nvals))
+  ctxt (List.combine vals nvals) ([],[],[])
 
 
 

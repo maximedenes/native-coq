@@ -414,7 +414,7 @@ let native_norm env c ty =
   let penv = Environ.pre_env env in 
   let mp = penv.Pre_env.current_mp in
   let code1 = Nativelambda.lambda_of_constr penv c in
-  let (gl,(vl1,vl2),code1) = Nativecode.mllambda_of_lambda [] None code1 in
+  let (gl,code1) = Nativecode.compile_with_fv penv [] None code1 in
   (*
   Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
   Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
@@ -424,7 +424,7 @@ let native_norm env c ty =
     | 0,fn,modname ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
-	Nativelib.call_linker fn;
+	Nativelib.call_linker (pre_env env) fn;
 	let t1 = Sys.time () in
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty

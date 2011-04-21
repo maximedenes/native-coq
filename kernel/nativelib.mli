@@ -3,6 +3,7 @@ open Term
 open Nativevalues
 open Nativecode
 open Nativemodules
+open Pre_env
 
 exception NotConvertible
 
@@ -28,7 +29,7 @@ val compile_terms :
   module_path -> global list -> global list -> int * string * string
 
 val call_linker :
-  string -> unit
+  env -> string -> unit
 
 exception Bug of string
 

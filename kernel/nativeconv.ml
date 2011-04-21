@@ -153,8 +153,8 @@ let nconv pb env t1 t2 =
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
-  let (gl,_,code1) = mllambda_of_lambda [] None code1 in
-  let (gl,_,code2) = mllambda_of_lambda gl None code2 in
+  let (gl,code1) = compile_with_fv env [] None code1 in
+  let (gl,code2) = compile_with_fv env gl None code2 in
   let main_code =
     mk_internal_let "t1" code1::mk_internal_let "t2"code2::conv_main_code
   in
@@ -175,7 +175,7 @@ let nconv pb env t1 t2 =
               print_endline "Running test...";
               try
                 let t0 = Sys.time () in
-                call_linker fn; 
+                call_linker env fn; 
                 let t1 = Sys.time () in
                 Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
                 (* TODO change 0 when we can have deBruijn *)

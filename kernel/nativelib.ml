@@ -4,6 +4,7 @@ open Util
 open Nativevalues
 open Declarations
 open Nativecode
+open Pre_env
 
 exception NotConvertible
 
@@ -61,7 +62,7 @@ let compile_terms base_mp terms_code main_code =
   comp_result := Some (res, filename, mod_name);
   res, filename, mod_name
 
-let call_linker f =
+let call_linker env f =
   if Dynlink.is_native then
     try (Dynlink.loadfile f; clear_comp_stack ())
     with Dynlink.Error e -> print_endline (Dynlink.error_message e)
@@ -128,4 +129,4 @@ let intern_state s =
   (** WARNING TODO: if a state with the same file name has already been loaded   **)
   (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
 (*  let temp = Filename.temp_file s ".cmxs" in*)
-  call_linker (Dynlink.adapt_filename (s^".cma"))
+  call_linker empty_env (Dynlink.adapt_filename (s^".cma"))

@@ -12,8 +12,8 @@ val gname_of_con : constant -> gname
 
 val relative_list_of_mp : module_path -> module_path -> string list
 
-val mllambda_of_lambda : global list -> label option -> lambda -> global list *
-   ((identifier * mllambda) list * (int * mllambda) list) * mllambda
+val compile_with_fv : env -> global list -> label option -> lambda ->
+  global list * mllambda
 
 val pp_gname : module_path option -> Format.formatter -> gname -> unit
 val pp_mllam : module_path -> Format.formatter -> mllambda -> unit
