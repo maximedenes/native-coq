@@ -23,7 +23,7 @@ val topological_sort :
   'c list * ('a * 'b) Util.Stringmap.t
 
 val push_comp_stack :
-  global -> global list -> unit
+  global list -> unit
 
 val compile_terms :
   module_path -> global list -> global list -> int * string * string

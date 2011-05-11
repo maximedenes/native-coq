@@ -122,7 +122,7 @@ let global_vars_set_constant_type env = function
 	  (fun t c -> Idset.union (global_vars_set env t) c))
       ctx ~init:Idset.empty
 
-let build_constant_declaration1 env kn (def,typ,cst,inline_code) =
+let build_constant_declaration env kn (def,typ,cst,inline_code) =
   let ids_typ = global_vars_set_constant_type env typ in
   let ids_def = match def with
     | Undef _ -> Idset.empty
@@ -132,20 +132,25 @@ let build_constant_declaration1 env kn (def,typ,cst,inline_code) =
   in
   let hyps = keep_hyps env (Idset.union ids_typ ids_def) in
   let tps = Cemitcodes.from_val (compile_constant_body env def) in
-  { const_hyps = hyps;
+  let cb = { const_hyps = hyps;
     const_body = def;
     const_type = typ;
     const_body_code = tps;
     const_constraints = cst;
-    const_inline_code = inline_code }
+    const_inline_code = inline_code } in
+  let kn = canonical_con kn in
+  let (mp,_,l) = repr_kn kn in
+  let tr, auxdefs = compile_constant (pre_env env) mp l cb in
+  Nativelib.push_comp_stack (tr::auxdefs);
+  cb
 
 (*s Global and local constant declaration. *)
 
 let translate_constant env kn ce =
-  build_constant_declaration1 env kn (infer_declaration env ce)
+  build_constant_declaration env kn (infer_declaration env ce)
 
 let translate_recipe env kn r =
-  build_constant_declaration1 env kn (Cooking.cook_constant env r)
+  build_constant_declaration env kn (Cooking.cook_constant env r)
 
 (* Insertion of inductive types. *)
 

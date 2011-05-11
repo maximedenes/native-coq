@@ -285,11 +285,16 @@ let strengthen_const env mp_from l cb resolver =
       let con =  constant_of_delta resolver con in
       let const = mkConst con in 
       let def = Def (Declarations.from_val const) in
-      { cb with
+      let cb = { cb with
 	const_body = def;
     const_body_code = Cemitcodes.from_val (compile_constant_body env def);
     const_inline_code = false
       }
+      in
+      let tr, auxdefs = compile_constant (pre_env env) mp_from l cb in
+      Nativelib.push_comp_stack (tr::auxdefs);
+      cb
+
 
 let rec strengthen_mod env mp_from mp_to mb = 
   if mp_in_delta mb.mod_mp mb.mod_delta then

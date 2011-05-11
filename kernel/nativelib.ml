@@ -32,14 +32,16 @@ let include_dirs =
 (* Pointer to the function linking an ML object into coq's toplevel *)
 let load_obj = ref (fun x -> () : string -> unit)
 
-let push_comp_stack e l =
-  comp_stack := List.rev_append (e::l) !comp_stack
+let push_comp_stack l =
+  comp_stack := l@(!comp_stack)
 
 let clear_comp_stack () =
   comp_stack := []
 
 let compile_terms base_mp terms_code main_code =
-  let terms_code = !open_header@terms_code@(!comp_stack)@main_code in
+  let terms_code =
+    !open_header@terms_code@(List.rev_append !comp_stack main_code)
+  in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
   let fmt = Format.formatter_of_out_channel ch_out in
