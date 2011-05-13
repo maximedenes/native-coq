@@ -437,7 +437,7 @@ let _ =
            (fun () -> in_current_context constr_display c)
        | _ -> failwith "Vernac extension: cannot occur")
   with
-    e -> Pp.pp (Cerrors.explain_exn e)
+    e -> Pp.pp (Errors.print e)
 let _ =
   extend_vernac_command_grammar "PrintConstr" None
     [[GramTerminal "PrintConstr";
@@ -454,7 +454,7 @@ let _ =
            (fun () -> in_current_context print_pure_constr c)
        | _ -> failwith "Vernac extension: cannot occur")
   with
-    e -> Pp.pp (Cerrors.explain_exn e)
+    e -> Pp.pp (Errors.print e)
 let _ =
   extend_vernac_command_grammar "PrintPureConstr" None
     [[GramTerminal "PrintPureConstr";
