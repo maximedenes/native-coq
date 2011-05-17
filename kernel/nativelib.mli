@@ -13,7 +13,6 @@ val load_paths : string list ref
 val imports : string list ref
 
 val compiler_name : string
-val comp_result : (int * string * string) option ref
 
 val load_obj : (string -> unit) ref
 

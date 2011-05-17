@@ -132,22 +132,6 @@ and conv_fix lvl t1 f1 t2 f2 cu =
     else aux (i+1) (conv_val CONV flvl fi1 fi2 cu) in
   aux 0 cu
 
-type fconv_res =
-  | FCRNone
-  | FCRAborted
-  | FCRNotConvertible
-  | FCRConvertible of constraints
-
-let fconv_result = ref FCRNone
-
-let async_fconv cv_pb env t1 t2 =
-  let env = Environ.env_of_pre_env env in
-  try
-    fconv_result := FCRConvertible (conv_cmp cv_pb env t1 t2)
-  with 
-  | NotConvertible -> fconv_result := FCRNotConvertible
-  | _ -> fconv_result := FCRAborted
-    
 let nconv pb env t1 t2 =
   let env = Environ.pre_env env in 
   let mp = env.current_mp in
@@ -158,42 +142,19 @@ let nconv pb env t1 t2 =
   let main_code =
     mk_internal_let "t1" code1::mk_internal_let "t2"code2::conv_main_code
   in
-  fconv_result := FCRNone;
-  Nativelib.comp_result := None;
-  let _ = Thread.create (compile_terms mp (List.rev gl)) main_code in
-  let _ = Thread.create (async_fconv pb env t1) t2 in
-  while (!fconv_result = FCRNone && !Nativelib.comp_result = None) do
-    Thread.yield ()
-  done;
-  match !fconv_result with
-    | FCRNone ->
-        begin
-        interrupt := true;
-        (* in case the thread has terminated just before being interrupted *)
-        if !fconv_result != FCRNone then interrupt := false;
-        print_endline "Native code compilation finished first";
-        match !Nativelib.comp_result with
-        | Some (0,fn,modname) ->
-            begin
-              print_endline "Running test...";
-              try
-                let t0 = Sys.time () in
-                call_linker env fn; 
-                let t1 = Sys.time () in
-                Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
-                (* TODO change 0 when we can have deBruijn *)
-                conv_val pb 0 !rt1 !rt2 empty_constraint
-              with _ -> raise NotConvertible
-            end
-        | _ -> anomaly "Compilation failure" 
-        end
-    | FCRNotConvertible ->
-        (* TODO Thread.kill comp_thread; *)
-        print_endline "Closure conversion finished first (not convertible)";
-        raise NotConvertible
-    | FCRConvertible cu ->
-        (* TODO Thread.kill comp_thread; *)
-        print_endline "Closure conversion finished first (convertible)";
-        cu
+  match compile_terms mp (List.rev gl) main_code with
+  | (0,fn,modname) ->
+      begin
+        print_endline "Running test...";
+        try
+          let t0 = Sys.time () in
+          call_linker env fn; 
+          let t1 = Sys.time () in
+          Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
+          (* TODO change 0 when we can have deBruijn *)
+          conv_val pb 0 !rt1 !rt2 empty_constraint
+        with _ -> raise NotConvertible
+      end
+  | _ -> anomaly "Compilation failure" 
   
 let _ = Reduction.set_nat_conv nconv

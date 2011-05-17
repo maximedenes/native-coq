@@ -15,7 +15,7 @@ open Unix
 (* Objects to link *)
 
 (* 1. Core objects *)
-let ocamlobjs = ["str.cma";"unix.cma";"threads.cma";"nums.cma"]
+let ocamlobjs = ["str.cma";"unix.cma";"nums.cma"]
 let dynobjs = ["dynlink.cma"]
 let camlp4objs =
   if Coq_config.camlp4 = "camlp5" then ["odyl.cma"; "camlp5.cma"; "pr_o.cmo"]
@@ -281,7 +281,7 @@ let main () =
       (* add topstart.cmo explicitly because we shunted ocamlmktop wrapper *)
     let args = if !top then args @ [ "topstart.cmo" ] else args in
       (* Now, with the .cma, we MUST use the -linkall option *)
-    let command = String.concat " " (prog::"-rectypes -thread"::args) in
+    let command = String.concat " " (prog::"-rectypes"::args) in
       if !echo then
 	begin
 	  print_endline command;

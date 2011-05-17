@@ -106,9 +106,9 @@ endif
 PR_O := $(if $(READABLE_ML4),pr_o.cmo,pr_dump.cmo) # works also with new camlp4
 
 ifeq ($(CAMLP4),camlp5)
-SYSMOD:=str unix threads gramlib
+SYSMOD:=str unix gramlib
 else
-SYSMOD:=str unix threads dynlink camlp4lib
+SYSMOD:=str unix dynlink camlp4lib
 endif
 
 SYSCMA:=$(addsuffix .cma,$(SYSMOD))
@@ -668,19 +668,19 @@ $(OCAMLDOCDIR)/%.pdf: $(OCAMLDOCDIR)/%.tex
 ###########################################################################
 
 dev/printers.cma: | dev/printers.mllib.d
-#	$(SHOW)'Testing $@'
-#	$(HIDE)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) $^ -o test-printer
-#	@rm -f test-printer
+	#$(SHOW)'Testing $@'
+	#$(HIDE)$(OCAMLC) $(BYTEFLAGS) $(SYSCMA) $^ -o test-printer
+	#@rm -f test-printer
 	$(SHOW)'OCAMLC -a $@'   
-	$(HIDE)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) $^ -linkall -a -o $@
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
 
 parsing/grammar.cma: | parsing/grammar.mllib.d
-#	$(SHOW)'Testing $@'
-#	@touch test.ml4
-#	$(SHOW)$(OCAMLC) -thread $(BYTEFLAGS) $(SYSCMA) -pp "$(CAMLP4O) -I $(CAMLLIB) $^" -impl test.ml4 -o test-grammar
-#	@rm -f test-grammar test.*
+	$(SHOW)'Testing $@'
+	@touch test.ml4
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) $^ -impl" -impl test.ml4 -o test-grammar
+	@rm -f test-grammar test.*
 	$(SHOW)'OCAMLC -a $@'   
-	$(HIDE)$(OCAMLC) $(BYTEFLAGS) unix.cma threads.cma $^ -linkall -a -o $@
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
 
 # toplevel/mltop.ml4 (ifdef Byte)
 

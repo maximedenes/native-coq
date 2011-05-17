@@ -15,8 +15,6 @@ let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";"Nati
 let open_header = ref (init_opens : global list)
 let comp_stack = ref ([] : global list)
 
-let comp_result = ref (None : (int * string * string) option)
-
 (* Global settings and utilies for interface with OCaml *)
 let compiler_name =
   if Dynlink.is_native then "ocamlopt.opt"
@@ -61,7 +59,6 @@ let compile_terms base_mp terms_code main_code =
   let res = Sys.command comp_cmd in
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
   open_header := !open_header@[mk_open mod_name];
-  comp_result := Some (res, filename, mod_name);
   res, filename, mod_name
 
 let call_linker env f =
