@@ -40,7 +40,7 @@ let clear_comp_stack () =
 
 let compile_terms base_mp terms_code main_code =
   let terms_code =
-    !open_header@terms_code@(List.rev_append !comp_stack main_code)
+    !open_header@(List.rev_append !comp_stack (terms_code@main_code))
   in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
