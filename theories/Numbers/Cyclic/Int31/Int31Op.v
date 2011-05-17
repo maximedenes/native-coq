@@ -22,7 +22,7 @@ Definition digits := 31.
 
 (** The bigger int *)
 Definition max_int := Eval compute in 0 - 1.
-Register max_int as Inline.
+Register max_int as PrimInline.
 
 (** Access to the nth digits *)
 Definition get_digit x p := (0 < (x land (1 << p))).
@@ -35,36 +35,36 @@ Definition set_digit x p (b:bool) :=
 
 (** Equality to 0 *)
 Definition is_zero (i:int) := i == 0.
-Register is_zero as Inline.
+Register is_zero as PrimInline.
 
 (** Parity *)
 Definition is_even (i:int) := is_zero (i land 1).
-Register is_even as Inline.
+Register is_even as PrimInline.
 
 (** Bit *)
 
 Definition bit i n :=  negb (is_zero ((i >> n) << (digits - 1))).
-Register bit as Inline.
+Register bit as PrimInline.
 
 (** Extra modulo operations *)
 Definition opp (i:int) := 0 - i.
-Register opp as Inline.
+Register opp as PrimInline.
 Notation "- x" := (opp x) : int31_scope.
 
 Definition oppcarry i := max_int - i.
-Register oppcarry as Inline.
+Register oppcarry as PrimInline.
 
 Definition succ i := i + 1.
-Register succ as Inline.
+Register succ as PrimInline.
 
 Definition pred i := i - 1.
-Register pred as Inline.
+Register pred as PrimInline.
 
 Definition addcarry i j := i + j + 1.
-Register addcarry as Inline.
+Register addcarry as PrimInline.
 
 Definition subcarry i j := i - j - 1.
-Register subcarry as Inline.
+Register subcarry as PrimInline.
 
 (** Exact arithmetic operations *)
 
@@ -103,13 +103,13 @@ Definition addmuldiv_def p x y :=
 Register addmuldiv   : int -> int -> int -> int as int31_addmuldiv.
 
 Definition oppc (i:int) := 0 -c i.
-Register oppc as Inline.
+Register oppc as PrimInline.
 
 Definition succc i := i +c 1.
-Register succc as Inline.
+Register succc as PrimInline.
 
 Definition predc i := i -c 1.
-Register predc as Inline.
+Register predc as PrimInline.
 
 (** Comparison *)
 Definition compare_def x y :=
@@ -129,19 +129,19 @@ Register tail0 : int -> int as int31_tail0.
 
 Definition foldi {A} (f:int -> A -> A) from to :=
   foldi_cont (fun i cont a => cont (f i a)) from to (fun a => a).
-Register foldi as Inline.
+Register foldi as PrimInline.
 
 Definition fold {A} (f: A -> A) from to :=
   foldi_cont (fun i cont a => cont (f a)) from to (fun a => a).
-Register fold as Inline.
+Register fold as PrimInline.
 
 Definition foldi_down {A} (f:int -> A -> A) from downto :=
   foldi_down_cont (fun i cont a => cont (f i a)) from downto (fun a => a).
-Register foldi_down as Inline.
+Register foldi_down as PrimInline.
 
 Definition fold_down {A} (f:A -> A) from downto :=
   foldi_down_cont (fun i cont a => cont (f a)) from downto (fun a => a).
-Register fold_down as Inline.
+Register fold_down as PrimInline.
 
 Definition forallb (f:int -> bool) from to :=
   foldi_cont (fun i cont _ => if f i then cont tt else false) from to (fun _ => true) tt.

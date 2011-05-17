@@ -33,10 +33,10 @@ Bind Scope bool_scope with bool.
 (** Basic boolean operators *)
 
 Definition andb (b1 b2:bool) : bool := if b1 then b2 else false.
-Register andb as Inline.
+Register andb as PrimInline.
 
 Definition orb (b1 b2:bool) : bool := if b1 then true else b2.
-Register orb as Inline.
+Register orb as PrimInline.
 
 Definition implb (b1 b2:bool) : bool := if b1 then b2 else true.
 

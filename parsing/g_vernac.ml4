@@ -169,7 +169,7 @@ GEXTEND Gram
       | IDENT "Register"; id=identref; ":"; t = lconstr; "as"; 
         r = register_token ->
          VernacRegister(id,PrimOp(t,r)) 
-      | IDENT "Register"; id = identref; "as"; "Inline" ->
+      | IDENT "Register"; id = identref; "as"; "PrimInline" ->
          VernacRegister(id,PrimInline)
      ] ]
   ;
