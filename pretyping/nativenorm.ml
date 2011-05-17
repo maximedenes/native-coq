@@ -282,12 +282,13 @@ and nf_accu_type env accu =
     mkApp(a,Array.of_list args), t
 
 and nf_args env accu t =
-  let aux (t,l) arg = 
+  let aux arg (t,l) = 
 	let _,dom,codom = try decompose_prod env t with _ -> exit 123 in
 	let c = nf_val env arg dom in
 	(subst1 c codom, c::l)
   in
-  List.fold_left aux (t,[]) (args_of_accu accu)
+  let t,l = List.fold_right aux (args_of_accu accu) (t,[]) in
+  t, List.rev l
 
 and nf_bargs env b t =
   let t = ref t in

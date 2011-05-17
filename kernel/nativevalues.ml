@@ -109,7 +109,7 @@ let accu_nargs (k:accumulator) =
 
 let args_of_accu (k:accumulator) =
   let nargs = accu_nargs k in
-  let f i = (Obj.magic (Obj.field (Obj.magic k) (nargs-(i + 3))) : t) in
+  let f i = (Obj.magic (Obj.field (Obj.magic k) (nargs-i+2)) : t) in
   let t = Array.init nargs f in
   Array.to_list t
 
