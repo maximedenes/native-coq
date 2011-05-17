@@ -134,6 +134,7 @@ and conv_fix lvl t1 f1 t2 f2 cu =
 
 type fconv_res =
   | FCRNone
+  | FCRAborted
   | FCRNotConvertible
   | FCRConvertible of constraints
 
@@ -145,7 +146,7 @@ let async_fconv cv_pb env t1 t2 =
     fconv_result := FCRConvertible (conv_cmp cv_pb env t1 t2)
   with 
   | NotConvertible -> fconv_result := FCRNotConvertible
-  | _ -> ()
+  | _ -> fconv_result := FCRAborted
     
 let nconv pb env t1 t2 =
   let env = Environ.pre_env env in 
@@ -167,6 +168,9 @@ let nconv pb env t1 t2 =
   match !fconv_result with
     | FCRNone ->
         begin
+        interrupt := true;
+        (* in case the thread has terminated just before being interrupted *)
+        if !fconv_result != FCRNone then interrupt := false;
         print_endline "Native code compilation finished first";
         match !Nativelib.comp_result with
         | Some (0,fn,modname) ->
