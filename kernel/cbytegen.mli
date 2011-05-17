@@ -11,3 +11,6 @@ val compile : env -> constr -> bytecodes * bytecodes * fv
 
 val compile_constant_body : env -> constr_substituted constant_def -> body_code
 
+(** Shortcut of the previous function used during module strengthening *)
+
+val compile_alias : constant -> body_code
