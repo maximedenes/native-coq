@@ -1483,7 +1483,10 @@ let compile_constant env mp l cb =
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
-      Glet(Gconstant (make_con mp empty_dirpath l),code), auxdefs
+      let l =
+        optimize_stk (Glet(Gconstant (make_con mp empty_dirpath l),code)::auxdefs)
+      in
+      List.hd l, List.tl l
   | _ -> 
       let kn = make_con mp empty_dirpath l in
       Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
