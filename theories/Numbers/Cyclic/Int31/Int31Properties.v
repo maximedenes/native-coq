@@ -1607,7 +1607,7 @@ Proof.
    apply to_Z_inj;rewrite add_spec, W3.
    rewrite Zmod_small;rewrite to_Z_1; omega.
  destruct (reflect_ltb (n-1) digits).
-  rewrite <- ltb_spec in z.
+  rewrite <- ltb_spec in l.
   rewrite H1, <- !bit_half, H;trivial.
  assert ((digits <= n)%int31 = true).
   rewrite leb_spec;omega.
@@ -2480,7 +2480,7 @@ Proof.
   intros;apply bit_eq;intros.
   rewrite land_spec.
   destruct (reflect_leb digits i0).
-  rewrite <- leb_spec in z.
+  rewrite <- leb_spec in l.
   rewrite !bit_M;trivial.
   rewrite bit_max_int;trivial.
   rewrite ltb_spec;omega.
