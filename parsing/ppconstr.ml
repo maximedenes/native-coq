@@ -535,15 +535,18 @@ let pr pr sep inherited a =
   | CPrim (_,p) -> pr_prim_token p, prec_of_prim_token p
   | CDelimiters (_,sc,a) -> pr_delimiters sc (pr mt lsimple a), 1
   | CDynamic _ -> str "<dynamic>", latom
-  | CNativeArr(_,t,p) -> 
+  | CNativeArr(_,_,p) -> 
       let last = Array.length p - 1 in
       let pp = ref
-	  (str "|"++spc () ++  pr mt ltop p.(last)  ++ str " in" ++ spc() 
-	     ++ pr mt ltop t ++ str "]") in
-      for i = last - 1 downto 1 do
-	pp :=  str ";" ++ pr mt ltop p.(i) ++ !pp 
-      done;
-      hov 0 (str "[|" ++ pr mt ltop p.(0) ++ !pp), 0
+	  (str " |"++spc () ++  pr mt ltop p.(last)  ++ str " \\]") in
+      if last > 0 then 
+	begin 
+	  for i = last - 1 downto 1 do
+	    pp :=  str ";" ++ pr mt ltop p.(i) ++ !pp 
+	  done;
+	  pp :=  pr mt ltop p.(0) ++ !pp
+	end;
+      hov 0 (str "[\\" ++ !pp), 0
   in
   let loc = constr_loc a in
   pr_with_comments loc

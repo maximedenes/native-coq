@@ -23,7 +23,7 @@ let constr_kw =
   [ "forall"; "fun"; "match"; "fix"; "cofix"; "with"; "in"; "for";
     "end"; "as"; "let"; "if"; "then"; "else"; "return";
     "Prop"; "Set"; "Type"; ".("; "_"; "..";
-    "`{"; "`("; "{|"; "|}" ]
+    "`{"; "`("; "{|"; "|}"; "[\\";"\\]" ]
 
 let _ = List.iter Lexer.add_keyword constr_kw
 
@@ -191,6 +191,14 @@ GEXTEND Gram
               CPrim (_,Numeral z) when Bigint.is_pos_or_zero z ->
                 CNotation(loc,"( _ )",([c],[],[]))
             | _ -> c)
+      | "[\\"; ls = array_elems; "|"; e = lconstr; "\\]" ->
+         let t = Array.make (List.length ls + 1) e in
+	 Util.list_iter_i (fun i e -> t.(i) <- e) ls;
+         CNativeArr(loc, CHole (loc, None), t)
+      | "[\\"; ls = array_elems; "|"; e = lconstr ; "in"; te = lconstr; "\\]" ->
+         let t = Array.make (List.length ls + 1) e in
+	 Util.list_iter_i (fun i e -> t.(i) <- e) ls;
+         CNativeArr(loc, te, t)
       | "{|"; c = record_declaration; "|}" -> c
       | "`{"; c = operconstr LEVEL "200"; "}" ->
 	  CGeneralization (loc, Implicit, None, c)
@@ -203,6 +211,8 @@ GEXTEND Gram
   ;
   lambda:
     [ [ "fun" -> () ] ]
+  ;
+  array_elems: [ [ fs = LIST0 lconstr SEP ";" -> fs ]]
   ;
   record_declaration:
     [ [ fs = LIST0 record_field_declaration SEP ";" -> CRecord (loc, None, fs)
