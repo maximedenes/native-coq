@@ -416,7 +416,8 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 		let rargs, a, nargs, v1 = get_native_args1 op kn v1 in
 		((lft1, 
 		  whd_stack (snd infos) a 
-		    (Znative(op,kn,rargs,nargs)::v1)), appr2)
+		    (Zupdate a::(Znative(op,kn,rargs,nargs)::v1))), 
+		 appr2)
 	    | _ ->
 		begin match unfold_reference infos fl2 with
 		| Def def2 ->
@@ -425,9 +426,10 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 		    let kn = 
 		      match fl2 with ConstKey kn -> kn | _ -> assert false in
 		    let rargs, a, nargs, v2 = get_native_args1 op kn v2 in
-		    (appr1, (lft2, 
-			     whd_stack (snd infos) a 
-			       (Znative(op,kn,rargs,nargs)::v2)))
+		    (appr1, 
+		     (lft2, 
+		      whd_stack (snd infos) a 
+			(Zupdate a::(Znative(op,kn,rargs,nargs)::v2))))
 		| _ -> raise NotConvertible
 		end
 	    end in
@@ -484,7 +486,8 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 	    match fl1 with ConstKey kn -> kn | _ -> assert false in
 	  let rargs, a, nargs, v1 = get_native_args1 op kn v1 in
 	  eqappr cv_pb infos 
-	    (lft1, whd_stack (snd infos) a (Znative(op,kn,rargs,nargs)::v1))
+	    (lft1, whd_stack (snd infos) a 
+	       (Zupdate a::(Znative(op,kn,rargs,nargs)::v1)))
 	    appr2 cuniv
       | _ -> raise NotConvertible
       end
@@ -499,7 +502,8 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 	  let rargs, a, nargs, v2 = get_native_args1 op kn v2 in
 	  eqappr cv_pb infos 
 	    appr1
-	    (lft2, whd_stack (snd infos) a (Znative(op,kn,rargs,nargs)::v2))
+	    (lft2, whd_stack (snd infos) a
+	       (Zupdate a::(Znative(op,kn,rargs,nargs)::v2)))
 	    cuniv
       | _ -> raise NotConvertible
       end

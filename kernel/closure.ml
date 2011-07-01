@@ -828,16 +828,6 @@ let check_native_args op stk =
   let (nparams, nargs) = Native.arity op in
   let rargs = stack_args_size stk in
   (nparams + nargs) <= rargs
-(*
-  let rec aux n = function
-    | (Zshift _ | Zupdate _) :: s -> aux n s
-    | Zapp args :: s ->
-	let nargs = Array.length args in
-	if n <= nargs then true
-	else aux (n - nargs) s
-    | _ -> false in
-  aux (nparams + nargs) stk *)
-    
 
 (* Iota reduction: extract the arguments to be passed to the Case
    branches *)
