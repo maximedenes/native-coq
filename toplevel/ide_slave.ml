@@ -167,8 +167,8 @@ let rec attribute_of_vernac_command = function
   | VernacProof _ -> []
 
   | VernacProofMode _ -> []
-  | VernacSubproof _ -> []
-  | VernacEndSubproof -> []
+  | VernacSubproof _ -> [SolveCommand]
+  | VernacEndSubproof -> [SolveCommand]
 
   (* Toplevel control *)
   | VernacToplevelControl _ -> []
