@@ -598,7 +598,7 @@ let compare_constr f t1 t2 =
   | Lambda (_,t1,c1), Lambda (_,t2,c2) -> f t1 t2 & f c1 c2
   | LetIn (_,b1,t1,c1), LetIn (_,b2,t2,c2) -> f b1 b2 & f t1 t2 & f c1 c2
   | App (c1,l1), App (c2,l2) ->
-      Array.length l1 = Array.length l2 && 
+    Array.length l1 = Array.length l2 &&
       f c1 c2 && array_for_all2 f l1 l2
   | Evar (e1,l1), Evar (e2,l2) -> e1 = e2 & array_for_all2 f l1 l2
   | Const c1, Const c2 -> eq_constant c1 c2
