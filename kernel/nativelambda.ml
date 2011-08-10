@@ -59,7 +59,7 @@ let decompose_Llam lam =
   | _ -> [||], lam
 
 (*s Operators on substitution *)
-let subst_id = ESID 0
+let subst_id = subs_id 0
 let lift = subs_lift 
 let liftn = subs_liftn
 let cons v subst = subs_cons([|v|], subst)
@@ -143,7 +143,7 @@ let rec lam_exlift el lam =
 
 let lam_lift k lam =
   if k = 0 then lam
-  else lam_exlift (ELSHFT (ELID, k)) lam
+  else lam_exlift (el_shft k el_id) lam
 
 let lam_subst_rel lam id n subst =
   match expand_rel n subst with

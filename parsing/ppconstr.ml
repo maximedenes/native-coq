@@ -522,7 +522,8 @@ let pr pr sep inherited a =
       let s = match k with
           VMcast -> "<:"
         | NATIVEcast -> "<<:"
-        | DEFAULTcast -> ":"
+        | DEFAULTcast
+        | REVERTcast -> ":"
       in
       hv 0 (pr mt (lcast,L) a ++ cut () ++ str s ++ pr mt (-lcast,E) b),
       lcast

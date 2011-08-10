@@ -382,7 +382,7 @@ module VNativeEntries =
       NATIVEARR(t,p)
 
     let mkClos id t body s =
-      LAM(1,[id,t],body, Esubst.CONS (s,Esubst.ESID 0))
+      LAM(1,[id,t],body, Esubst.subs_cons (s,Esubst.subs_id 0))
 
   end
 

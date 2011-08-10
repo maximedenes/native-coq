@@ -345,16 +345,11 @@ let rec pr_lift lft =
 
       
 (* Conversion between  [lft1]term1 and [lft2]term2 *)
-let rec ccnv cv_pb infos lft1 lft2 term1 term2 cuniv =
-  eqappr cv_pb infos (lft1, (term1,[])) (lft2, (term2,[])) cuniv
+let rec ccnv cv_pb l2r infos lft1 lft2 term1 term2 cuniv =
+  eqappr cv_pb l2r infos (lft1, (term1,[])) (lft2, (term2,[])) cuniv
 
 (* Conversion between [lft1](hd1 v1) and [lft2](hd2 v2) *)
-and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
- (* Printf.printf "eqappr: \n";
-  Printf.printf "lft1 = ";pr_lift lft1;
-  Printf.printf "\nlft2 = ";pr_lift lft2;Printf.printf "\n";
-  pr_state st1;  Printf.printf "\n\n";
-  pr_state st2;  Printf.printf "\n\n";*)
+and eqappr cv_pb l2r infos (lft1,st1) (lft2,st2) cuniv =
   Util.check_for_interrupt ();
   (* First head reduce both terms *)
   let rec whd_both (t1,stk1) (t2,stk2) =
@@ -380,28 +375,28 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 	       sort_cmp cv_pb s1 s2 cuniv
 	   | (Meta n, Meta m) ->
                if n=m
-	       then convert_stacks infos lft1 lft2 v1 v2 cuniv
+	       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
                else raise NotConvertible
 	   | _ -> raise NotConvertible)
     | (FEvar ((ev1,args1),env1), FEvar ((ev2,args2),env2)) ->
         if ev1=ev2 then
-          let u1 = convert_stacks infos lft1 lft2 v1 v2 cuniv in
-          convert_vect infos el1 el2
+          let u1 = convert_stacks l2r infos lft1 lft2 v1 v2 cuniv in
+          convert_vect l2r infos el1 el2
             (Array.map (mk_clos env1) args1)
             (Array.map (mk_clos env2) args2) u1
         else raise NotConvertible
 
     (* 2 index known to be bound to no constant *)
-  | (FRel n, FRel m) ->
-      if reloc_rel n el1 = reloc_rel m el2
-      then convert_stacks infos lft1 lft2 v1 v2 cuniv
-      else raise NotConvertible
+    | (FRel n, FRel m) ->
+        if reloc_rel n el1 = reloc_rel m el2
+        then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+        else raise NotConvertible
 
     (* 2 constants, 2 local defined vars or 2 defined rels *)
   | (FFlex fl1, FFlex fl2) ->
        begin try (* try first intensional equality *)
 	if eq_table_key fl1 fl2
-        then convert_stacks infos lft1 lft2 v1 v2 cuniv
+        then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
         else raise NotConvertible
       with NotConvertible ->
          (* else the oracle tells which constant is to be expanded *)
@@ -433,13 +428,13 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 		| _ -> raise NotConvertible
 		end
 	    end in
-          if Conv_oracle.oracle_order fl1 fl2 then
+          if Conv_oracle.oracle_order l2r fl1 fl2 then
 	    aux appr1 lft1 fl1 v1 appr2 lft2 fl2 v2
 	  else 
 	    let (app2,app1) = 
 	      aux appr2 lft2 fl2 v2 appr1 lft1 fl1 v1 in
 	    (app1,app2) in
-	eqappr cv_pb infos app1 app2 cuniv 
+	eqappr cv_pb l2r infos app1 app2 cuniv 
       end
   (* other constructors *)
   | (FLambda _, FLambda _) ->
@@ -449,43 +444,41 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 	anomaly "conversion was given ill-typed terms (FLambda)";
       let (_,ty1,bd1) = destFLambda mk_clos hd1 in
       let (_,ty2,bd2) = destFLambda mk_clos hd2 in
-      let u1 = ccnv CONV infos el1 el2 ty1 ty2 cuniv in
-      ccnv CONV infos (el_lift el1) (el_lift el2) bd1 bd2 u1
+      let u1 = ccnv CONV l2r infos el1 el2 ty1 ty2 cuniv in
+      ccnv CONV l2r infos (el_lift el1) (el_lift el2) bd1 bd2 u1
 
   | (FProd (_,c1,c2), FProd (_,c'1,c'2)) ->
       if not (is_empty_stack v1 && is_empty_stack v2) then
 	anomaly "conversion was given ill-typed terms (FProd)";
       (* Luo's system *)
-      let u1 = ccnv CONV infos el1 el2 c1 c'1 cuniv in
-      ccnv cv_pb infos (el_lift el1) (el_lift el2) c2 c'2 u1
+      let u1 = ccnv CONV l2r infos el1 el2 c1 c'1 cuniv in
+      ccnv cv_pb l2r infos (el_lift el1) (el_lift el2) c2 c'2 u1
 
   (* Eta-expansion on the fly *)
   | (FLambda _, _) ->
       if v1 <> [] then
 	anomaly "conversion was given unreduced term (FLambda)";
       let (_,_ty1,bd1) = destFLambda mk_clos hd1 in
-      eqappr CONV infos
+      eqappr CONV l2r infos
 	(el_lift lft1, (bd1, [])) (el_lift lft2, (hd2, eta_expand_stack v2)) cuniv
   | (_, FLambda _) ->
       if v2 <> [] then
 	anomaly "conversion was given unreduced term (FLambda)";
       let (_,_ty2,bd2) = destFLambda mk_clos hd2 in
-      eqappr CONV infos
+      eqappr CONV l2r infos
 	(el_lift lft1, (hd1, eta_expand_stack v1)) (el_lift lft2, (bd2, [])) cuniv
 
-
-	
   (* only one constant, defined var or defined rel *)  
   | (FFlex fl1, _)      ->
       begin match unfold_reference infos fl1 with
       | Def def1 -> 
-	  eqappr cv_pb infos 
+	  eqappr cv_pb l2r infos 
 	    (lft1, whd_stack (snd infos) def1 v1) appr2 cuniv 
       | Primitive op when check_native_args op v1 ->
 	  let kn = 
 	    match fl1 with ConstKey kn -> kn | _ -> assert false in
 	  let rargs, a, nargs, v1 = get_native_args1 op kn v1 in
-	  eqappr cv_pb infos 
+	  eqappr cv_pb l2r infos 
 	    (lft1, whd_stack (snd infos) a 
 	       (Zupdate a::(Znative(op,kn,rargs,nargs)::v1)))
 	    appr2 cuniv
@@ -494,13 +487,13 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
   | (_, FFlex fl2)      ->
       begin match unfold_reference infos fl2 with
       | Def def2 ->
-	  eqappr cv_pb infos appr1 
+	  eqappr cv_pb l2r infos appr1 
 	    (lft2, whd_stack (snd infos) def2 v2) cuniv 
       | Primitive op when check_native_args op v2 ->
 	  let kn = 
 	    match fl2 with ConstKey kn -> kn | _ -> assert false in
 	  let rargs, a, nargs, v2 = get_native_args1 op kn v2 in
-	  eqappr cv_pb infos 
+	  eqappr cv_pb l2r infos 
 	    appr1
 	    (lft2, whd_stack (snd infos) a
 	       (Zupdate a::(Znative(op,kn,rargs,nargs)::v2)))
@@ -510,61 +503,61 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
 
   (* Inductive types:  MutInd MutConstruct Fix Cofix *)
 
-  | (FInd ind1, FInd ind2) ->
-      if eq_ind ind1 ind2
-      then
-        convert_stacks infos lft1 lft2 v1 v2 cuniv
-      else raise NotConvertible
-	  
-  | (FConstruct (ind1,j1), FConstruct (ind2,j2)) ->
-      if j1 = j2 && eq_ind ind1 ind2
-      then
-        convert_stacks infos lft1 lft2 v1 v2 cuniv
-      else raise NotConvertible
-	  
-  | (FFix ((op1,(_,tys1,cl1)),e1), FFix((op2,(_,tys2,cl2)),e2)) ->
-      if op1 = op2
-      then
-	let n = Array.length cl1 in
-        let fty1 = Array.map (mk_clos e1) tys1 in
-        let fty2 = Array.map (mk_clos e2) tys2 in
-        let fcl1 = Array.map (mk_clos (subs_liftn n e1)) cl1 in
-        let fcl2 = Array.map (mk_clos (subs_liftn n e2)) cl2 in
-	let u1 = convert_vect infos el1 el2 fty1 fty2 cuniv in
-        let u2 =
-          convert_vect infos
-	    (el_liftn n el1) (el_liftn n el2) fcl1 fcl2 u1 in
-        convert_stacks infos lft1 lft2 v1 v2 u2
-      else raise NotConvertible
-	  
-  | (FCoFix ((op1,(_,tys1,cl1)),e1), FCoFix((op2,(_,tys2,cl2)),e2)) ->
-      if op1 = op2
-      then
-	let n = Array.length cl1 in
-        let fty1 = Array.map (mk_clos e1) tys1 in
-        let fty2 = Array.map (mk_clos e2) tys2 in
-        let fcl1 = Array.map (mk_clos (subs_liftn n e1)) cl1 in
-        let fcl2 = Array.map (mk_clos (subs_liftn n e2)) cl2 in
-        let u1 = convert_vect infos el1 el2 fty1 fty2 cuniv in
-        let u2 =
-	  convert_vect infos
-	    (el_liftn n el1) (el_liftn n el2) fcl1 fcl2 u1 in
-        convert_stacks infos lft1 lft2 v1 v2 u2
-      else raise NotConvertible
+    | (FInd ind1, FInd ind2) ->
+        if eq_ind ind1 ind2
+	then
+          convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+        else raise NotConvertible
+
+    | (FConstruct (ind1,j1), FConstruct (ind2,j2)) ->
+	if j1 = j2 && eq_ind ind1 ind2
+	then
+          convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+        else raise NotConvertible
+
+    | (FFix ((op1,(_,tys1,cl1)),e1), FFix((op2,(_,tys2,cl2)),e2)) ->
+	if op1 = op2
+	then
+	  let n = Array.length cl1 in
+          let fty1 = Array.map (mk_clos e1) tys1 in
+          let fty2 = Array.map (mk_clos e2) tys2 in
+          let fcl1 = Array.map (mk_clos (subs_liftn n e1)) cl1 in
+          let fcl2 = Array.map (mk_clos (subs_liftn n e2)) cl2 in
+	  let u1 = convert_vect l2r infos el1 el2 fty1 fty2 cuniv in
+          let u2 =
+            convert_vect l2r infos
+	      (el_liftn n el1) (el_liftn n el2) fcl1 fcl2 u1 in
+          convert_stacks l2r infos lft1 lft2 v1 v2 u2
+        else raise NotConvertible
+
+    | (FCoFix ((op1,(_,tys1,cl1)),e1), FCoFix((op2,(_,tys2,cl2)),e2)) ->
+        if op1 = op2
+        then
+	  let n = Array.length cl1 in
+          let fty1 = Array.map (mk_clos e1) tys1 in
+          let fty2 = Array.map (mk_clos e2) tys2 in
+          let fcl1 = Array.map (mk_clos (subs_liftn n e1)) cl1 in
+          let fcl2 = Array.map (mk_clos (subs_liftn n e2)) cl2 in
+          let u1 = convert_vect l2r infos el1 el2 fty1 fty2 cuniv in
+          let u2 =
+	    convert_vect l2r infos
+	      (el_liftn n el1) (el_liftn n el2) fcl1 fcl2 u1 in
+          convert_stacks l2r infos lft1 lft2 v1 v2 u2
+        else raise NotConvertible
 
   (* Native constructors *)    
   | FNativeInt i1, FNativeInt i2 ->
-      if i1 = i2 then convert_stacks infos lft1 lft2 v1 v2 cuniv
+      if i1 = i2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
       else raise NotConvertible
   | FNativeArr(t1, p1), FNativeArr(t2,p2) ->
       let len = Uint31.to_int (Parray.length p1) in
       if len = Uint31.to_int (Parray.length p2) then
-	let u = ref (ccnv CONV infos el1 el2 t1 t2 cuniv) in
+	let u = ref (ccnv CONV l2r infos el1 el2 t1 t2 cuniv) in
 	for i = 0 to len (* default value *) do
 	  let i = Uint31.of_int i in
-	  u := ccnv CONV infos el1 el2 (Parray.get p1 i) (Parray.get p2 i) !u
+	  u := ccnv CONV l2r infos el1 el2 (Parray.get p1 i) (Parray.get p2 i) !u
 	done;
-	convert_stacks infos lft1 lft2 v1 v2 !u
+	convert_stacks l2r infos lft1 lft2 v1 v2 !u
       else raise NotConvertible
 
   (* Should not happen because both (hd1,v1) and (hd2,v2) are in whnf *)
@@ -575,13 +568,13 @@ and eqappr cv_pb infos (lft1,st1) (lft2,st2) cuniv =
   (* In all other cases, terms are not convertible *)
   | _ -> raise NotConvertible
 	  
-and convert_stacks infos lft1 lft2 stk1 stk2 cuniv =
+and convert_stacks l2r infos lft1 lft2 stk1 stk2 cuniv =
   compare_stacks
-    (fun (l1,t1) (l2,t2) c -> ccnv CONV infos l1 l2 t1 t2 c)
+    (fun (l1,t1) (l2,t2) c -> ccnv CONV l2r infos l1 l2 t1 t2 c)
     (eq_ind)
     lft1 stk1 lft2 stk2 cuniv
 
-and convert_vect infos lft1 lft2 v1 v2 cuniv =
+and convert_vect l2r infos lft1 lft2 v1 v2 cuniv =
   let lv1 = Array.length v1 in
   let lv2 = Array.length v2 in
   if lv1 = lv2
@@ -589,36 +582,34 @@ and convert_vect infos lft1 lft2 v1 v2 cuniv =
     let rec fold n univ =
       if n >= lv1 then univ
       else
-        let u1 = ccnv CONV infos lft1 lft2 v1.(n) v2.(n) univ in
+        let u1 = ccnv CONV l2r infos lft1 lft2 v1.(n) v2.(n) univ in
         fold (n+1) u1 in
     fold 0 cuniv
   else raise NotConvertible
 
-let clos_fconv trans cv_pb evars env t1 t2 =
+let clos_fconv trans cv_pb l2r evars env t1 t2 =
   let infos = trans, create_clos_infos ~evars betaiotazeta env in
-  ccnv cv_pb infos el_id el_id (inject t1) (inject t2) empty_constraint
+  ccnv cv_pb l2r infos el_id el_id (inject t1) (inject t2) empty_constraint
 
-let trans_fconv reds cv_pb evars env t1 t2 =
+let trans_fconv reds cv_pb l2r evars env t1 t2 =
   if eq_constr t1 t2 then empty_constraint
-  else 
-    ((*print_string "Start conversion\n"; *)
-     clos_fconv reds cv_pb evars env t1 t2)
+  else clos_fconv reds cv_pb l2r evars env t1 t2
 
-let trans_conv_cmp conv reds = trans_fconv reds conv (fun _->None)
-let trans_conv ?(evars=fun _->None) reds = trans_fconv reds CONV evars
-let trans_conv_leq ?(evars=fun _->None) reds = trans_fconv reds CUMUL evars
+let trans_conv_cmp ?(l2r=false) conv reds = trans_fconv reds conv l2r (fun _->None)
+let trans_conv ?(l2r=false) ?(evars=fun _->None) reds = trans_fconv reds CONV l2r evars
+let trans_conv_leq ?(l2r=false) ?(evars=fun _->None) reds = trans_fconv reds CUMUL l2r evars
 
 let fconv =  trans_fconv (Idpred.full, Cpred.full)
 
-let conv_cmp cv_pb = fconv cv_pb (fun _->None)
-let conv ?(evars=fun _->None) = fconv CONV evars
-let conv_leq ?(evars=fun _->None) = fconv CUMUL evars
+let conv_cmp ?(l2r=false) cv_pb = fconv cv_pb l2r (fun _->None)
+let conv ?(l2r=false) ?(evars=fun _->None) = fconv CONV l2r evars
+let conv_leq ?(l2r=false) ?(evars=fun _->None) = fconv CUMUL l2r evars
 
-let conv_leq_vecti ?(evars=fun _->None) env v1 v2 =
+let conv_leq_vecti ?(l2r=false) ?(evars=fun _->None) env v1 v2 =
   array_fold_left2_i
     (fun i c t1 t2 ->
       let c' =
-        try conv_leq ~evars env t1 t2
+        try conv_leq ~l2r ~evars env t1 t2
         with NotConvertible -> raise (NotConvertibleVect i) in
       union_constraints c c')
     empty_constraint
@@ -626,7 +617,7 @@ let conv_leq_vecti ?(evars=fun _->None) env v1 v2 =
     v2
 
 (* option for conversion *)
-let nat_conv = ref (fun cv_pb -> fconv cv_pb (fun _->None))
+let nat_conv = ref (fun cv_pb -> fconv cv_pb false (fun _->None))
 let set_nat_conv f = nat_conv := f
 
 let native_conv cv_pb env t1 t2 =
@@ -639,7 +630,7 @@ let native_conv cv_pb env t1 t2 =
       with e -> Util.anomaly (Printexc.to_string e)
   end
 
-let vm_conv = ref (fun cv_pb -> fconv cv_pb (fun _->None))
+let vm_conv = ref (fun cv_pb -> fconv cv_pb false (fun _->None))
 let set_vm_conv f = vm_conv := f
 let vm_conv cv_pb env t1 t2 =
   try
@@ -647,19 +638,19 @@ let vm_conv cv_pb env t1 t2 =
     !vm_conv cv_pb env t1 t2
   with Not_found | Invalid_argument _ -> anomaly "compilation error"
       (* If compilation fails, fall-back to closure conversion
-      fconv cv_pb (fun _->None) env t1 t2 *)
+      fconv cv_pb false (fun _->None) env t1 t2 *)
 
 
-let default_conv = ref (fun cv_pb -> fconv cv_pb (fun _->None))
+let default_conv = ref (fun cv_pb ?(l2r=false) -> fconv cv_pb l2r (fun _->None))
 
 let set_default_conv f = default_conv := f
 
-let default_conv cv_pb env t1 t2 =
+let default_conv cv_pb ?(l2r=false) env t1 t2 =
   try
-    !default_conv cv_pb env t1 t2
+    !default_conv ~l2r cv_pb env t1 t2
   with Not_found | Invalid_argument _ ->
       (* If compilation fails, fall-back to closure conversion *)
-      fconv cv_pb (fun _->None) env t1 t2
+      fconv cv_pb false (fun _->None) env t1 t2
 
 let default_conv_leq = default_conv CUMUL
 (*
