@@ -209,8 +209,6 @@ let judge_of_letin env name defj typj j =
 
 (* Type of an application. *)
 
-let has_revert c = match kind_of_term c with Cast (c,REVERTcast,_) -> true | _ -> false
-
 let judge_of_apply env funj argjv =
   let rec apply_rec n typ cst = function
     | [] ->
@@ -221,8 +219,7 @@ let judge_of_apply env funj argjv =
         (match kind_of_term (whd_betadeltaiota env typ) with
           | Prod (_,c1,c2) ->
 	      (try
-		let l2r = has_revert hj.uj_val in
-		let c = conv_leq l2r env hj.uj_type c1 in
+		let c = conv_leq false env hj.uj_type c1 in
 		let cst' = union_constraints cst c in
 		apply_rec (n+1) (subst1 hj.uj_val c2) cst' restjl
 	      with NotConvertible ->
@@ -290,10 +287,14 @@ let type_of_cast env c t k expected_type =
   try
     let cst =
       match k with
-      | VMcast -> vm_conv CUMUL env t expected_type
-      | NATIVEcast -> native_conv CUMUL env t expected_type
-      | DEFAULTcast -> conv_leq false env t expected_type
-      | REVERTcast -> conv_leq true env t expected_type in
+      | VMcast ->
+          vm_conv CUMUL env t expected_type
+      | NATIVEcast ->
+          native_conv CUMUL env t expected_type
+      | DEFAULTcast ->
+          conv_leq false env t expected_type
+      | REVERTcast ->
+          conv_leq true env t expected_type in
     expected_type, cst
   with NotConvertible ->
     error_actual_type env (make_judge c t) expected_type
@@ -301,7 +302,38 @@ let type_of_cast env c t k expected_type =
 let judge_of_cast env cj k tj =
   let expected_type = tj.utj_val in
   let t, cst = type_of_cast env cj.uj_val cj.uj_type k expected_type in
+  match k with
+  | REVERTcast -> make_judge cj.uj_val t, cst
+  | _ -> make_judge (mkCast (cj.uj_val, k, t)) t, cst
+
+(*
+let type_of_cast env c t k expected_type =
+  try
+    let c, cst =
+      match k with
+      | VMcast ->
+          mkCast (c, k, expected_type),
+          vm_conv CUMUL env t expected_type
+      | NATIVEcast ->
+          mkCast (c, k, expected_type),
+          native_conv CUMUL env t expected_type
+      | DEFAULTcast ->
+          mkCast (c, k, expected_type),
+          conv_leq false env t expected_type
+      | REVERTcast ->
+          c,
+          conv_leq true env t expected_type in
+    { uj_val = c;
+      uj_type = expected_type },
+    cst
+  with NotConvertible ->
+    error_actual_type env (make_judge c t) expected_type
+
+let judge_of_cast env cj k tj =
+  let expected_type = tj.utj_val in
+  let t, cst = type_of_cast env cj.uj_val cj.uj_type k expected_type in
   make_judge (mkCast (cj.uj_val, k, t)) t, cst
+  *)
 
 
 (* Inductive types. *)
