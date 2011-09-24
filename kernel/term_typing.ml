@@ -93,6 +93,9 @@ let infer_declaration env dcl =
   match dcl with
   | DefinitionEntry c ->
       let (j,cst) = infer env c.const_entry_body in
+      let j =
+        {uj_val = hcons1_constr j.uj_val;
+         uj_type = hcons1_constr j.uj_type} in
       let (typ,cst) = constrain_type env j cst c.const_entry_type in
       let def =
 	if c.const_entry_opaque
@@ -102,8 +105,8 @@ let infer_declaration env dcl =
       def, typ, cst, c.const_entry_inline_code
   | ParameterEntry (t,nl) ->
       let (j,cst) = infer env t in
-      Undef nl, NonPolymorphicType (Typeops.assumption_of_judgment env j), cst,
-      false
+      let t = hcons1_constr (Typeops.assumption_of_judgment env j) in
+      Undef nl, NonPolymorphicType t, cst, false
   | PrimitiveEntry (t,op_t) ->
       let (j,cst) = infer env t in
       check_primitive_type env op_t t; 
