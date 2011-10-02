@@ -23,8 +23,9 @@ let compiler_name =
 let env_name = "Coq_conv_env"
 
 let include_dirs =
-  "-I "^Coq_config.camllib^"/camlp5 -I "^Coq_config.coqlib^"/config -I "
-  ^Coq_config.coqlib^"/lib -I "^Coq_config.coqlib^"/kernel "
+  let coqroot = !Flags.coqlib in
+  "-I "^Coq_config.camllib^"/camlp5 -I "^coqroot^"/config -I "
+  ^coqroot^"/lib -I "^coqroot^"/kernel "
   ^"-I "^Filename.temp_dir_name^" "
 
 (* Pointer to the function linking an ML object into coq's toplevel *)
