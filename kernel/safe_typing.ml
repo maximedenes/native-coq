@@ -90,9 +90,6 @@ type module_info =
      variant : modvariant;
      resolver : delta_resolver;
      resolver_of_param : delta_resolver;}
-      
-let check_label l labset =
-  if Labset.mem l labset then error_existing_label l
 
 let set_engagement_opt oeng env =
   match oeng with
@@ -113,6 +110,11 @@ type safe_environment =
       loads : (module_path * module_body) list;
       local_retroknowledge : (Native.retro_action * constr) list
     }
+
+let exists_label l senv = Labset.mem l senv.labset
+
+let check_label l senv =
+  if exists_label l senv then error_existing_label l
 
 (* a small hack to avoid variants and an unused case in all functions *)
 let rec empty_environment =
@@ -241,7 +243,7 @@ let hcons_constant_body cb =
     const_type = hcons_const_type cb.const_type }
 
 let add_constant dir l decl senv =
-  check_label l senv.labset;
+  check_label l senv;
   let kn = make_con senv.modinfo.modpath dir l in
   let cb =
     match decl with
@@ -275,7 +277,7 @@ let add_mind dir l mie senv =
   if l <> label_of_id id then
     anomaly ("the label of inductive packet and its first inductive"^
 	     " type do not match");
-  check_label l senv.labset;
+  check_label l senv;
     (* TODO: when we will allow reorderings we will have to verify
        all labels *)
   let kn = make_mind senv.modinfo.modpath dir l in
@@ -286,7 +288,7 @@ let add_mind dir l mie senv =
 (* Insertion of module types *)
 
 let add_modtype l mte inl senv =
-  check_label l senv.labset;
+  check_label l senv;
   let mp = MPdot(senv.modinfo.modpath, l) in
   let mtb = translate_module_type senv.env mp inl mte  in
   let senv' = add_field (l,SFBmodtype mtb) (MT mp) senv in
@@ -300,7 +302,7 @@ let full_add_module mb senv =
 (* Insertion of modules *)
 
 let add_module l me inl senv =
-  check_label l senv.labset;
+  check_label l senv;
   let mp = MPdot(senv.modinfo.modpath, l) in
   let mb = translate_module senv.env mp inl me in
   let senv' = add_field (l,SFBmodule mb) M senv in
@@ -312,7 +314,7 @@ let add_module l me inl senv =
 (* Interactive modules *)
 
 let start_module l senv =
-  check_label l senv.labset;
+  check_label l senv;
  let mp = MPdot(senv.modinfo.modpath, l) in
  let modinfo = { modpath = mp;
 		 label = l;
@@ -465,7 +467,7 @@ let end_module l restype senv =
    let senv = update_resolver (add_delta_resolver resolver) senv
    in
    let add senv ((l,elem) as field) =
-     check_label l senv.labset;
+     check_label l senv;
      let new_name = match elem with
        | SFBconst _ ->
 	   let kn = make_kn mp_sup empty_dirpath l in
@@ -527,7 +529,7 @@ let add_module_parameter mbid mte inl senv =
 (* Interactive module types *)
 
 let start_modtype l senv =
-  check_label l senv.labset;
+  check_label l senv;
  let mp = MPdot(senv.modinfo.modpath, l) in
  let modinfo = { modpath = mp;
 		 label = l;
