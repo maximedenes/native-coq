@@ -63,9 +63,6 @@ type 'a constant_def =
   | OpaqueDef of lazy_constr
   | Primitive of Native.op
 
-val subst_constant_def : substitution -> constr_substituted constant_def ->
-  constr_substituted constant_def
-
 type constant_body = {
     const_hyps : section_context; (** New: younger hyp at top *)
     const_body : constr_substituted constant_def;
@@ -74,6 +71,8 @@ type constant_body = {
     const_constraints : constraints;
     const_inline_code : bool }
 
+val subst_const_def : substitution -> constr_substituted constant_def ->
+  constr_substituted constant_def
 val subst_const_body : substitution -> constant_body -> constant_body
 
 (** Is there a actual body in const_body or const_body_opaque ? *)
@@ -237,3 +236,13 @@ and module_type_body =
       typ_constraints : constraints;
       (** quotiented set of equivalent constant and inductive name  *)
       typ_delta :delta_resolver}
+
+
+(** Hash-consing *)
+
+(** Here, strictly speaking, we don't perform true hash-consing
+    of the structure, but simply hash-cons all inner constr
+    and other known elements *)
+
+val hcons_const_body : constant_body -> constant_body
+val hcons_mind : mutual_inductive_body -> mutual_inductive_body
