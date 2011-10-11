@@ -508,7 +508,7 @@ let print_full_pure_context () =
   | ((_,kn),Lib.Leaf lobj)::rest ->
       let pp = match object_tag lobj with
       | "CONSTANT" ->
-	  let con = Global.constant_of_delta (constant_of_kn kn) in
+	  let con = Global.constant_of_delta_kn kn in
 	  let cb = Global.lookup_constant con in
 	  let typ = ungeneralized_type_of_constant_type cb.const_type in
 	  hov 0 (
@@ -542,7 +542,7 @@ let print_full_pure_context () =
 		  str "  : " ++ pr_ltype typ ++ cut () ++ str " := " ++
 		  print_body val_0) *) ++ str "." ++ fnl () ++ fnl ()
       | "INDUCTIVE" ->
-	  let mind = Global.mind_of_delta (mind_of_kn kn) in
+	  let mind = Global.mind_of_delta_kn kn in
 	  let mib = Global.lookup_mind mind in
 	  pr_mutual_inductive_body (Global.env()) mind mib ++
 	    str "." ++ fnl () ++ fnl ()
