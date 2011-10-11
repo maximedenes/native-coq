@@ -55,6 +55,15 @@ Axiom length_copy : forall A (t:array A), length (copy t) = length t.
 Axiom get_reroot : forall A (t:array A) i, (reroot t).[i] = t.[i].
 Axiom length_reroot : forall A (t:array A), length (reroot t) = length t.
 
+Axiom array_eq : forall A (t1 t2:array A), length t1 = length t2 ->
+  (forall i, t1.[i] = t2.[i]) -> default t1 = default t2 -> t1 = t2.
+
+Axiom get_init : forall A f size (def:A) i,
+  (init size f def).[i] = if i < length (init size f def) then f i else def.
+Axiom default_init : forall A f size (def:A), default (init size f def) = def.
+Axiom length_init : forall A f size (def:A),
+  length (init size f def) = if size <= max_array_length then size else max_array_length.
+
 (* Definition *)
 Definition to_list {A:Type} (t:array A) :=
   let len := length t in
