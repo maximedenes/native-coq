@@ -325,8 +325,8 @@ let parray_map f p =
   match !p with
   | Array t -> ref (Array (Array.map f t))
   | _ ->
-      let len = Uint31.to_int (length p) in
+      let len = to_int (length p) in
       ref (Array 
 	     (Array.init (len + 1) 
-		(fun i -> f (get p (Uint31.of_int i)))))
+		(fun i -> f (parray_get p (of_int i)))))
 	

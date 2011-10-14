@@ -255,6 +255,7 @@ let rec extract_type env db j c args =
 	       (match cb.const_body with
 		  | Undef _ | OpaqueDef _ -> mlt
 		  | Def _ when is_custom r -> mlt
+                  | Primitive _ when is_custom r -> mlt
 		  | Def lbody ->
 		      let newc = applist (Declarations.force lbody, args) in
 		      let mlt' = extract_type env db j newc [] in
@@ -267,7 +268,7 @@ let rec extract_type env db j c args =
 	   | (Info, Default) ->
                (* Not an ML type, for example [(c:forall X, X->X) Type nat] *)
 	       (match cb.const_body with
-		  | Undef _  | OpaqueDef _ -> Tunknown (* Brutal approx ... *)
+		  | Undef _  | OpaqueDef _ | Primitive _ -> Tunknown (* Brutal approx ... *)
 		  | Def lbody ->
 		      (* We try to reduce. *)
 		      let newc = applist (Declarations.force lbody, args) in
@@ -957,14 +958,17 @@ let extract_constant env kn cb =
 	  | Def c -> mk_typ (force c)
 	  | OpaqueDef c ->
 	    add_opaque r;
-	    if access_opaque () then mk_typ (force_opaque c) else mk_typ_ax ())
+	    if access_opaque () then mk_typ (force_opaque c) else mk_typ_ax ()
+          | Primitive _ -> mk_typ_ax ())
+
     | (Info,Default) ->
         (match cb.const_body with
 	  | Undef _ -> warn_info (); mk_ax ()
 	  | Def c -> mk_def (force c)
 	  | OpaqueDef c ->
 	    add_opaque r;
-	    if access_opaque () then mk_def (force_opaque c) else mk_ax ())
+	    if access_opaque () then mk_def (force_opaque c) else mk_ax ()
+          | Primitive _ ->  mk_ax ())
 
 let extract_constant_spec env kn cb =
   let r = ConstRef kn in
