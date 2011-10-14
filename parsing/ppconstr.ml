@@ -538,7 +538,7 @@ let pr pr sep inherited a =
   | CNativeArr(_,_,p) -> 
       let last = Array.length p - 1 in
       let pp = ref
-	  (str " |"++spc () ++  pr mt ltop p.(last)  ++ str " \\]") in
+	  (str " |"++spc () ++  pr mt ltop p.(last)  ++ str " !]") in
       if last > 0 then 
 	begin 
 	  for i = last - 1 downto 1 do
@@ -546,7 +546,7 @@ let pr pr sep inherited a =
 	  done;
 	  pp :=  pr mt ltop p.(0) ++ !pp
 	end;
-      hov 0 (str "[\\" ++ !pp), 0
+      hov 0 (str "[!" ++ !pp), 0
   in
   let loc = constr_loc a in
   pr_with_comments loc

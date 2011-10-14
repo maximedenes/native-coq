@@ -17,7 +17,7 @@ let comp_stack = ref ([] : global list)
 
 (* Global settings and utilies for interface with OCaml *)
 let compiler_name =
-  if Dynlink.is_native then "ocamlopt.opt"
+  if Dynlink.is_native then "ocamlopt"
   else "ocamlc"
 
 let env_name = "Coq_conv_env"
@@ -52,7 +52,7 @@ let compile_terms base_mp terms_code main_code =
   let filename = Filename.temp_file "coq_native" ".cmo" in
   let filename = Dynlink.adapt_filename filename in
   let comp_cmd =
-    Format.sprintf "%s -%s -o %s -rectypes %s %s"
+    Format.sprintf "%s -%s -o %s -rectypes -w -A %s %s"
       compiler_name (if Dynlink.is_native then "shared" else "c")
       filename include_dirs mod_name
   in

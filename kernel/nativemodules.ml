@@ -54,7 +54,7 @@ and translate_fields mp env (l,x) acc =
       translate_mod mdtyp.typ_mp env mdtyp.typ_expr acc
 
 let dump_library mp env mod_expr =
-  print_endline "Compiling library...";
+  Flags.if_verbose print_endline "Compiling library...";
   match mod_expr with
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
@@ -63,7 +63,7 @@ let dump_library mp env mod_expr =
       let t1 = Sys.time () in
 (*      let mlopt = optimize_stk mlcode in
       let t2 = Sys.time () in*)
-      Format.eprintf "Compiled library. ml %.5f@." (t1-.t0);
+      Flags.if_verbose (Format.eprintf "Compiled library. ml %.5f@.") (t1-.t0);
       mlcode
   | _ -> assert false
 
@@ -135,10 +135,12 @@ let compile_module code mp load_paths f =
   let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
   close_out ch_out;
   let comp_cmd =
-    Format.sprintf "time %s -%s -o %s -rectypes %s %s %s.ml"
+    Format.sprintf "%s%s -%s -o %s -rectypes -w -A %s %s %s.ml"
+      (if Flags.is_verbose () then "time " else "")
       Nativelib.compiler_name (if Dynlink.is_native then "shared" else "c")
       (Dynlink.adapt_filename (f^".cmo")) include_dirs load_paths f
   in
-  print_endline "Compiling module...";
-  let res = Sys.command comp_cmd in print_endline "Compiled"; res
+  Flags.if_verbose print_endline "Compiling module...";
+  let res = Sys.command comp_cmd in
+  Flags.if_verbose print_endline "Compiled"; res
 
