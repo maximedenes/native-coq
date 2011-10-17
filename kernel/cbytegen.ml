@@ -437,7 +437,7 @@ let rec compile_lam reloc lam sz cont =
       let (jump, cont) = make_branch cont in
       let lbl_default = Label.create () in
       let default =
-	let cont = [Kgetglobal kn :: Kapply all :: jump] in
+	let cont = [Kgetglobal kn; Kapply all; jump] in
 	Klabel lbl_default ::
 	Kpush ::
 	if nparams = 0 then cont
