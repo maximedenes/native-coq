@@ -16,6 +16,7 @@ Register copy : forall {A:Type}, array A -> array A as array_copy.
 
 Register reroot : forall {A:Type}, array A -> array A as array_reroot.
 
+(* Not done with the vm *)
 Register init : forall {A:Type}, int -> (int -> A) -> A -> array A as array_init.
 
 Register map : forall {A B:Type}, (A -> B) -> array A -> array B as array_map.
@@ -56,21 +57,20 @@ Axiom get_reroot : forall A (t:array A) i, (reroot t).[i] = t.[i].
 Axiom length_reroot : forall A (t:array A), length (reroot t) = length t.
 
 
-Axiom array_eq : forall A (t1 t2:array A), length t1 = length t2 ->
-  (forall i, t1.[i] = t2.[i]) -> default t1 = default t2 -> t1 = t2.
-
-Axiom get_init : forall A f size (def:A) i,
-  (init size f def).[i] = if i < length (init size f def) then f i else def.
-Axiom default_init : forall A f size (def:A), default (init size f def) = def.
 Axiom length_init : forall A f size (def:A),
   length (init size f def) = if size <= max_array_length then size else max_array_length.
 
+Axiom get_init : forall A f size (def:A) i,
+  (init size f def).[i] = if i < length (init size f def) then f i else def.
+
+Axiom default_init : forall A f size (def:A), default (init size f def) = def.
+
+(* Rename this ? *)
 Axiom get_ext : forall A (t1 t2:array A),
   length t1 = length t2 ->
   (forall i, i < length t1 = true -> t1.[i] = t2.[i]) ->
   default t1 = default t2 ->
   t1 = t2.
-
 
 (* Definition *)
 Definition to_list {A:Type} (t:array A) :=
