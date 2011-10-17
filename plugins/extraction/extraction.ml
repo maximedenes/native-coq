@@ -253,9 +253,8 @@ let rec extract_type env db j c args =
 	   | (Info, TypeScheme) ->
 	       let mlt = extract_type_app env db (r, type_sign env typ) args in
 	       (match cb.const_body with
-		  | Undef _ | OpaqueDef _ -> mlt
+		  | Primitive _ | Undef _ | OpaqueDef _ -> mlt
 		  | Def _ when is_custom r -> mlt
-                  | Primitive _ when is_custom r -> mlt
 		  | Def lbody ->
 		      let newc = applist (Declarations.force lbody, args) in
 		      let mlt' = extract_type env db j newc [] in
@@ -268,7 +267,7 @@ let rec extract_type env db j c args =
 	   | (Info, Default) ->
                (* Not an ML type, for example [(c:forall X, X->X) Type nat] *)
 	       (match cb.const_body with
-		  | Undef _  | OpaqueDef _ | Primitive _ -> Tunknown (* Brutal approx ... *)
+		  | Primitive _ | Undef _  | OpaqueDef _ -> Tunknown (* Brutal approx ... *)
 		  | Def lbody ->
 		      (* We try to reduce. *)
 		      let newc = applist (Declarations.force lbody, args) in
@@ -488,7 +487,7 @@ and mlt_env env r = match r with
 	 let cb = Environ.lookup_constant kn env in
 	 let typ = Typeops.type_of_constant_type env cb.const_type in
 	 match cb.const_body with
-	   | Undef _ | OpaqueDef _ -> None
+	   | Primitive _ | Undef _ | OpaqueDef _ -> None
 	   | Def l_body ->
 	       (match flag_of_type env typ with
 		  | Info,TypeScheme ->
@@ -954,21 +953,18 @@ let extract_constant env kn cb =
     | (Logic,Default) -> warn_log (); Dterm (r, MLdummy, Tdummy Kother)
     | (Info,TypeScheme) ->
         (match cb.const_body with
-	  | Undef _ -> warn_info (); mk_typ_ax ()
+	  | Primitive _ | Undef _ -> warn_info (); mk_typ_ax ()
 	  | Def c -> mk_typ (force c)
 	  | OpaqueDef c ->
 	    add_opaque r;
-	    if access_opaque () then mk_typ (force_opaque c) else mk_typ_ax ()
-          | Primitive _ -> mk_typ_ax ())
-
+	    if access_opaque () then mk_typ (force_opaque c) else mk_typ_ax ())
     | (Info,Default) ->
         (match cb.const_body with
-	  | Undef _ -> warn_info (); mk_ax ()
+	  | Primitive _ | Undef _ -> warn_info (); mk_ax ()
 	  | Def c -> mk_def (force c)
 	  | OpaqueDef c ->
 	    add_opaque r;
-	    if access_opaque () then mk_def (force_opaque c) else mk_ax ()
-          | Primitive _ ->  mk_ax ())
+	    if access_opaque () then mk_def (force_opaque c) else mk_ax ())
 
 let extract_constant_spec env kn cb =
   let r = ConstRef kn in
@@ -979,7 +975,7 @@ let extract_constant_spec env kn cb =
     | (Info, TypeScheme) ->
 	let s,vl = type_sign_vl env typ in
 	(match cb.const_body with
-	  | Undef _ | OpaqueDef _ -> Stype (r, vl, None)
+	  | Primitive _ | Undef _ | OpaqueDef _ -> Stype (r, vl, None)
 	  | Def body ->
 	      let db = db_from_sign s in
 	      let t = extract_type_scheme env db (force body) (List.length s)
