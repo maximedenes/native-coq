@@ -55,6 +55,7 @@ Axiom length_copy : forall A (t:array A), length (copy t) = length t.
 Axiom get_reroot : forall A (t:array A) i, (reroot t).[i] = t.[i].
 Axiom length_reroot : forall A (t:array A), length (reroot t) = length t.
 
+
 Axiom array_eq : forall A (t1 t2:array A), length t1 = length t2 ->
   (forall i, t1.[i] = t2.[i]) -> default t1 = default t2 -> t1 = t2.
 
@@ -63,6 +64,13 @@ Axiom get_init : forall A f size (def:A) i,
 Axiom default_init : forall A f size (def:A), default (init size f def) = def.
 Axiom length_init : forall A f size (def:A),
   length (init size f def) = if size <= max_array_length then size else max_array_length.
+
+Axiom get_ext : forall A (t1 t2:array A),
+  length t1 = length t2 ->
+  (forall i, i < length t1 = true -> t1.[i] = t2.[i]) ->
+  default t1 = default t2 ->
+  t1 = t2.
+
 
 (* Definition *)
 Definition to_list {A:Type} (t:array A) :=
@@ -306,4 +314,32 @@ Proof.
   apply Hrec.
 Qed.
 
+Require Import Bool.
+Local Open Scope bool_scope.
 
+Definition eqb {A:Type} (Aeqb: A->A->bool) (t1 t2:array A) :=
+  (length t1 == length t2) &&
+  Aeqb (default t1) (default t2) && 
+  forallbi (fun i a1 => Aeqb a1 (t2.[i])) t1.
+
+Lemma reflect_eqb : forall (A:Type) (Aeqb:A->A->bool),
+  (forall a1 a2, reflect (a1 = a2) (Aeqb a1 a2)) ->
+  forall t1 t2, reflect (t1 = t2) (eqb Aeqb t1 t2).
+Proof.
+ intros A Aeqb HA t1 t2.
+ case_eq (eqb Aeqb t1 t2);unfold eqb;intros H;constructor.
+ rewrite !andb_true_iff in H;destruct H as [[H1 H2] H3].
+ apply get_ext.
+ rewrite (reflect_iff _ _ (reflect_eqb _ _));trivial.
+ rewrite forallbi_spec in H3.
+ intros i Hlt;rewrite (reflect_iff _ _ (HA _ _));auto.
+ rewrite (reflect_iff _ _ (HA _ _));trivial.
+ intros Heq;rewrite Heq in H;clear Heq.
+ revert H; rewrite Int31Axioms.eqb_refl;simpl.
+ case_eq (Aeqb (default t2) (default t2));simpl;intros H0 H1.
+ rewrite <- not_true_iff_false, forallbi_spec in H1;apply H1.
+ intros i _; rewrite <- (reflect_iff _ _ (HA _ _));trivial.
+ rewrite <- not_true_iff_false, <- (reflect_iff _ _ (HA _ _)) in H0;apply H0;trivial.
+Qed.
+
+ 
