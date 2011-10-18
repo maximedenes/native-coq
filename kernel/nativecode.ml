@@ -1095,7 +1095,7 @@ let rec list_of_mp acc = function
   | MPfile dp ->
       let dp = repr_dirpath dp in
       string_of_dirpath dp :: acc
-  | MPbound mbid -> ("X"^string_of_label (label_of_mbid mbid))::acc
+  | MPbound mbid -> ("X"^string_of_id (id_of_mbid mbid))::acc
 
 let rec head_of_mp x = match x with
   | MPdot (mp,l) -> head_of_mp mp
