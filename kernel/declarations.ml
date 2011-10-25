@@ -128,6 +128,7 @@ let subst_const_def sub = function
   | Undef inl -> Undef inl
   | Def c -> Def (subst_constr_subst sub c)
   | OpaqueDef lc -> OpaqueDef (subst_lazy_constr sub lc)
+  | Primitive op -> Primitive op
 
 let subst_const_body sub cb = {
   const_hyps = (assert (cb.const_hyps=[]); []);

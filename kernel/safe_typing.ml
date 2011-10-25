@@ -204,8 +204,6 @@ let update_resolver f senv =
   let mi = senv.modinfo in
   { senv with modinfo = { mi with resolver = f mi.resolver }}
 
-
-
 (* Insertion of section variables. They are now typed before being
    added to the environment. *)
 
