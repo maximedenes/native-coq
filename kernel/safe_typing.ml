@@ -247,7 +247,7 @@ let add_constant dir l decl senv =
       if dir = empty_dirpath then hcons_const_body cb else cb
   in
   let senv' = add_field (l,SFBconst cb) (C kn) senv in
-  let senv'' = 
+  let senv' = 
     match decl with
     | ConstantEntry (PrimitiveEntry (_,Native.OT_type t)) ->
 	  let pttc = Native.Retro_type t, mkConst kn in
@@ -256,8 +256,8 @@ let add_constant dir l decl senv =
   in
   let senv'' = match cb.const_body with
     | Undef (Some lev) ->
-      update_resolver (add_inline_delta_resolver kn lev) senv''
-    | _ -> senv''
+      update_resolver (add_inline_delta_resolver (user_con kn) (lev,None)) senv'
+    | _ -> senv'
   in
   kn, senv''
 
