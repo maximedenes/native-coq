@@ -671,7 +671,6 @@ let rec subst_glob_constr subst raw =
 	 | CastCoerce ->
 	     let r1' = subst_glob_constr subst r1 in
 	       if r1' == r1 then raw else GCast (loc,r1',k))
-  | GDynamic _ -> raw
   | GNativeInt _ -> raw
   | GNativeArr(loc,t,p) -> 
       let t' = subst_glob_constr subst t

@@ -741,8 +741,6 @@ let rec extern inctx scopes vars r =
       CCast (loc,sub_extern true scopes vars c, CastConv (k,extern_typ scopes vars t))
   | GCast (loc,c, CastCoerce) ->
       CCast (loc,sub_extern true scopes vars c, CastCoerce)
-
-  | GDynamic (loc,d) -> CDynamic (loc,d)
   | GNativeInt(loc,i) -> 
       CPrim(loc, (Numeral (Bigint.of_string (Uint31.to_string i))))
   | GNativeArr(loc,t,p) ->

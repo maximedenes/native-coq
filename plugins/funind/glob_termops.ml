@@ -183,7 +183,6 @@ let change_vars =
 	  GCast(loc,change_vars mapping b, CastConv (k,change_vars mapping t))
       | GCast(loc,b,CastCoerce) ->
 	  GCast(loc,change_vars mapping b,CastCoerce)
-      | GDynamic _ -> error "Not handled GDynamic"
       | GNativeArr(loc,t,p) ->
 	  GNativeArr(loc,change_vars mapping t,
 		     Array.map (change_vars mapping) p)
@@ -367,7 +366,6 @@ let rec alpha_rt excluded rt =
 	GCast(loc,alpha_rt excluded b,CastConv(k,alpha_rt excluded t))
     | GCast (loc,b,CastCoerce) ->
 	GCast(loc,alpha_rt excluded b,CastCoerce)
-    | GDynamic _ -> error "Not handled GDynamic"
     | GApp(loc,f,args) ->
 	GApp(loc,
 	     alpha_rt excluded f,
@@ -420,7 +418,6 @@ let is_free_in id =
     | GHole _ -> false
     | GCast (_,b,CastConv (_,t)) -> is_free_in b || is_free_in t
     | GCast (_,b,CastCoerce) -> is_free_in b
-    | GDynamic _ -> raise (UserError("",str "Not handled GDynamic"))
     | GNativeInt _ -> false
     | GNativeArr(_,t,p) -> is_free_in t || array_exists is_free_in p
   and is_free_in_br (_,ids,_,rt) =
@@ -521,7 +518,6 @@ let replace_var_by_term x_id term =
 	  GCast(loc,replace_var_by_pattern b,CastConv(k,replace_var_by_pattern t))
       | GCast(loc,b,CastCoerce) ->
 	  GCast(loc,replace_var_by_pattern b,CastCoerce)
-      | GDynamic _ -> raise (UserError("",str "Not handled GDynamic"))
       | GNativeInt _ -> rt
       | GNativeArr(loc,t,p) ->
   	      GNativeArr(loc, replace_var_by_pattern t,
@@ -629,7 +625,7 @@ let ids_of_glob_constr c =
 	    ids_of_glob_constr acc c in
 	  List.fold_left do_b acc brchl
       | GRec _ -> failwith "Fix inside a constructor branch"
-      | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | GDynamic _ | 
+      | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ |
 	GNativeInt _) -> acc
       | GNativeArr(loc,t,p) ->
 	  Array.fold_left ids_of_glob_constr (ids_of_glob_constr acc t) p
@@ -695,7 +691,6 @@ let zeta_normalize =
 	  GCast(loc,zeta_normalize_term b,CastConv(k,zeta_normalize_term t))
       | GCast(loc,b,CastCoerce) ->
 	  GCast(loc,zeta_normalize_term b,CastCoerce)
-      | GDynamic _ -> raise (UserError("",str "Not handled GDynamic"))
       | GNativeInt _ -> rt
       | GNativeArr(loc,t,p) ->
 	  GNativeArr(loc,zeta_normalize_term t,
@@ -737,7 +732,6 @@ let expand_as =
 	  GIf(loc,expand_as map e,(na,Option.map (expand_as map) po),
 	      expand_as map br1, expand_as map br2)
       | GRec _ ->  error "Not handled GRec"
-      | GDynamic _ -> error "Not handled GDynamic"
       | GCast(loc,b,CastConv(kind,t)) -> GCast(loc,expand_as map b,CastConv(kind,expand_as map t))
       | GCast(loc,b,CastCoerce) -> GCast(loc,expand_as map b,CastCoerce)
       | GCases(loc,sty,po,el,brl) ->

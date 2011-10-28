@@ -688,14 +688,6 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 		  { uj_val = v; uj_type = tval }
 	in inh_conv_coerce_to_tycon loc env evdref cj tycon
 
-    | GDynamic (loc,d) ->
-	if (Dyn.tag d) = "constr" then
-	  let c = constr_out d in
-	  let j = (Retyping.get_judgment_of env !evdref c) in
-	  j
-	    (*inh_conv_coerce_to_tycon loc env evdref j tycon*)
-	else
-	  user_err_loc (loc,"pretype",(str "Not a constr tagged Dynamic."))
     | GNativeInt (loc,i) ->
 	let resj = 
 	  try judge_of_int env i
@@ -719,8 +711,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	  uj_type = Term.mkApp(ta,[|jt.utj_val|])
 	} in
 	inh_conv_coerce_to_tycon loc env evdref j tycon    
-	
-	    
+
   (* [pretype_type valcon env evdref lvar c] coerces [c] into a type *)
   and pretype_type valcon env evdref lvar = function
     | GHole loc ->

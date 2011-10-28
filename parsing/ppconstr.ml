@@ -537,7 +537,6 @@ let pr pr sep inherited a =
   | CGeneralization (_,bk,ak,c) -> pr_generalization bk ak (pr mt lsimple c), latom
   | CPrim (_,p) -> pr_prim_token p, prec_of_prim_token p
   | CDelimiters (_,sc,a) -> pr_delimiters sc (pr mt lsimple a), 1
-  | CDynamic _ -> str "<dynamic>", latom
   | CNativeArr(_,_,p) -> 
       let last = Array.length p - 1 in
       let pp = ref

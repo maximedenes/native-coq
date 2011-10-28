@@ -185,7 +185,7 @@ let generalizable_vars_of_glob_constr ?(bound=Idset.empty) ?(allowed=Idset.empty
     | GNativeArr(loc,t,p) ->
 	Array.fold_left (vars bound) (vars bound vs t) p
     | (GSort _ | GHole _ | GRef _ | GEvar _ | GPatVar _ | 
-       GDynamic _ |GNativeInt _) -> vs
+       GNativeInt _) -> vs
 
   and vars_pattern bound vs (loc,idl,p,c) =
     let bound' = List.fold_right Idset.add idl bound  in

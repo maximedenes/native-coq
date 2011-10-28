@@ -167,8 +167,7 @@ let rec uri_of_constr c =
       error "Whelp does not support pattern-matching and (co-)fixpoint."
   | GVar _ | GRef _ | GHole _ | GEvar _ | GSort _ | GCast (_,_, CastCoerce) ->
       anomaly "Written w/o parenthesis"
-
-  | GPatVar _ | GDynamic _ ->
+  | GPatVar _ ->
       anomaly "Found constructors not supported in constr"
   | GNativeInt _ | GNativeArr _ ->
       anomaly "Found native constructor not supported in constr") ()
