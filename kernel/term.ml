@@ -1385,7 +1385,7 @@ let hcons_term (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | NativeArr (t,p) ->
     let hp = hash_term_array p in
     let t, ht = sh_rec t in
-    (t, combine ht hp)
+    (NativeArr (t,p), combine ht hp)
 
   and sh_rec t =
     let (y, h) = hash_term t in
