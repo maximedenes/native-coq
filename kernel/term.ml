@@ -1430,6 +1430,11 @@ let rec hash_constr t =
        combinesmall 14 (combine (hash_term_array bl) (hash_term_array tl))
     | Meta n -> combinesmall 15 n
     | Rel n -> combinesmall 16 n
+    | NativeInt n -> combinesmall 17 (Uint31.to_int n)
+    | NativeArr (t,p) ->
+      let hp = hash_term_array p in
+      let ht = hash_constr t in
+      combine ht hp
 
 and hash_term_array t =
   Array.fold_left (fun acc t -> combine (hash_constr t) acc) 0 t
