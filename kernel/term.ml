@@ -674,6 +674,9 @@ let constr_ord_int f t1 t2 =
     | CoFix(ln1,(_,tl1,bl1)), CoFix(ln2,(_,tl2,bl2)) ->
 	((Pervasives.compare =? (array_compare f)) ==? (array_compare f))
 	ln1 ln2 tl1 tl2 bl1 bl2
+    | NativeInt i1, NativeInt i2 -> Pervasives.compare i1 i2
+    | NativeArr(t1,a1), NativeArr(t2,a2) -> 
+        (f =? (array_compare f)) t1 t2 a1 a2
     | Var _, (Rel _)
     | Meta _, (Rel _ | Var _)
     | Evar _, (Rel _ | Var _ | Meta _)
@@ -687,13 +690,16 @@ let constr_ord_int f t1 t2 =
     | Construct _, (Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _ | Const _ | Ind _)
     | Case _, (Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _ | Const _ | Ind _ | Construct _)
     | Fix _, (Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _ | Const _ | Ind _ | Construct _ | Case _)
-    | CoFix _, _
+    | CoFix _, (Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _ | Const _ | Ind _ | Construct _ | Case _ | Fix _)
+    | NativeInt _, (Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _ | Const _ | Ind _ | Construct _ | Case _ | Fix _ | CoFix _)
+    | NativeArr _, _ 
       -> -1
     | Rel _, _ | Var _, _ | Meta _, _ | Evar _, _
     | Sort _, _ | Prod _, _
     | Lambda _, _ | LetIn _, _ | App _, _
     | Const _, _ | Ind _, _ | Construct _, _
-    | Case _, _| Fix _, _
+    | Case _, _| Fix _, _ | CoFix _, _ 
+    | NativeInt _, _
       -> 1
 
 let rec constr_ord m n=
@@ -1381,11 +1387,11 @@ let hcons_term (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | Rel n ->
 	(t, combinesmall 16 n)
       | NativeInt n ->
-    (t, combinesmall 17 (Uint31.to_int n))
+        (t, combinesmall 17 (Uint31.to_int n))
       | NativeArr (t,p) ->
-    let hp = hash_term_array p in
-    let t, ht = sh_rec t in
-    (NativeArr (t,p), combine ht hp)
+        let hp = hash_term_array p in
+        let t, ht = sh_rec t in
+        (NativeArr (t,p), combine ht hp)
 
   and sh_rec t =
     let (y, h) = hash_term t in
