@@ -997,6 +997,21 @@ let empty_gdef = Intmap.empty, Intmap.empty
 let get_norm (gnorm, _) i = Intmap.find i gnorm
 let get_case (_, gcase) i = Intmap.find i gcase
 
+let all_lam n bs = 
+  let f (_, l) = 
+    match l with
+    | MLlam(params, _) -> Array.length params = n
+    | _ -> false in
+  Util.array_for_all f bs
+
+let commutative_cut annot a accu bs args =
+  let mkb (c,b) =
+     match b with
+     | MLlam(params, body) -> 
+         (c, Util.array_fold_left2 (fun body x v -> MLlet(x,v,body)) body params args)
+     | _ -> assert false in
+  MLmatch(annot, a, mkMLapp accu args, Array.map mkb bs)
+
 let optimize gdef l =   
   let rec optimize s l =
     match l with
@@ -1027,7 +1042,15 @@ let optimize gdef l =
 	      if can_subst arg then optimize (add_subst id arg s) body
 	      else MLlet(id, arg, optimize s body)
 	    with Not_found ->  MLapp(optimize s f, args))
-	| _ -> MLapp(optimize s f, args)
+	| _ -> 
+            let f = optimize s f in
+            match f with
+            | MLmatch (annot,a,accu,bs) ->
+              if all_lam (Array.length args) bs then  
+                commutative_cut annot a accu bs args 
+              else MLapp(f, args)
+            | _ -> MLapp(f, args)
+
 	end
     | MLif(t,b1,b2) ->
 	let t = optimize s t in
@@ -1035,7 +1058,7 @@ let optimize gdef l =
 	let b2 = optimize s b2 in
 	begin match t, b2 with
 	| MLapp(MLprimitive Is_accu,[| l1 |]), MLmatch(annot, l2, _, bs)
-	    when l1 = l2 -> MLmatch(annot, l1, b1, bs)
+	    when l1 = l2 -> MLmatch(annot, l1, b1, bs)	
         | _, _ -> MLif(t, b1, b2)
 	end
     | MLmatch(annot,a,accu,bs) ->
