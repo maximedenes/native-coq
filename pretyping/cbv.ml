@@ -520,7 +520,7 @@ and cbv_val_stack info (v,stack) =
         cbv_stack_term info (stack_app cargs stk) env br.(n-1)
 
     (* constructor of arity 0 in a Case -> IOTA *)
-    | (CONSTR((_,n),_), CASE(_,br,_,env,stk))
+    | (CONSTR((_,n),[||]), CASE(_,br,_,env,stk))
             when red_set (info_flags info) fIOTA ->
                     cbv_stack_term info stk env br.(n-1)
 
