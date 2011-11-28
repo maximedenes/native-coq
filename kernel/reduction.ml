@@ -407,7 +407,7 @@ and eqappr cv_pb l2r infos (lft1,st1) (lft2,st2) cuniv =
 		((lft1, whd_stack (snd infos) def1 v1), appr2)
 	    | Primitive op when check_native_args op v1 ->
 		let kn = 
-		  match fl1 with ConstKey kn -> kn | _ -> assert false in
+                  match fl1 with ConstKey kn -> kn | _ -> assert false in
 		let rargs, a, nargs, v1 = get_native_args1 op kn v1 in
 		((lft1, 
 		  whd_stack (snd infos) a 

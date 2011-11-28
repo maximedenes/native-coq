@@ -1148,6 +1148,24 @@ let rec knr info m stk =
             let stk' = par @ append_stack [|rarg|] s in
             let (fxe,fxbd) = contract_fix_vect fx.term in
             knit info fxe fxbd stk'
+        | (_, cargs, Znative(op,kn,rargs,nargs)::s) ->
+            let m = fapp_stack(m,cargs) in
+            let (rargs, nargs) = skip_native_args (m::rargs) nargs in
+	    begin match nargs with
+	    | [] -> 
+	        let args = Array.of_list (List.rev rargs) in
+	        begin 
+                  match FredNative.red_op info.i_env op (mkConst kn) args with
+	          | Some m -> kni info m s 
+	          | None -> 
+		      let f = {norm = Whnf; term = FFlex (ConstKey kn)} in
+		      let m = {norm = Whnf; term = FApp(f,args)} in
+		      (m,s)
+	        end
+	    | (kd,a)::nargs -> 
+	        assert (kd = Native.Kwhnf);
+	        kni info a (Znative(op,kn,rargs,nargs)::s)
+	    end 
         | (_,args,s) -> (m,args@s))
   | (FNativeInt _ | FNativeArr _) ->
       (match strip_update_shift_app m stk with
