@@ -357,6 +357,15 @@ let rec compile_fv reloc l sz cont =
 	(Kpush :: compile_fv reloc tl (sz + 1) cont)
 
 (* Compilation of lambda expression *)
+
+let print_fv fv = 
+  msgerr (str "fv = ");
+  List.iter (fun v ->
+    match v with
+    | FVnamed id -> msgerr (str ((string_of_id id)^"; "))
+    | FVrel i -> msgerr (str ((string_of_int i)^"; "))) fv; 
+  msgerrnl (str "");
+  flush_all()
 		  
 let rec compile_lam reloc lam sz cont =
   match lam with
@@ -560,7 +569,7 @@ let rec compile_lam reloc lam sz cont =
       for i = 0 to ndef - 1 do
 	let lbl,fcode = 
 	  label_code 
-	    (compile_lam env_type lbodies.(i) 0 [Kstop]) in
+	    (compile_lam env_type ltypes.(i) 0 [Kstop]) in
 	lbl_types.(i) <- lbl; 
 	fun_code := [Ksequence(fcode,!fun_code)]
       done;
@@ -624,13 +633,7 @@ let compile_opt opt env c =
     draw_instr init_code;
     msgerrnl (str "fun_code =");
     draw_instr !fun_code;
-    msgerr (str "fv = ");
-    List.iter (fun v ->
-      match v with
-      | FVnamed id -> msgerr (str ((string_of_id id)^"; "))
-      | FVrel i -> msgerr (str ((string_of_int i)^"; "))) fv; 
-    msgerrnl (str "");
-    flush_all()
+    print_fv fv
   end;
   init_code,!fun_code, Array.of_list fv
 
