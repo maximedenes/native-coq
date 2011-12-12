@@ -31,6 +31,7 @@ val pp_apply2 : std_ppcmds -> bool -> std_ppcmds list -> std_ppcmds
 
 val pp_tuple_light : (bool -> 'a -> std_ppcmds) -> 'a list -> std_ppcmds
 val pp_tuple : ('a -> std_ppcmds) -> 'a list -> std_ppcmds
+val pp_array : ('a -> std_ppcmds) -> 'a list -> std_ppcmds
 val pp_boxed_tuple : ('a -> std_ppcmds) -> 'a list -> std_ppcmds
 
 val pr_binding : identifier list -> std_ppcmds

@@ -102,11 +102,11 @@ let infer_declaration env dcl =
 	then OpaqueDef (Declarations.opaque_from_val j.uj_val)
 	else Def (Declarations.from_val j.uj_val)
       in
-      def, typ, cst, c.const_entry_inline_code
-  | ParameterEntry (t,nl) ->
+      def, typ, cst, c.const_entry_inline_code, c.const_entry_secctx
+  | ParameterEntry (ctx,t,nl) ->
       let (j,cst) = infer env t in
       let t = hcons_constr (Typeops.assumption_of_judgment env j) in
-      Undef nl, NonPolymorphicType t, cst, false
+      Undef nl, NonPolymorphicType t, cst, false, ctx
   | PrimitiveEntry (t,op_t) ->
       let (j,cst) = infer env t in
       check_primitive_type env op_t t; 
@@ -115,7 +115,7 @@ let infer_declaration env dcl =
 	| Native.OT_op op -> Primitive op
 	| Native.OT_type _ -> Undef None in
       cd, NonPolymorphicType (Typeops.assumption_of_judgment env j), 
-      cst, false
+      cst, false, None
 
 let global_vars_set_constant_type env = function
   | NonPolymorphicType t -> global_vars_set env t
@@ -125,15 +125,26 @@ let global_vars_set_constant_type env = function
 	  (fun t c -> Idset.union (global_vars_set env t) c))
       ctx ~init:Idset.empty
 
-let build_constant_declaration env kn (def,typ,cst,inline_code) =
-  let ids_typ = global_vars_set_constant_type env typ in
-  let ids_def = match def with
-    | Undef _ -> Idset.empty
-    | Def cs -> global_vars_set env (Declarations.force cs)
-    | OpaqueDef lc -> global_vars_set env (Declarations.force_opaque lc)
-    | Primitive _ -> Idset.empty
-  in
-  let hyps = keep_hyps env (Idset.union ids_typ ids_def) in
+let build_constant_declaration env kn (def,typ,cst,inline_code,ctx) =
+  let hyps = 
+    let inferred =
+      let ids_typ = global_vars_set_constant_type env typ in
+      let ids_def = match def with
+      | Undef _ -> Idset.empty
+      | Def cs -> global_vars_set env (Declarations.force cs)
+      | OpaqueDef lc -> 
+          global_vars_set env (Declarations.force_opaque lc) in
+      keep_hyps env (Idset.union ids_typ ids_def) in
+    let declared = match ctx with
+      | None -> inferred 
+      | Some declared -> declared in
+    let mk_set l = List.fold_right Idset.add (List.map pi1 l) Idset.empty in
+    let inferred_set, declared_set = mk_set inferred, mk_set declared in
+    if not (Idset.subset inferred_set declared_set) then
+      error ("The following section variable are used but not declared:\n"^
+        (String.concat ", " (List.map string_of_id
+          (Idset.elements (Idset.diff inferred_set declared_set)))));
+    declared in
   let tps = Cemitcodes.from_val (compile_constant_body env def) in
   let cb = { const_hyps = hyps;
     const_body = def;
@@ -153,7 +164,9 @@ let translate_constant env kn ce =
   build_constant_declaration env kn (infer_declaration env ce)
 
 let translate_recipe env kn r =
-  build_constant_declaration env kn (Cooking.cook_constant env r)
+  build_constant_declaration env kn 
+    (let def,typ,cst,inline = Cooking.cook_constant env r in
+    def,typ,cst,inline,None)
 
 (* Insertion of inductive types. *)
 

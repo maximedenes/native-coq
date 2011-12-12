@@ -693,6 +693,15 @@ let vernac_set_end_tac tac =
   if tac <> (Tacexpr.TacId []) then set_end_tac (Tacinterp.interp tac) else ()
     (* TO DO verifier s'il faut pas mettre exist s | TacId s ici*)
 
+let vernac_set_used_variables l =
+  let l = List.map snd l in
+  if not (list_distinct l) then error "Used variables list contains duplicates";
+  let vars = Environ.named_context (Global.env ()) in
+  List.iter (fun id -> 
+    if not (List.exists (fun (id',_,_) -> id = id') vars) then
+      error ("Unknown variable: " ^ string_of_id id))
+    l;
+  set_used_variables l
 
 (*****************************)
 (* Auxiliary file management *)
@@ -1052,6 +1061,7 @@ let _ =
 let _ =
   declare_bool_option 
     { optsync  = false;
+      optdepr  = false;
       optname  = "print optimized version of the code";
       optkey   = ["Draw";"Opt"];
       optread  = Flags.vm_draw_opt;
@@ -1060,6 +1070,7 @@ let _ =
 let _ =
   declare_bool_option 
     { optsync  = false;
+      optdepr  = false;
       optname  = "print the bytecode";
       optkey   = ["Draw";"Instr"];
       optread  = Flags.vm_draw_instr;
@@ -1067,6 +1078,7 @@ let _ =
 let _ =
   declare_bool_option
     {optsync  = false;
+      optdepr  = false;
       optname  = "warn persistant array operation";
       optkey   = ["Array";"Warn"];
       optread  = Flags.vm_array_warn;
@@ -1075,6 +1087,7 @@ let _ =
 let _ =
   declare_bool_option
     {optsync  = false;
+      optdepr  = false;
       optname  = "optimization during compilation";
       optkey   = ["Vm";"Optimize"];
       optread  = Flags.vm_optimize;
@@ -1565,7 +1578,11 @@ let interp c = match c with
   | VernacEndSubproof -> vernac_end_subproof ()
   | VernacShow s -> vernac_show s
   | VernacCheckGuard -> vernac_check_guard ()
-  | VernacProof tac -> vernac_set_end_tac tac
+  | VernacProof (None, None) -> ()
+  | VernacProof (Some tac, None) -> vernac_set_end_tac tac
+  | VernacProof (None, Some l) -> vernac_set_used_variables l
+  | VernacProof (Some tac, Some l) -> 
+      vernac_set_end_tac tac; vernac_set_used_variables l
   | VernacProofMode mn -> Proof_global.set_proof_mode mn
   (* Toplevel control *)
   | VernacToplevelControl e -> raise e

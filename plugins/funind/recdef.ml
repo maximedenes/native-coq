@@ -1134,6 +1134,7 @@ let (value_f:constr list -> global_reference -> constr) =
 let (declare_fun : identifier -> logical_kind -> constr -> global_reference) =
   fun f_id kind value ->
     let ce = {const_entry_body = value;
+              const_entry_secctx = None;
 	      const_entry_type = None;
 	      const_entry_opaque = false;
 	      const_entry_inline_code = false
