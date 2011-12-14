@@ -415,10 +415,11 @@ type coq_cmp =
   | CmpLt
   | CmpGt
 
-let of_bool b = 
+let of_bool b = (Obj.magic (not b) : (* coq_bool *) t) 
+  (*
   if b then (Obj.magic Btrue:t)
-  else (Obj.magic Bfalse:t)
-
+  else (Obj.magic Bfalse:t) 
+  *)
 let no_check_eq x y =     
   of_bool (Uint31.eq (to_uint x) (to_uint y))
 

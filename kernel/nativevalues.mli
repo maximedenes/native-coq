@@ -91,6 +91,7 @@ val is_accu : t -> bool
 
 val val_to_int : t -> int
 val val_of_int : int -> t
+val of_bool : bool -> t
 val is_int : t -> bool
 
 (* function with check *)

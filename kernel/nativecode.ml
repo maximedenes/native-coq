@@ -114,6 +114,7 @@ type primitive =
   | Force_cofix
   | Val_to_int
   | Val_of_int
+  | Val_of_bool
   (* Coq primitive with check *)
   | Chead0 of constant option
   | Ctail0 of constant option
@@ -559,8 +560,22 @@ let compile_prim decl cond paux =
     | PAprim(o, op, args) ->
 	let args = Array.map opt_prim_aux args in
 	begin match o, op with
-	| None, Native.Int31lt -> MLapp(MLprimitive Clt_b, args)
-	| None, Native.Int31le -> MLapp(MLprimitive Cle_b, args)
+	| None, Native.Int31lt -> 
+            if Sys.word_size = 64 then
+              app_prim MLlt (args_to_int args)
+            else app_prim Clt_b args
+        | Some _, Native.Int31lt -> 
+            if Sys.word_size = 64 then
+              app_prim Val_of_bool [|(app_prim MLlt (args_to_int args))|]
+            else app_prim (Clt None) args
+	| None, Native.Int31le ->
+            if Sys.word_size = 64 then
+              app_prim MLle (args_to_int args)
+            else app_prim Cle_b args
+        | Some _, Native.Int31le ->
+            if Sys.word_size = 64 then
+              app_prim Val_of_bool [|(app_prim MLle (args_to_int args))|]
+            else app_prim (Cle None) args
 	| _, Native.Int31lsl  -> of_int (mk_lsl (args_to_int args))
 	| _, Native.Int31lsr  -> of_int (mk_lsr (args_to_int args))
 	| _, Native.Int31land -> of_int (mk_land (args_to_int args))
@@ -570,13 +585,13 @@ let compile_prim decl cond paux =
 	| _, Native.Int31sub  -> of_int (mk_sub (args_to_int args))
 	| _, Native.Int31mul  -> of_int (mk_mul (args_to_int args))
 (*	| _, Native.Int31eq -> mk_inteq (args_to_int args) *)
-	| _, _ -> MLapp(MLprimitive (mlprim_of_prim op None) ,args) 
+	| _, _ -> app_prim (mlprim_of_prim op None) args
 	end
     | PAml ml -> ml 
   and naive_prim_aux paux = 
     match paux with
     | PAprim(o, op, args) ->
-	MLapp(MLprimitive (mlprim_of_prim op o),Array.map naive_prim_aux args)
+        app_prim (mlprim_of_prim op o) (Array.map naive_prim_aux args)
     | PAml ml -> ml in
 
   let compile_cond cond paux = 
@@ -1379,6 +1394,7 @@ let pp_mllam base_mp fmt l =
     | Force_cofix -> Format.fprintf fmt "force_cofix"
     | Val_to_int -> Format.fprintf fmt "val_to_int"
     | Val_of_int -> Format.fprintf fmt "val_of_int"
+    | Val_of_bool -> Format.fprintf fmt "of_bool"
     | Chead0 o -> pp_vprim o "head0" 
     | Ctail0 o -> pp_vprim o "tail0"
     | Cadd o -> pp_vprim o "add"
@@ -1402,8 +1418,8 @@ let pp_mllam base_mp fmt l =
     | Ceq o -> pp_vprim o "eq"
     | Clt o -> pp_vprim o "lt"
     | Cle o -> pp_vprim o "le"
-    | Clt_b  -> Format.fprintf fmt "lt_b"
-    | Cle_b -> Format.fprintf fmt "le_b"
+    | Clt_b  -> if Sys.word_size = 64 then Format.fprintf fmt "(<)" else Format.fprintf fmt "lt_b"
+    | Cle_b -> if Sys.word_size = 64 then Format.fprintf fmt "(<=)" else Format.fprintf fmt "le_b"
     | Ccompare o -> pp_vprim o "compare"
     | Cprint o -> pp_vprim o "print"
     | Carraymake o -> pp_vprim o "arraymake"

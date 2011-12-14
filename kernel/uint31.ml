@@ -103,33 +103,26 @@ let div21 = select div21_32 div21_64
     
     (* comparison *)
 let lt_32 x y = (x lxor 0x40000000) < (y lxor 0x40000000)
-(*  if 0 <= x then
-    if 0 <= y then x < y
-    else true
-  else if 0 <= y then false
-    else x < y *)
-(* Int32.compare (uint_32 x) (uint_32 y) < 0 *)
 
-let lt_64 x y = x < y
+(* Do not remove the type information it is really important for 
+   efficiancy *)
+let lt_64 (x:int) (y:int) = x < y
 let lt = select lt_32 lt_64
-    
+
+(* Do not remove the type information it is really important for 
+   efficiancy *)    
 let le_32 x y = 
  (x lxor 0x40000000) <= (y lxor 0x40000000)
-(*
-  if 0 <= x then
-    if 0 <= y then x <= y
-    else true
-  else if 0 <= y then false
-    else x <= y
-*)
-(*Int32.compare (uint_32 x) (uint_32 y) <= 0*)
-let le_64 x y = x <= y
+
+let le_64 (x:int) (y:int) = x <= y
 let le = select le_32 le_64
 
 let eq x y = x == y
     
 let cmp_32 x y = Int32.compare (uint_32 x) (uint_32 y)
-let cmp_64 x y = compare x y
+(* Do not remove the type information it is really important for 
+   efficiancy *)
+let cmp_64 (x:int) (y:int) = compare x y
 let compare = select cmp_32 cmp_64
   
     (* head tail *)
