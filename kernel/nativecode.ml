@@ -165,6 +165,7 @@ type primitive =
   | MLadd
   | MLsub
   | MLmul
+  | MLmagic
 
 type mllambda =
   | MLlocal        of lname 
@@ -597,13 +598,15 @@ let compile_prim decl cond paux =
   let compile_cond cond paux = 
     match cond with
     | [] -> opt_prim_aux paux 
+    | [c1] ->
+        MLif(app_prim Is_int [|c1|], opt_prim_aux paux, naive_prim_aux paux) 
     | c1::cond ->
 	let cond = 
 	  List.fold_left 
-	    (fun ml c ->
-	      MLapp(MLprimitive MLand, [|ml; MLapp(MLprimitive Is_int,[|c|])|]))
-	    (MLapp(MLprimitive Is_int, [|c1|])) cond in
-	MLif(cond, opt_prim_aux paux, naive_prim_aux paux) in
+	    (fun ml c -> app_prim MLland [| ml; to_int c|])
+            (app_prim MLland [|to_int c1; MLint(true,0)|]) cond in
+        let cond = app_prim MLmagic [|cond|] in
+	MLif(cond, naive_prim_aux paux, opt_prim_aux paux) in
   let add_decl decl body =
     List.fold_left (fun body (x,d) -> MLlet(x,d,body)) body decl in
   add_decl decl (compile_cond cond paux)
@@ -1444,7 +1447,7 @@ let pp_mllam base_mp fmt l =
     | MLadd -> Format.fprintf fmt "(+)"
     | MLsub -> Format.fprintf fmt "(-)"
     | MLmul -> Format.fprintf fmt "( * )"
-    
+    | MLmagic -> Format.fprintf fmt "Obj.magic"        
 
   in
   Format.fprintf fmt "@[%a@]" pp_mllam l
