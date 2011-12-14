@@ -425,7 +425,7 @@ let native_norm env c ty =
     | 0,fn,modname ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
-	Nativelib.call_linker (pre_env env) fn;
+	Nativelib.call_linker (pre_env env) fn (Some modname);
 	let t1 = Sys.time () in
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty

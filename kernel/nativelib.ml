@@ -59,14 +59,19 @@ let compile_terms base_mp terms_code main_code =
   in
   let res = Sys.command comp_cmd in
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
-  open_header := !open_header@[mk_open mod_name];
   res, filename, mod_name
 
-let call_linker env f =
+let call_linker env f mf =
+  let aux mf = (match mf with
+    | Some mf -> if !comp_stack != [] then
+      open_header := !open_header@[mk_open mf];
+      clear_comp_stack ()
+    | _ -> ());
+  in
   if Dynlink.is_native then
-    try (Dynlink.loadfile f; clear_comp_stack ())
+    try (Dynlink.loadfile f; aux mf)
     with Dynlink.Error e -> print_endline (Dynlink.error_message e)
-  else (!load_obj f; clear_comp_stack ())
+  else (!load_obj f; aux mf)
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
@@ -129,4 +134,4 @@ let intern_state s =
   (** WARNING TODO: if a state with the same file name has already been loaded   **)
   (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
 (*  let temp = Filename.temp_file s ".cmxs" in*)
-  call_linker empty_env (Dynlink.adapt_filename (s^".cma"))
+  call_linker empty_env (Dynlink.adapt_filename (s^".cma")) None

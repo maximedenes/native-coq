@@ -28,7 +28,7 @@ val compile_terms :
   module_path -> global list -> global list -> int * string * string
 
 val call_linker :
-  env -> string -> unit
+  env -> string -> string option -> unit
 
 exception Bug of string
 

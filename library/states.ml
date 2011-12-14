@@ -23,14 +23,14 @@ let (extern_state,intern_state) =
   (fun s ->
     if !Flags.load_proofs <> Flags.Force then
       Util.error "Write State only works with option -force-load-proofs";
-    Nativelib.extern_state s;
-    raw_extern s (freeze())),
+    raw_extern s (freeze());
+    Nativelib.extern_state (make_suffix s ".coq")),
   (fun s ->
       let paths = Library.get_load_paths () in
       let _,linkfn = find_file_in_path ~warn:true paths (make_suffix s ".coq") in
-      Nativelib.intern_state linkfn;
     unfreeze
       (with_magic_number_check (raw_intern paths) s);
+    Nativelib.intern_state linkfn;
     Library.overwrite_library_filenames s)
 
 (* Rollback. *)

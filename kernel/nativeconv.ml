@@ -148,7 +148,7 @@ let nconv pb env t1 t2 =
         print_endline "Running test...";
         try
           let t0 = Sys.time () in
-          call_linker env fn; 
+          call_linker env fn (Some modname);
           let t1 = Sys.time () in
           Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
           (* TODO change 0 when we can have deBruijn *)
