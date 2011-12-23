@@ -131,6 +131,7 @@ let build_constant_declaration env kn (def,typ,cst,inline_code,ctx) =
       let ids_typ = global_vars_set_constant_type env typ in
       let ids_def = match def with
       | Undef _ -> Idset.empty
+      | Primitive _ -> Idset.empty
       | Def cs -> global_vars_set env (Declarations.force cs)
       | OpaqueDef lc -> 
           global_vars_set env (Declarations.force_opaque lc) in
