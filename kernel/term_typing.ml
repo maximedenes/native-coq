@@ -171,4 +171,6 @@ let translate_recipe env kn r =
 
 (* Insertion of inductive types. *)
 
-let translate_mind env kn mie = check_inductive env kn mie
+let translate_mind env kn mie =
+  let mib = check_inductive env kn mie in
+  Nativelib.push_comp_stack (Nativecode.compile_mind mib kn []); mib

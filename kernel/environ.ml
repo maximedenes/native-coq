@@ -203,7 +203,6 @@ let add_mind kn mib env =
   let new_globals =
     { env.env_globals with
 	env_inductives = new_inds } in
-  Nativelib.push_comp_stack (Nativecode.compile_mind mib kn []);
   { env with env_globals = new_globals }
 
 (* Universe constraints *)
