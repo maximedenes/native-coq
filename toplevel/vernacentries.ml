@@ -971,6 +971,7 @@ let _ =
       optkey   = ["Printing";"Existential";"Instances"];
       optread  = (fun () -> !Constrextern.print_evar_arguments);
       optwrite = (:=) Constrextern.print_evar_arguments }
+
 let _ =
   declare_bool_option
     { optsync  = true;
@@ -1148,6 +1149,15 @@ let _ =
       optkey   = ["Ltac";"Debug"];
       optread  = (fun () -> get_debug () <> Tactic_debug.DebugOff);
       optwrite = vernac_debug }
+
+let _ =
+  declare_bool_option
+    { optsync  = true;
+      optdepr  = false;
+      optname  = "explicitly parsing implicit arguments";
+      optkey   = ["Parsing";"Explicit"];
+      optread  = (fun () -> !Constrintern.parsing_explicit);
+      optwrite = (fun b ->  Constrintern.parsing_explicit := b) }
 
 let vernac_set_opacity local str =
   let glob_ref r =
