@@ -15,6 +15,7 @@
 (* Equal inductive types by Jacek Chrzaszcz as part of the module
    system, Aug 2002 *)
 
+open Errors
 open Util
 open Names
 open Native
@@ -627,7 +628,7 @@ let native_conv cv_pb env t1 t2 =
         let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
         let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
         !nat_conv cv_pb env t1 t2 
-      with e -> Util.anomaly (Printexc.to_string e)
+      with e -> anomaly (Printexc.to_string e)
   end
 
 let vm_conv = ref (fun cv_pb -> fconv cv_pb false (fun _->None))

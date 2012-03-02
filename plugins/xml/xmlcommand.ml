@@ -427,7 +427,7 @@ let kind_of_variable id =
     | DK.IsAssumption DK.Conjectural -> "VARIABLE","Conjecture"
     | DK.IsDefinition DK.Definition -> "VARIABLE","LocalDefinition"
     | DK.IsProof _ -> "VARIABLE","LocalFact"
-    | _ -> Util.anomaly "Unsupported variable kind"
+    | _ -> Errors.anomaly "Unsupported variable kind"
 ;;
 
 let kind_of_constant kn =
@@ -478,7 +478,7 @@ let kind_of_constant kn =
         Pp.warning "Unsupported theorem kind (used Theorem instead)";
         "THEOREM",DK.string_of_theorem_kind DK.Theorem
     | DK.IsPrimitive _ ->
-	Util.anomaly "xmlcommand.kind_of_constant: primitive not implement yet"
+	Errors.anomaly "xmlcommand.kind_of_constant: primitive not implement yet"
 ;;
 
 let kind_of_global r =
@@ -546,7 +546,7 @@ let print internal glob_ref kind xml_library_root =
             D.mind_finite=finite} = mib in
           Cic2acic.Inductive kn,mk_inductive_obj kn mib packs variables nparams hyps finite
     | Ln.ConstructRef _ ->
-       Util.error ("a single constructor cannot be printed in XML")
+       Errors.error ("a single constructor cannot be printed in XML")
   in
   let fn = filename_of_path xml_library_root tag in
   let uri = Cic2acic.uri_of_kernel_name tag in
@@ -565,7 +565,7 @@ let print_ref qid fn =
 (* pretty prints via Xml.pp the proof in progress on dest     *)
 let show_pftreestate internal fn (kind,pftst) id =
  if true then
-   Util.anomaly "Xmlcommand.show_pftreestate is not supported in this version."
+   Errors.anomaly "Xmlcommand.show_pftreestate is not supported in this version."
 
 let show fn =
  let pftst = Pfedit.get_pftreestate () in
@@ -661,7 +661,7 @@ let _ =
 	  let options = " --html -s --body-only --no-index --latin1 --raw-comments" in
           let command cmd =
            if Sys.command cmd <> 0 then
-            Util.anomaly ("Error executing \"" ^ cmd ^ "\"")
+            Errors.anomaly ("Error executing \"" ^ cmd ^ "\"")
           in
            command (coqdoc^options^" -o "^fn^".xml "^fn^".v");
            command ("rm "^fn^".v "^fn^".glob");

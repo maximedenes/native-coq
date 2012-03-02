@@ -1,3 +1,4 @@
+open Errors
 open Names
 open Term
 open Univ

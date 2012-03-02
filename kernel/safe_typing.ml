@@ -57,7 +57,9 @@
    etc.
 *)
 
+open Errors
 open Util
+open Pp
 open Names
 open Univ
 open Term

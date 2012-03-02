@@ -1,3 +1,4 @@
+open Errors
 open Term
 open Names
 open Declarations

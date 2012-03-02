@@ -1,4 +1,5 @@
 (*i camlp4use: "q_MLast.cmo" i*)
+open Errors
 open Term
 open Environ
 open Reduction
