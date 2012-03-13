@@ -262,8 +262,6 @@ module Pretyping_F (Coercion : Coercion.S) = struct
     | Some t -> 
 	evd_comb2 (Coercion.inh_conv_coerce_to loc env) evdref j t
 
-  let push_rels vars env = List.fold_right push_rel vars env
-
   (* used to enforce a name in Lambda when the type constraints itself
      is named, hence possibly dependent *)
 
@@ -525,26 +523,26 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	      error_case_not_inductive_loc cloc env !evdref cj
 	in
 	let cstrs = get_constructors env indf in
-	if Array.length cstrs <> 1 then
-          user_err_loc (loc,"",str "Destructing let is only for inductive types with one constructor.");
-	let cs = cstrs.(0) in
-	if List.length nal <> cs.cs_nargs then
-          user_err_loc (loc,"", str "Destructing let on this type expects " ++ int cs.cs_nargs ++ str " variables.");
-	let fsign = List.map2 (fun na (_,c,t) -> (na,c,t))
-            (List.rev nal) cs.cs_args in
-	let env_f = push_rels fsign env in
-	(* Make dependencies from arity signature impossible *)
-	let arsgn =
-	  let arsgn,_ = get_arity env indf in
-	  if not !allow_anonymous_refs then
-	    List.map (fun (_,b,t) -> (Anonymous,b,t)) arsgn
-	  else arsgn
-	in
+	  if Array.length cstrs <> 1 then
+            user_err_loc (loc,"",str "Destructing let is only for inductive types with one constructor.");
+	  let cs = cstrs.(0) in
+	    if List.length nal <> cs.cs_nargs then
+              user_err_loc (loc,"", str "Destructing let on this type expects " ++ int cs.cs_nargs ++ str " variables.");
+	    let fsign = List.map2 (fun na (_,c,t) -> (na,c,t))
+              (List.rev nal) cs.cs_args in
+	    let env_f = push_rel_context fsign env in
+	      (* Make dependencies from arity signature impossible *)
+	    let arsgn =
+	      let arsgn,_ = get_arity env indf in
+		if not !allow_anonymous_refs then
+		  List.map (fun (_,b,t) -> (Anonymous,b,t)) arsgn
+		else arsgn
+	    in
 	    let psign = (na,None,build_dependent_inductive env indf)::arsgn in
 	    let nar = List.length arsgn in
 	      (match po with
 		 | Some p ->
-		     let env_p = push_rels psign env in
+		     let env_p = push_rel_context psign env in
 		     let pj = pretype_type empty_valcon env_p evdref lvar p in
 		     let ccl = nf_evar !evdref pj.utj_val in
 		     let psign = make_arity_signature env true indf in (* with names *)
@@ -606,7 +604,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
 	  let psign = (na,None,build_dependent_inductive env indf)::arsgn in
 	  let pred,p = match po with
 	    | Some p ->
-		let env_p = push_rels psign env in
+		let env_p = push_rel_context psign env in
 		let pj = pretype_type empty_valcon env_p evdref lvar p in
 		let ccl = nf_evar !evdref pj.utj_val in
 		let pred = it_mkLambda_or_LetIn ccl psign in
@@ -635,7 +633,7 @@ module Pretyping_F (Coercion : Coercion.S) = struct
                        | Anonymous -> (Name (id_of_string "H"), b, t))
 		cs.cs_args
 	    in
-	    let env_c = push_rels csgn env in
+	    let env_c = push_rel_context csgn env in
 	    let bj = pretype (mk_tycon pi) env_c evdref lvar b in
 	      it_mkLambda_or_LetIn bj.uj_val cs.cs_args in
 	  let b1 = f cstrs.(0) b1 in
