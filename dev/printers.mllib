@@ -98,6 +98,7 @@ Typeclasses_errors
 Typeclasses
 Detyping
 Indrec
+Program
 Coercion
 Unification
 Cases
