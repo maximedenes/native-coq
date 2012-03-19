@@ -145,9 +145,9 @@ let do_definition ident k bl red_option c ctypopt hook =
 	| Some t -> t
 	| None -> Retyping.get_type_of env evd c
       in 
-      let evm = Obligations.non_instanciated_map env (ref evd) evd in
+      Obligations.check_evars env evd;
       let obls, _, c, cty = 
-	Obligations.eterm_obligations env ident evd evm 0 c typ
+	Obligations.eterm_obligations env ident evd 0 c typ
       in
 	ignore(Obligations.add_definition ident ~term:c cty ~implicits:imps ~kind:k ~hook obls)
     else let ce = check_definition def in
@@ -292,6 +292,7 @@ let interp_mutual_inductive (paramsl,indl) notations finite =
 
   (* Instantiate evars and check all are resolved *)
   let evd = consider_remaining_unif_problems env_params !evdref in
+  let evd = Typeclasses.mark_resolvables evd in
   let evd = Typeclasses.resolve_typeclasses ~onlyargs:false ~fail:true env_params evd in
   let sigma = evd in
   let constructors = List.map (fun (idl,cl,impsl) -> (idl,List.map (nf_evar sigma) cl,impsl)) constructors in
@@ -726,9 +727,9 @@ let build_wellfounded (recname,n,bl,arityc,body) r measure notation =
   in
   let fullcoqc = Evarutil.nf_evar !isevars def in
   let fullctyp = Evarutil.nf_evar !isevars typ in
-  let evm = Obligations.non_instanciated_map env isevars !isevars in
+  Obligations.check_evars env !isevars;
   let evars, _, evars_def, evars_typ = 
-    Obligations.eterm_obligations env recname !isevars evm 0 fullcoqc fullctyp 
+    Obligations.eterm_obligations env recname !isevars 0 fullcoqc fullctyp 
   in
     ignore(Obligations.add_definition recname ~term:evars_def evars_typ evars ~hook)
 
@@ -897,7 +898,7 @@ let do_program_recursive fixkind fixl ntns =
       Termops.it_mkNamedProd_or_LetIn typ rec_sign
     in
     let evars, _, def, typ = 
-      Obligations.eterm_obligations env id evd (Evd.undefined_evars evd)
+      Obligations.eterm_obligations env id evd 
 	(List.length rec_sign) 
 	(nf_evar evd def) (nf_evar evd typ)
     in (id, def, typ, imps, evars)
