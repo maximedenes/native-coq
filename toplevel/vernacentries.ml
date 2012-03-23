@@ -1399,12 +1399,6 @@ let vernac_restart () = restart_proof(); print_subgoals ()
 
   (* Proof switching *)
 
-let vernac_suspend = suspend_proof
-
-let vernac_resume = function
-  | None -> resume_last_proof ()
-  | Some id -> resume_proof id
-
 let vernac_undo n =
   undo n;
   print_subgoals ()
@@ -1609,8 +1603,6 @@ let interp c = match c with
   | VernacAbort id -> vernac_abort id
   | VernacAbortAll -> vernac_abort_all ()
   | VernacRestart -> vernac_restart ()
-  | VernacSuspend -> vernac_suspend ()
-  | VernacResume id -> vernac_resume id
   | VernacUndo n -> vernac_undo n
   | VernacUndoTo n -> undo_todepth n
   | VernacBacktrack (snum,pnum,naborts) -> vernac_backtrack snum pnum naborts
