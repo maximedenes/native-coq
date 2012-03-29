@@ -13,6 +13,7 @@ val load_paths : string list ref
 val imports : string list ref
 
 val compiler_name : string
+val init_opens : global list
 
 val load_obj : (string -> unit) ref
 

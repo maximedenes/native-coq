@@ -37,17 +37,19 @@ let rec translate_mod mp env mod_expr acc =
   | SEBfunctor (mbid,mtb,meb) -> acc
   | SEBapply (f,x,_) -> assert false
   | SEBwith _ -> assert false
-and translate_fields mp env (l,x) acc =
+and translate_fields mp env (l,x) (trs,values as acc) =
   match x with
   | SFBconst cb ->
-      let tr, auxdefs = compile_constant (pre_env env) mp l cb in
+      let tr, auxdefs, values =
+	compile_constant_field (pre_env env) mp l values cb
+      in
       let l = optimize_stk (tr::auxdefs) in
       let tr, auxdefs = List.hd l, List.rev (List.tl l) in
-      MFglobal(tr,auxdefs)::acc
+      MFglobal(tr,auxdefs)::trs, values
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
-      let tr = compile_mind mb kn [] in
-      List.fold_left (fun acc g -> MFglobal(g,[])::acc) acc tr
+      let tr, values = compile_mind_field mb kn [] values in
+      List.fold_left (fun acc g -> MFglobal(g,[])::acc) trs tr, values
   | SFBmodule md ->
       translate_mod md.mod_mp env md.mod_type acc
   | SFBmodtype mdtyp ->
@@ -59,12 +61,12 @@ let dump_library mp env mod_expr =
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
       let t0 = Sys.time ()in 
-      let mlcode = List.fold_right (translate_fields mp env) msb [] in
+      let mlcode, values = List.fold_right (translate_fields mp env) msb ([],[]) in
       let t1 = Sys.time () in
 (*      let mlopt = optimize_stk mlcode in
       let t2 = Sys.time () in*)
       Flags.if_verbose (Format.eprintf "Compiled library. ml %.5f@.") (t1-.t0);
-      mlcode
+      mlcode, Array.of_list (List.rev values)
   | _ -> assert false
 
 
@@ -120,8 +122,8 @@ let pp_toplevel_field mp fmt t =
     pp_global mp fmt g 
   | _ -> pp_mod_field mp fmt t
 
-let compile_module code mp load_paths f =
-  let header = List.map mk_open ["Nativevalues";"Nativecode";"Nativeconv"] in
+let compile_library dir code mp load_paths f =
+  let header = mk_library_header dir init_opens in
 (*  let code =
     [<:str_item< open Nativelib >>; <:str_item< open Nativevalues >>;
      <:str_item< open Names >>]

@@ -11,7 +11,8 @@ exception NotConvertible
 let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
 
-let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";"Nativeconv"]
+let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";
+				   "Nativeconv";"Declaremods"]
 let open_header = ref (init_opens : global list)
 let comp_stack = ref ([] : global list)
 
@@ -25,7 +26,7 @@ let env_name = "Coq_conv_env"
 let include_dirs =
   let coqroot = !Flags.coqlib in
   "-I "^Coq_config.camllib^"/camlp5 -I "^coqroot^"/config -I "
-  ^coqroot^"/lib -I "^coqroot^"/kernel "
+  ^coqroot^"/lib -I "^coqroot^"/kernel -I "^coqroot^"/library "
   ^"-I "^Filename.temp_dir_name^" "
 
 (* Pointer to the function linking an ML object into coq's toplevel *)
@@ -37,14 +38,14 @@ let push_comp_stack l =
 let clear_comp_stack () =
   comp_stack := []
 
-let compile_terms base_mp terms_code main_code =
-  let terms_code =
-    !open_header@(List.rev_append !comp_stack (terms_code@main_code))
+let compile_terms base_mp header code =
+  let code =
+    !open_header@header@(List.rev_append !comp_stack code)
   in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals base_mp fmt terms_code;
+  pp_globals base_mp fmt code;
   close_out ch_out;
   print_endline "Compilation...";
   let include_dirs =

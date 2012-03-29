@@ -111,7 +111,7 @@ val export : safe_environment -> dir_path
       -> module_path * compiled_library * native_library * dir_path list
 
 val import : compiled_library -> Digest.t -> safe_environment
-      -> module_path * safe_environment
+      -> module_path * safe_environment * Nativevalues.t array
 
 (** Remove the body of opaque constants *)
 

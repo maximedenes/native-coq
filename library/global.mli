@@ -93,7 +93,7 @@ val exists_label     : label -> bool
 val start_library : dir_path -> module_path
 val export : dir_path ->
       module_path * compiled_library * native_library * dir_path list
-val import : compiled_library -> Digest.t -> module_path
+val import : compiled_library -> Digest.t -> module_path * Nativevalues.t array
 
 (** {6 ... } *)
 (** Function to get an environment from the constants part of the global

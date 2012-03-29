@@ -601,7 +601,7 @@ let set_engagement c senv =
 (* Libraries = Compiled modules *)
 
 type compiled_library =
-    dir_path * module_body * library_info list * engagement option
+    dir_path * module_body * library_info list * engagement option * Nativevalues.t array
 
 type native_library = Nativemodules.mod_field list * module_path
 
@@ -676,8 +676,9 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast = Nativemodules.dump_library mp senv.env str in
-   mp, (dir,mb,senv.imports,engagement senv.env), (ast, mp), List.map fst senv.imports
+  let ast,values = Nativemodules.dump_library mp senv.env str in
+  mp, (dir,mb,senv.imports,engagement senv.env,values), (ast, mp),
+    List.map fst senv.imports
 
 
 let check_imports senv needed =
@@ -708,7 +709,7 @@ loaded by side-effect once and for all (like it is done in OCaml).
 Would this be correct with respect to undo's and stuff ?
 *)
 
-let import (dp,mb,depends,engmt) digest senv =
+let import (dp,mb,depends,engmt,values) digest senv =
   check_imports senv depends;
   check_engagement senv.env engmt;
   let mp = MPfile dp in
@@ -722,7 +723,7 @@ let import (dp,mb,depends,engmt) digest senv =
 	 resolver = 
 	    add_delta_resolver mb.mod_delta senv.modinfo.resolver};
 	  imports = (dp,digest)::senv.imports;
-	  loads = (mp,mb)::senv.loads }
+	  loads = (mp,mb)::senv.loads }, values
 
 
  (* Store the body of modules' opaque constants inside a table.  
@@ -804,7 +805,7 @@ end = struct
       | SEBwith (seb,wdcl) ->
 	SEBwith (traverse_modexpr seb,wdcl)
     in
-    fun (dp,mb,depends,s) -> (dp,traverse_module mb,depends,s) 
+    fun (dp,mb,depends,s,val_tbl) -> (dp,traverse_module mb,depends,s,val_tbl)
 
   (* To disburden a library from opaque definitions, we simply 
      traverse it and add an indirection between the module body 

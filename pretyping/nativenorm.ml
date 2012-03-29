@@ -414,14 +414,13 @@ and  nf_predicate env ind mip params v pT =
 let native_norm env c ty =  
   let penv = Environ.pre_env env in 
   let mp = penv.Pre_env.current_mp in
-  let code1 = Nativelambda.lambda_of_constr penv c in
-  let (gl,code1) = Nativecode.compile_with_fv penv [] None code1 in
+  let code = Nativelambda.lambda_of_constr penv c in
   (*
   Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
   Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
   *)
-  let main_code = mk_internal_let "t1" code1::norm_main_code in
-  match Nativelib.compile_terms mp (List.rev gl) main_code with
+  let header, code = mk_norm_code penv code in
+  match Nativelib.compile_terms mp header code with
     | 0,fn,modname ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in

@@ -89,11 +89,19 @@ let fresh_gnormtbl l =
 
 let val_ctr = ref (-1)
 
-let reset_gval () = val_ctr := -1
+let values_list = ref ([] : Nativevalues.t list)
 
-let fresh_gval l =
+let reset_values_list l =
+  values_list := l;
+  val_ctr := List.length l - 1
+
+let push_val v =
   incr val_ctr;
-  Gval (l,!val_ctr)
+  values_list := v :: !values_list;
+  !val_ctr
+
+let get_values_tbl () = Array.of_list (List.rev !values_list)
+
 (*s Mllambda *)
   
 type primitive =
@@ -181,7 +189,7 @@ type mllambda =
   | MLconstruct    of constructor * mllambda array
   | MLint          of bool * int   (* true if the type sould be int *)
   | MLparray       of mllambda array
-  | MLval          of Nativevalues.t
+  | MLval          of int
   | MLsetref       of string * mllambda
   | MLsequence     of mllambda * mllambda
 
@@ -262,7 +270,6 @@ type global =
   | Gopen of string
   | Gtype of inductive * int array
     (* ind name, arities of constructors *)
-  | Gletval of gname * Nativevalues.t
   
 let global_stack = ref ([] : global list)
 
@@ -277,9 +284,6 @@ let push_global_norm name params body =
 
 let push_global_case name params annot a accu bs =
   global_stack := Gletcase(name,params, annot, a, accu, bs)::!global_stack
-
-let push_global_val name v =
-  global_stack := Gletval(name,v)::!global_stack
 
 (*s Compilation environment *)
 
@@ -878,9 +882,7 @@ let rec ml_of_lam env l t =
   | Lint i -> MLint (false,Uint31.to_int i)
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v ->
-      let gn = fresh_gval l in
-      push_global_val gn v;
-      MLglobal gn
+      let i = push_val v in MLval i
   | Lsort s -> MLprimitive(Mk_sort s)
   | Lind i -> MLglobal (Gind i)
 
@@ -1203,8 +1205,6 @@ let pp_gname base_mp fmt g =
   | Ginternal s -> Format.fprintf fmt "%s" s
   | Gnormtbl (l,i) -> 
       Format.fprintf fmt "normtbl_%s_%i" (string_of_label_def l) i
-  | Gval (l,i) -> 
-      Format.fprintf fmt "val_%s_%i" (string_of_label_def l) i
   | Grel i ->
       Format.fprintf fmt "rel_%i" i
   | Gnamed id ->
@@ -1282,7 +1282,7 @@ let pp_mllam base_mp fmt l =
 	  Format.fprintf fmt "%a;" pp_mllam p.(i)
 	done;
 	Format.fprintf fmt "%a|])@]" pp_mllam p.(Array.length p - 1)
-    | MLval v -> Format.fprintf fmt "(str_decode \"%s\")" (str_encode v)
+    | MLval i -> Format.fprintf fmt "values_tbl.(%i)" i
     | MLsetref (s, body) ->
 	Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
     | MLsequence(l1,l2) ->
@@ -1496,10 +1496,6 @@ let pp_global base_mp fmt g =
       Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@\n@."
 	(pp_gname None) g pp_ldecls params 
 	(pp_mllam base_mp) (MLmatch(annot,a,accu,bs))
-  | Gletval(g,v) ->
-      Format.fprintf fmt "@[let %a =@\n  %a@]@\n@."
-	(pp_gname None) g (pp_mllam base_mp) (MLval v)
-
 
 let pp_global_aux base_mp fmt g auxdefs = 
   if auxdefs = [] then pp_global base_mp fmt g
@@ -1533,6 +1529,11 @@ let compile_constant env mp l cb =
       let kn = make_con mp empty_dirpath l in
       Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
 
+let compile_constant_field env mp l values cb =
+  reset_values_list values;
+  let (t, gl) = compile_constant env mp l cb in
+  t, gl, !values_list
+
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
 
@@ -1554,6 +1555,10 @@ let compile_mind mb mind stack =
   in
   array_fold_left_i f stack mb.mind_packets
 
+let compile_mind_field mb mind stack values =
+  reset_values_list values;
+  (compile_mind mb mind stack, !values_list)
+
 let compile_mind_sig mb mind stack =
   let f i acc ob =
     let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in
@@ -1571,12 +1576,34 @@ let mk_internal_let s code =
 
 
 (* ML Code for conversion function *)
-let conv_main_code =
+let mk_conv_code env code1 code2 =
+  let (gl,code1) = compile_with_fv env [] None code1 in
+  let (gl,code2) = compile_with_fv env gl None code2 in
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
-  [Glet(Ginternal "_", MLsetref("rt1",g1));
-  Glet(Ginternal "_", MLsetref("rt2",g2))]
+  let header = [Glet(Ginternal "values_tbl",
+    MLapp (MLglobal (Ginternal "get_values_tbl"),
+      [|MLglobal (Ginternal "()")|]))] in
+  header, (List.rev_append gl
+  [mk_internal_let "t1" code1;
+  mk_internal_let "t2" code2;
+  Glet(Ginternal "_", MLsetref("rt1",g1));
+  Glet(Ginternal "_", MLsetref("rt2",g2))])
 
-let norm_main_code = 
+let mk_norm_code env code =
+  let (gl,code) = compile_with_fv env [] None code in
   let g1 = MLglobal (Ginternal "t1") in
-  [Glet(Ginternal "_", MLsetref("rt1",g1))]
+  let header = [Glet(Ginternal "values_tbl",
+    MLapp (MLglobal (Ginternal "get_values_tbl"),
+      [|MLglobal (Ginternal "()")|]))] in
+  header, (List.rev_append gl
+  [mk_internal_let "t1" code;
+  Glet(Ginternal "_", MLsetref("rt1",g1))])
+
+let mk_library_header dir opens =
+  let libname = Format.sprintf "(str_decode \"%s\")" (str_encode dir) in
+  let header = [Glet(Ginternal "values_tbl",
+    MLapp (MLglobal (Ginternal "get_library_values_tbl"),
+    [|MLglobal (Ginternal libname)|]))]
+  in
+  opens @ header

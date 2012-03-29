@@ -137,12 +137,8 @@ let nconv pb env t1 t2 =
   let mp = env.current_mp in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
-  let (gl,code1) = compile_with_fv env [] None code1 in
-  let (gl,code2) = compile_with_fv env gl None code2 in
-  let main_code =
-    mk_internal_let "t1" code1::mk_internal_let "t2"code2::conv_main_code
-  in
-  match compile_terms mp (List.rev gl) main_code with
+  let header, code = mk_conv_code env code1 code2 in
+  match compile_terms mp header code with
   | (0,fn,modname) ->
       begin
         print_endline "Running test...";
