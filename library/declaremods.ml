@@ -662,7 +662,7 @@ let register_library dir cenv objs digest =
   in
     do_module false "register_library" load_objects 1 dir mp substobjs keep
 
-let get_library_values_tbl dir =
+let get_library_symbols_tbl dir =
   let _,_,values = Dirmap.find dir !library_cache in
   values
 

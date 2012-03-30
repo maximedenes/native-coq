@@ -601,7 +601,7 @@ let set_engagement c senv =
 (* Libraries = Compiled modules *)
 
 type compiled_library =
-    dir_path * module_body * library_info list * engagement option * Nativevalues.t array
+    dir_path * module_body * library_info list * engagement option * Nativecode.symbol array
 
 type native_library = Nativemodules.mod_field list * module_path
 

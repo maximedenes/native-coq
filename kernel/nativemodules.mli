@@ -7,7 +7,7 @@ type mod_field
 type mod_expr
 
 val dump_library : module_path -> env -> struct_expr_body ->
-  mod_field list * Nativevalues.t array
+  mod_field list * symbol array
 
 val pp_mod_fields : module_path -> Format.formatter -> mod_field list -> unit
 

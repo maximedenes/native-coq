@@ -113,7 +113,7 @@ val register_library :
   library_name ->
     Safe_typing.compiled_library -> library_objects -> Digest.t -> unit
 
-val get_library_values_tbl : library_name -> Nativevalues.t array
+val get_library_symbols_tbl : library_name -> Nativecode.symbol array
 
 val start_library : library_name -> unit
 

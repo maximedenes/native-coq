@@ -89,27 +89,67 @@ let fresh_gnormtbl l =
 
 let val_ctr = ref (-1)
 
-let values_list = ref ([] : Nativevalues.t list)
+type symbol =
+  | SymbValue of Nativevalues.t
+  | SymbSort of sorts
+  | SymbName of name
+  | SymbConst of constant
+  | SymbMatch of annot_sw
+  | SymbInd of inductive
 
-let reset_values_list l =
-  values_list := l;
+let get_value tbl i =
+  match tbl.(i) with
+    | SymbValue v -> v
+    | _ -> anomaly "get_value failed"
+
+let get_sort tbl i =
+  match tbl.(i) with
+    | SymbSort s -> s
+    | _ -> anomaly "get_sort failed"
+
+let get_name tbl i =
+  match tbl.(i) with
+    | SymbName id -> id
+    | _ -> anomaly "get_name failed"
+
+let get_const tbl i =
+  match tbl.(i) with
+    | SymbConst kn -> kn
+    | _ -> anomaly "get_const failed"
+
+let get_match tbl i =
+  match tbl.(i) with
+    | SymbMatch case_info -> case_info
+    | _ -> anomaly "get_match failed"
+
+let get_ind tbl i =
+  match tbl.(i) with
+    | SymbInd ind -> ind
+    | _ -> anomaly "get_ind failed"
+
+let symbols_list = ref ([] : symbol list)
+
+let reset_symbols_list l =
+  symbols_list := l;
   val_ctr := List.length l - 1
 
-let push_val v =
+let push_symbol x =
   incr val_ctr;
-  values_list := v :: !values_list;
+  symbols_list := x :: !symbols_list;
   !val_ctr
 
-let get_values_tbl () = Array.of_list (List.rev !values_list)
+let symbols_tbl_name = Ginternal "symbols_tbl"
+
+let get_symbols_tbl () = Array.of_list (List.rev !symbols_list)
 
 (*s Mllambda *)
   
 type primitive =
-  | Mk_prod of name
-  | Mk_sort of sorts
-  | Mk_ind of inductive
-  | Mk_const of constant
-  | Mk_sw of annot_sw
+  | Mk_prod
+  | Mk_sort
+  | Mk_ind
+  | Mk_const
+  | Mk_sw
   | Mk_fix of rec_pos * int 
   | Mk_cofix of int
   | Mk_rel of int
@@ -189,7 +229,6 @@ type mllambda =
   | MLconstruct    of constructor * mllambda array
   | MLint          of bool * int   (* true if the type sould be int *)
   | MLparray       of mllambda array
-  | MLval          of int
   | MLsetref       of string * mllambda
   | MLsequence     of mllambda * mllambda
 
@@ -200,7 +239,7 @@ let fv_lam l =
     match l with
     | MLlocal l ->
 	if LNset.mem l bind then fv else LNset.add l fv
-    | MLglobal _ | MLprimitive _  | MLint _   | MLval _ -> fv
+    | MLglobal _ | MLprimitive _  | MLint _ -> fv
     | MLlam (ln,body) ->
 	let bind = Array.fold_right LNset.add ln bind in
 	aux body bind fv
@@ -345,10 +384,10 @@ let get_prod_name codom =
 
 let empty_params = [||]
 
-let get_name (_,l) = 
+let get_lname (_,l) = 
   match l with
   | MLlocal id -> id
-  | _ -> raise (Invalid_argument "Nativecode.get_name")
+  | _ -> raise (Invalid_argument "Nativecode.get_lname")
 
 let fv_params env = 
   let fvn, fvr = !(env.env_named), !(env.env_urel) in 
@@ -359,13 +398,13 @@ let fv_params env =
     let fvn = ref fvn in
     let i = ref 0 in
     while !fvn <> [] do
-      params.(!i) <- get_name (List.hd !fvn);
+      params.(!i) <- get_lname (List.hd !fvn);
       fvn := List.tl !fvn;
       incr i
     done;
     let fvr = ref fvr in
     while !fvr <> [] do
-      params.(!i) <- get_name (List.hd !fvr);
+      params.(!i) <- get_lname (List.hd !fvr);
       fvr := List.tl !fvr;
       incr i
     done;
@@ -393,13 +432,31 @@ let fv_args env fvn fvr =
       let fvr = ref fvr in
       while !fvr <> [] do
 	let (k,_ as kml) = List.hd !fvr in
-	let n = get_name kml in 
+	let n = get_lname kml in 
 	args.(!i) <- get_rel env n.lname k;
 	fvr := List.tl !fvr;
 	incr i
       done;
       args
     end
+
+let get_value_code i =
+  MLapp (MLglobal (Ginternal "get_value"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+
+let get_sort_code i =
+  MLapp (MLglobal (Ginternal "get_sort"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+
+let get_name_code i =
+  MLapp (MLglobal (Ginternal "get_name"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+
+let get_const_code i =
+  MLapp (MLglobal (Ginternal "get_const"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+
+let get_match_code i =
+  MLapp (MLglobal (Ginternal "get_match"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+
+let get_ind_code i =
+  MLapp (MLglobal (Ginternal "get_ind"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
 
 type rlist =
   | Rnil 
@@ -482,7 +539,7 @@ type prim_aux =
 let add_check cond args =
   let aux cond a = 
     match a with
-    | PAml(MLint _ | MLval _) -> cond
+    | PAml(MLint _) -> cond
     | PAml ml -> if List.mem ml cond then cond else ml::cond 
     | _ -> cond
   in
@@ -661,7 +718,8 @@ let rec ml_of_lam env l t =
       let dom = ml_of_lam env l dom in
       let codom = ml_of_lam env l codom in
       let n = get_prod_name codom in
-      MLapp(MLprimitive(Mk_prod n), [|dom;codom|])
+      let i = push_symbol (SymbName n) in
+      MLapp(MLprimitive Mk_prod, [|get_name_code i;dom;codom|])
   | Llam(ids,body) ->
     let lnames,env = push_rels env ids in
     MLlam(lnames, ml_of_lam env l body)
@@ -715,10 +773,11 @@ let rec ml_of_lam env l t =
       let (fvn, fvr) = !(env_c.env_named), !(env_c.env_urel) in
       let cn_fv = mkMLapp (MLglobal cn) (fv_args env_c fvn fvr) in
          (* remark : the call to fv_args does not add free variables in env_c *)
-      let accu = 
-	MLapp(MLprimitive (Mk_sw annot), 
-	      [| MLapp (MLprimitive Cast_accu, [|la_uid|]);
-		 pred; 
+      let i = push_symbol (SymbMatch annot) in
+      let accu =
+	MLapp(MLprimitive Mk_sw,
+	      [| get_match_code i; MLapp (MLprimitive Cast_accu, [|la_uid|]);
+		 pred;
 		 cn_fv |]) in
 (*      let body = MLlam([|a_uid|], MLmatch(annot, la_uid, accu, bs)) in
       let case = generalize_fv env_c body in *)
@@ -882,8 +941,10 @@ let rec ml_of_lam env l t =
   | Lint i -> MLint (false,Uint31.to_int i)
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v ->
-      let i = push_val v in MLval i
-  | Lsort s -> MLprimitive(Mk_sort s)
+      let i = push_symbol (SymbValue v) in get_value_code i
+  | Lsort s ->
+    let i = push_symbol (SymbSort s) in
+    MLapp(MLprimitive Mk_sort, [|get_sort_code i|])
   | Lind i -> MLglobal (Gind i)
 
 let mllambda_of_lambda auxdefs l t =
@@ -893,12 +954,12 @@ let mllambda_of_lambda auxdefs l t =
   let fv_rel = !(env.env_urel) in
   let fv_named = !(env.env_named) in
   (* build the free variables *)
-  let get_name (_,t) = 
+  let get_lname (_,t) = 
    match t with
    | MLlocal x -> x
    | _ -> assert false in
   let params = 
-    List.append (List.map get_name fv_rel) (List.map get_name fv_named) in
+    List.append (List.map get_lname fv_rel) (List.map get_lname fv_named) in
   if params = [] then
     (!global_stack, ([],[]), ml)
   (* final result : global list, fv, ml *)
@@ -958,7 +1019,7 @@ and compile_named env auxdefs id =
 
 let can_subst l = 
   match l with
-  | MLlocal _ | MLint _ | MLval _ | MLglobal _ -> true
+  | MLlocal _ | MLint _ | MLglobal _ -> true
   | _ -> false
 
 let subst s l =
@@ -967,7 +1028,7 @@ let subst s l =
     let rec aux l =
       match l with
       | MLlocal id -> (try LNmap.find id s with _ -> l)
-      | MLglobal _ | MLprimitive _ | MLint _ | MLval _ -> l
+      | MLglobal _ | MLprimitive _ | MLint _ -> l
       | MLlam(params,body) -> MLlam(params, aux body)
       | MLletrec(defs,body) ->
 	let arec (f,params,body) = (f,params,aux body) in
@@ -1036,7 +1097,7 @@ let optimize gdef l =
   let rec optimize s l =
     match l with
     | MLlocal id -> (try LNmap.find id s with _ -> l)
-    | MLglobal _ | MLprimitive _ | MLint _ | MLval _ -> l
+    | MLglobal _ | MLprimitive _ | MLint _ -> l
     | MLlam(params,body) -> 
 	MLlam(params, optimize s body)
     | MLletrec(decls,body) ->
@@ -1282,7 +1343,6 @@ let pp_mllam base_mp fmt l =
 	  Format.fprintf fmt "%a;" pp_mllam p.(i)
 	done;
 	Format.fprintf fmt "%a|])@]" pp_mllam p.(Array.length p - 1)
-    | MLval i -> Format.fprintf fmt "values_tbl.(%i)" i
     | MLsetref (s, body) ->
 	Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
     | MLsequence(l1,l2) ->
@@ -1366,17 +1426,11 @@ let pp_mllam base_mp fmt l =
     | Some kn -> Format.fprintf fmt "%s %a" s pp_mllam (MLglobal (Gconstant kn))
 
   and pp_primitive fmt = function
-    | Mk_prod id -> Format.fprintf fmt "mk_prod_accu (str_decode \"%s\")" 
-	  (str_encode id)
-    | Mk_sort s -> 
-	Format.fprintf fmt "mk_sort_accu (str_decode \"%s\")" (str_encode s)
-    | Mk_ind ind -> 
-	Format.fprintf fmt "mk_ind_accu (str_decode \"%s\")" (str_encode ind)
-    | Mk_const kn -> 
-	Format.fprintf fmt 
-	  "mk_constant_accu (str_decode \"%s\")" (str_encode kn)
-    | Mk_sw asw -> 
-	Format.fprintf fmt "mk_sw_accu (str_decode \"%s\")" (str_encode asw)
+    | Mk_prod -> Format.fprintf fmt "mk_prod_accu" 
+    | Mk_sort -> Format.fprintf fmt "mk_sort_accu"
+    | Mk_ind -> Format.fprintf fmt "mk_ind_accu"
+    | Mk_const -> Format.fprintf fmt "mk_constant_accu"
+    | Mk_sw -> Format.fprintf fmt "mk_sw_accu"
     | Mk_fix(rec_pos,start) -> 
 	let pp_rec_pos fmt rec_pos = 
 	  Format.fprintf fmt "@[[| %i" rec_pos.(0);
@@ -1527,12 +1581,13 @@ let compile_constant env mp l cb =
       List.hd l, List.tl l
   | _ -> 
       let kn = make_con mp empty_dirpath l in
-      Glet(Gconstant kn, MLprimitive (Mk_const kn)), []
+      let i = push_symbol (SymbConst kn) in
+      Glet(Gconstant kn, MLapp (MLprimitive Mk_const, [|get_const_code i|])), []
 
 let compile_constant_field env mp l values cb =
-  reset_values_list values;
+  reset_symbols_list values;
   let (t, gl) = compile_constant env mp l cb in
-  t, gl, !values_list
+  t, gl, !symbols_list
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
@@ -1540,7 +1595,10 @@ let arg_name = Name (id_of_string "arg")
 let compile_mind mb mind stack =
   let f i acc ob =
     let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in
-    let accu = Glet(Gind (mind,i), MLprimitive(Mk_ind (mind,i))) in
+    let j = push_symbol (SymbInd (mind,i)) in
+    let accu =
+      Glet(Gind (mind,i), MLapp (MLprimitive Mk_ind, [|get_ind_code j|]))
+    in
     let nparams = mb.mind_nparams in
     let params = 
       Array.init nparams (fun i -> {lname = param_name; luid = i}) in
@@ -1556,8 +1614,8 @@ let compile_mind mb mind stack =
   array_fold_left_i f stack mb.mind_packets
 
 let compile_mind_field mb mind stack values =
-  reset_values_list values;
-  (compile_mind mb mind stack, !values_list)
+  reset_symbols_list values;
+  (compile_mind mb mind stack, !symbols_list)
 
 let compile_mind_sig mb mind stack =
   let f i acc ob =
@@ -1581,8 +1639,8 @@ let mk_conv_code env code1 code2 =
   let (gl,code2) = compile_with_fv env gl None code2 in
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
-  let header = [Glet(Ginternal "values_tbl",
-    MLapp (MLglobal (Ginternal "get_values_tbl"),
+  let header = [Glet(Ginternal "symbols_tbl",
+    MLapp (MLglobal (Ginternal "get_symbols_tbl"),
       [|MLglobal (Ginternal "()")|]))] in
   header, (List.rev_append gl
   [mk_internal_let "t1" code1;
@@ -1593,8 +1651,8 @@ let mk_conv_code env code1 code2 =
 let mk_norm_code env code =
   let (gl,code) = compile_with_fv env [] None code in
   let g1 = MLglobal (Ginternal "t1") in
-  let header = [Glet(Ginternal "values_tbl",
-    MLapp (MLglobal (Ginternal "get_values_tbl"),
+  let header = [Glet(Ginternal "symbols_tbl",
+    MLapp (MLglobal (Ginternal "get_symbols_tbl"),
       [|MLglobal (Ginternal "()")|]))] in
   header, (List.rev_append gl
   [mk_internal_let "t1" code;
@@ -1602,8 +1660,8 @@ let mk_norm_code env code =
 
 let mk_library_header dir opens =
   let libname = Format.sprintf "(str_decode \"%s\")" (str_encode dir) in
-  let header = [Glet(Ginternal "values_tbl",
-    MLapp (MLglobal (Ginternal "get_library_values_tbl"),
+  let header = [Glet(Ginternal "symbols_tbl",
+    MLapp (MLglobal (Ginternal "get_library_symbols_tbl"),
     [|MLglobal (Ginternal libname)|]))]
   in
   opens @ header
