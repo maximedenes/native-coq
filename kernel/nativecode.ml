@@ -44,9 +44,6 @@ type gname =
   | Grel of int
   | Gnamed of identifier
 
-let gname_of_con c =
-  Gconstant c
-
 let case_ctr = ref (-1)
 
 let reset_gcase () = case_ctr := -1
@@ -946,6 +943,8 @@ let rec ml_of_lam env l t =
     let i = push_symbol (SymbSort s) in
     MLapp(MLprimitive Mk_sort, [|get_sort_code i|])
   | Lind i -> MLglobal (Gind i)
+  | Llazy -> MLglobal (Ginternal "lazy")
+  | Lforce -> MLglobal (Ginternal "Lazy.force")
 
 let mllambda_of_lambda auxdefs l t =
   let env = empty_env () in
@@ -1042,7 +1041,8 @@ let subst s l =
       | MLconstruct(c,args) -> MLconstruct(c,Array.map aux args)
       | MLparray p -> MLparray(Array.map aux p)
       | MLsetref(s,l1) -> MLsetref(s,aux l1) 
-      | MLsequence(l1,l2) -> MLsequence(aux l1, aux l2) in  
+      | MLsequence(l1,l2) -> MLsequence(aux l1, aux l2)
+    in
     aux l
 
 let add_subst id v s =
@@ -1149,7 +1149,8 @@ let optimize gdef l =
 	MLconstruct(c,Array.map (optimize s) args)
     | MLparray p -> MLparray (Array.map (optimize s) p)
     | MLsetref(r,l) -> MLsetref(r, optimize s l) 
-    | MLsequence(l1,l2) -> MLsequence(optimize s l1, optimize s l2) in
+    | MLsequence(l1,l2) -> MLsequence(optimize s l1, optimize s l2)
+  in
   optimize LNmap.empty l
 
 let optimize_stk stk =
@@ -1346,7 +1347,7 @@ let pp_mllam base_mp fmt l =
     | MLsetref (s, body) ->
 	Format.fprintf fmt "@[%s@ :=@\n %a@]" s pp_mllam body
     | MLsequence(l1,l2) ->
-	Format.fprintf fmt "@[%a;@\n%a@]" pp_mllam l1 pp_mllam l2 
+	Format.fprintf fmt "@[%a;@\n%a@]" pp_mllam l1 pp_mllam l2
 
   and pp_letrec fmt defs =
     let len = Array.length defs in
@@ -1568,12 +1569,18 @@ let pp_global_aux base_mp fmt g auxdefs =
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
+let is_lazy def =
+  match def with
+  | Def t -> let t = Declarations.force t in not (isLambda t || isFix t)
+  | _ -> false
+
 (* Compilation of elements in environment *)
 let compile_constant env mp l cb =
   match cb.const_body with
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
+      let code = if cb.const_native_lazy then mk_lazy code else code in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
       let l =
         optimize_stk (Glet(Gconstant (make_con mp empty_dirpath l),code)::auxdefs)

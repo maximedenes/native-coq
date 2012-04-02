@@ -9,8 +9,6 @@ type global
 
 type gname
 
-val gname_of_con : constant -> gname
-
 val relative_list_of_mp : module_path -> module_path -> string list
 
 val compile_with_fv : env -> global list -> label option -> lambda ->
@@ -41,6 +39,8 @@ val get_match : symbol array -> int -> Nativevalues.annot_sw
 val get_ind : symbol array -> int -> inductive
 
 val get_symbols_tbl : unit -> symbol array
+
+val is_lazy : constr_substituted constant_def -> bool
 
 val compile_constant : env -> module_path -> label ->
   constant_body -> global * global list

@@ -114,6 +114,7 @@ and check_with_aux_def env sign with_decl mp equiv =
 		  const_body = def;
 		  const_body_code =
 		    Cemitcodes.from_val (compile_constant_body env' def);
+		  const_native_lazy = Nativecode.is_lazy def;
 		  const_constraints = cst }
 	      in
           let tr, auxdefs = compile_constant (pre_env env) mp l cb' in

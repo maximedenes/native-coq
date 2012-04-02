@@ -90,6 +90,7 @@ type constant_body = {
     const_type : constant_type;
     const_body_code : Cemitcodes.to_patch_substituted;
     const_constraints : constraints;
+    const_native_lazy : bool;
     const_inline_code : bool }
 
 let body_of_constant cb = match cb.const_body with
@@ -136,6 +137,7 @@ let subst_const_body sub cb = {
   const_type = subst_const_type sub cb.const_type;
   const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
   const_constraints = cb.const_constraints;
+  const_native_lazy = cb.const_native_lazy;
   const_inline_code = cb.const_inline_code }
 
 (* Hash-consing of [constant_body] *)

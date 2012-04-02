@@ -32,6 +32,8 @@ type lambda =
   | Lval          of Nativevalues.t
   | Lsort         of sorts
   | Lind          of inductive
+  | Llazy
+  | Lforce
 
 and lam_branches = (constructor * name array * lambda) array 
       
@@ -70,7 +72,7 @@ let shift subst = subs_shft (1, subst)
 let map_lam_with_binders g f n lam =
   match lam with
   | Lrel _ | Lvar _  | Lconst _ | Lint _ | Lval _
-  | Lsort _ | Lind _ | Lconstruct _ -> lam
+  | Lsort _ | Lind _ | Lconstruct _ | Llazy | Lforce -> lam
   | Lprod(dom,codom) -> 
       let dom' = f n dom in
       let codom' = f n codom in
@@ -290,7 +292,8 @@ let rec occurence k kind lam =
       if n = k then 
 	if kind then false else raise Not_found
       else kind
-  | Lvar _  | Lconst _  | Lint _ | Lval _ | Lsort _ | Lind _ | Lconstruct _ -> kind
+  | Lvar _  | Lconst _  | Lint _ | Lval _ | Lsort _ | Lind _
+  | Lconstruct _ | Llazy | Lforce -> kind
   | Lprod(dom, codom) ->
       occurence k (occurence k kind dom) codom
   | Llam(ids,body) ->
@@ -319,8 +322,7 @@ let rec occurence k kind lam =
       let kind = occurence_args k kind ltypes in
       let _ = occurence_args (k+Array.length ids) false lbodies in
       kind 
-  | Lparray p -> occurence_args k kind p 
-
+  | Lparray p -> occurence_args k kind p
 
 and occurence_args k kind args = 
   Array.fold_left (occurence k) kind args
@@ -461,7 +463,7 @@ let lambda_of_iterator kn op args =
 	      mkLapp 
 		(Llam([|_a|],Lapp(r_cont 5,[|r_a 1|])))
 		extra4),
-	  Lapp(Lconst kn, 
+	  Lapp(Lconst kn,
 	       Array.append
 		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
 		   r_f 1; r_min 2; r_max 3; r_cont 4|]
@@ -506,7 +508,7 @@ let lambda_of_iterator kn op args =
 	      mkLapp 
 		(Llam([|_a|],Lapp(r_cont 5,[|r_a 1|])))
 		extra4),
-	  Lapp(Lconst kn, 
+	  Lapp(Lconst kn,
 	       Array.append
 		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
 		   r_f 1; r_max 3; r_min 2; r_cont 4|]
@@ -765,12 +767,18 @@ and lambda_of_app env f args =
   | Const kn ->
       let kn = get_allias !global_env kn in
       let cb = lookup_constant kn !global_env in
-      begin match (lookup_constant kn !global_env).const_body with
+      begin match cb.const_body with
       | Primitive op -> lambda_of_prim kn op (lambda_of_args env 0 args)
       | Def csubst when cb.const_inline_code ->
-	  lambda_of_app env (force csubst) args
+	let t = force csubst in
+	if cb.const_native_lazy then mkLapp Lforce [|lambda_of_app env t args|]
+	else lambda_of_app env t args
       | Def _ | OpaqueDef _ | Undef _ ->
-          mkLapp (Lconst kn) (lambda_of_args env 0 args)
+	let t =
+	  if cb.const_native_lazy then mkLapp Lforce [|Lconst kn|]
+	  else Lconst kn
+	in
+        mkLapp t (lambda_of_args env 0 args)
       end
   | Construct c ->
       let tag, nparams, arity = Renv.get_construct_info env c in
@@ -833,3 +841,5 @@ let lambda_of_constr ?(opt=false) env c =
   end; *)
   if opt then optimize lam else lam 
 
+let mk_lazy c =
+  mkLapp Llazy [|c|]

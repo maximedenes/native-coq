@@ -152,6 +152,7 @@ let build_constant_declaration env kn (def,typ,cst,inline_code,ctx) =
     const_type = typ;
     const_body_code = tps;
     const_constraints = cst;
+    const_native_lazy = Nativecode.is_lazy def;
     const_inline_code = inline_code } in
   let kn = canonical_con kn in
   let (mp,_,l) = repr_kn kn in

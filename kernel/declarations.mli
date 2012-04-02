@@ -69,6 +69,7 @@ type constant_body = {
     const_type : constant_type;
     const_body_code : to_patch_substituted;
     const_constraints : constraints;
+    const_native_lazy : bool;
     const_inline_code : bool }
 
 val subst_const_def : substitution -> constr_substituted constant_def ->
