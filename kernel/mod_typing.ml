@@ -109,16 +109,16 @@ and check_with_aux_def env sign with_decl mp equiv =
 		    let def = Def (Declarations.from_val c) in
 		    def,cst
 	      in
+              let tr, auxdefs, is_lazy = compile_constant (pre_env env) mp l def in
 	      let cb' =
 		{ cb with
 		  const_body = def;
 		  const_body_code =
 		    Cemitcodes.from_val (compile_constant_body env' def);
-		  const_native_lazy = Nativecode.is_lazy def;
+		  const_native_lazy = is_lazy;
 		  const_constraints = cst }
 	      in
-          let tr, auxdefs = compile_constant (pre_env env) mp l cb' in
-          Nativelib.push_comp_stack (tr::auxdefs);
+              Nativelib.push_comp_stack (tr::auxdefs);
 	      SEBstruct(before@((l,SFBconst(cb'))::after)),cb',cst
 	  | With_Definition (_::_,c) ->
 	      let old = match spec with

@@ -40,10 +40,8 @@ val get_ind : symbol array -> int -> inductive
 
 val get_symbols_tbl : unit -> symbol array
 
-val is_lazy : constr_substituted constant_def -> bool
-
 val compile_constant : env -> module_path -> label ->
-  constant_body -> global * global list
+  constr_substituted constant_def -> global * global list * bool
 
 val compile_constant_field : env -> module_path -> label ->
   symbol list -> constant_body -> global * global list * symbol list

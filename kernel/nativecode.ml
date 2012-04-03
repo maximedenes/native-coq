@@ -1569,31 +1569,31 @@ let pp_global_aux base_mp fmt g auxdefs =
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
-let is_lazy def =
-  match def with
-  | Def t -> let t = Declarations.force t in not (isLambda t || isFix t)
-  | _ -> false
+let is_lazy t code =
+  not (isLambda t || isFix t || is_value code)
 
 (* Compilation of elements in environment *)
-let compile_constant env mp l cb =
-  match cb.const_body with
+let compile_constant env mp l body =
+  match body with
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
-      let code = if cb.const_native_lazy then mk_lazy code else code in
+      let is_lazy = is_lazy t code in
+      let code = if is_lazy then mk_lazy code else code in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
       let l =
         optimize_stk (Glet(Gconstant (make_con mp empty_dirpath l),code)::auxdefs)
       in
-      List.hd l, List.tl l
+      List.hd l, List.tl l, is_lazy
   | _ -> 
       let kn = make_con mp empty_dirpath l in
       let i = push_symbol (SymbConst kn) in
-      Glet(Gconstant kn, MLapp (MLprimitive Mk_const, [|get_const_code i|])), []
+      Glet(Gconstant kn, MLapp (MLprimitive Mk_const, [|get_const_code i|])), [],
+      false
 
 let compile_constant_field env mp l values cb =
   reset_symbols_list values;
-  let (t, gl) = compile_constant env mp l cb in
+  let (t, gl, is_lazy) = compile_constant env mp l cb.const_body in
   t, gl, !symbols_list
 
 let param_name = Name (id_of_string "params")
