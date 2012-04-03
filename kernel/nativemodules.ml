@@ -144,5 +144,6 @@ let compile_library dir code mp load_paths f =
   in
   Flags.if_verbose print_endline "Compiling module...";
   let res = Sys.command comp_cmd in
+  Sys.rename (f^".ml") (f^".native");
   Flags.if_verbose print_endline "Compiled"; res
 
