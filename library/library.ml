@@ -42,7 +42,7 @@ let is_in_load_paths phys_dir =
 
 let remove_load_path dir =
   load_paths := List.filter (fun (p,d,_) -> p <> dir) !load_paths;
-  let f x = System.string_of_physical_path (pi1 x) in
+  let f x = CUnix.string_of_physical_path (pi1 x) in
   Nativelib.load_paths := List.map f !load_paths
 
 let add_load_path isroot (phys_path,coq_path) =
@@ -64,12 +64,12 @@ let add_load_path isroot (phys_path,coq_path) =
 		   pr_dirpath coq_path);
 	      remove_load_path phys_path;
 	      load_paths := (phys_path,coq_path,isroot) :: !load_paths;
-          let s = System.string_of_physical_path phys_path in
+          let s = CUnix.string_of_physical_path phys_path in
           Nativelib.load_paths :=  s :: !Nativelib.load_paths
 	    end
       | [] ->
 	  load_paths := (phys_path,coq_path,isroot) :: !load_paths;
-      let s = System.string_of_physical_path phys_path in
+      let s = CUnix.string_of_physical_path phys_path in
       Nativelib.load_paths :=  s :: !Nativelib.load_paths
       | _ -> anomaly ("Two logical paths are associated to "^phys_path)
 
@@ -674,7 +674,7 @@ let save_library_to dir f =
     System.marshal_out ch di;
     System.marshal_out ch table;
     close_out ch;
-    let lp = List.map System.string_of_physical_path (get_load_paths ()) in
+    let lp = List.map CUnix.string_of_physical_path (get_load_paths ()) in
     let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
     match Nativemodules.compile_library dir ast mp lp fn with
       | 0 -> ()
