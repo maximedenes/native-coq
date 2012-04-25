@@ -1174,6 +1174,9 @@ let optimize_stk stk =
 (** Printing to ocaml **)
 (* Redefine a bunch of functions in module Names to generate names
    acceptable to OCaml. *)
+let string_of_id s = ascii_of_ident (string_of_id s)
+let string_of_label l = ascii_of_ident (string_of_label l)
+
 let string_of_dirpath = function
   | [] -> "_"
   | sl -> String.concat "_" (List.map string_of_id (List.rev sl))
