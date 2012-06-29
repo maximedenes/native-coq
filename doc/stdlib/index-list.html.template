@@ -265,8 +265,12 @@ through the <tt>Require Import</tt> command.</p>
     theories/Numbers/Cyclic/DoubleCyclic/DoubleSub.v
     theories/Numbers/Cyclic/DoubleCyclic/DoubleType.v
     theories/Numbers/Cyclic/Int31/Cyclic31.v
-    theories/Numbers/Cyclic/Int31/Ring31.v
+    theories/Numbers/Cyclic/Int31/Int31Axioms.v
+    theories/Numbers/Cyclic/Int31/Int31Native.v
+    theories/Numbers/Cyclic/Int31/Int31Op.v
+    theories/Numbers/Cyclic/Int31/Int31Properties.v
     theories/Numbers/Cyclic/Int31/Int31.v
+    theories/Numbers/Cyclic/Int31/Ring31.v
     theories/Numbers/Cyclic/ZModulo/ZModulo.v
     </dd>
     </dt>
@@ -596,5 +600,13 @@ through the <tt>Require Import</tt> command.</p>
   <dd>
     theories/Unicode/Utf8_core.v
     theories/Unicode/Utf8.v
+  </dd>
+
+  <dt> <b>Array</b>:
+    Persistent native arrays
+  </dt>
+  <dd>
+    theories/Array/ExtractNative.v
+    theories/Array/PArray.v
   </dd>
 </dl>
