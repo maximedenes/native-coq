@@ -97,7 +97,7 @@ let ast_iter_references do_term do_cons do_type a =
 	Array.iter (fun (_,p,_) -> patt_iter_references do_cons p) v
 
       | MLrel _ | MLlam _ | MLapp _ | MLletin _ | MLtuple _ | MLfix _ | MLexn _
-      | MLdummy | MLaxiom | MLmagic _ -> ()
+      | MLdummy | MLaxiom | MLmagic _ | MLparray _ | MLuint _ -> ()
   in iter a
 
 let ind_iter_references do_term do_cons do_type kn ind =
