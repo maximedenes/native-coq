@@ -69,9 +69,7 @@ let call_linker env f mf =
       clear_comp_stack ()
     | _ -> ());
   in
-  if Dynlink.is_native then
-    try (Dynlink.loadfile f; aux mf)
-    with Dynlink.Error e -> print_endline (Dynlink.error_message e)
+  if Dynlink.is_native then (Dynlink.loadfile f; aux mf)
   else (!load_obj f; aux mf)
 
 let topological_sort init xs =
