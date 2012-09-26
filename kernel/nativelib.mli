@@ -1,3 +1,10 @@
+(************************************************************************)
+(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
+(* <O___,, *   INRIA - CNRS - LIX - LRI - PPS - Copyright 1999-2012     *)
+(*   \VV/  **************************************************************)
+(*    //   *      This file is distributed under the terms of the       *)
+(*         *       GNU Lesser General Public License Version 2.1        *)
+(************************************************************************)
 open Names
 open Term
 open Nativevalues
@@ -5,7 +12,7 @@ open Nativecode
 open Nativemodules
 open Pre_env
 
-exception NotConvertible
+(* This file provides facilities to access the native code compiler *)
 
 val include_dirs : string
 
@@ -30,24 +37,6 @@ val compile_terms :
 
 val call_linker :
   env -> string -> string option -> unit
-
-exception Bug of string
-
-type nbe_annotation =
-  | CaseAnnot of case_info
-  | SortAnnot of sorts
-
-module NbeAnnotTbl :
-  sig
-   type t
-
-   val empty : t
-   val add : nbe_annotation -> t -> t * int
-
-   val find : int -> t -> nbe_annotation
-
-  end
-
 
 val rt1 : Nativevalues.t ref
 val rt2 : Nativevalues.t ref

@@ -1,3 +1,10 @@
+(************************************************************************)
+(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
+(* <O___,, *   INRIA - CNRS - LIX - LRI - PPS - Copyright 1999-2012     *)
+(*   \VV/  **************************************************************)
+(*    //   *      This file is distributed under the terms of the       *)
+(*         *       GNU Lesser General Public License Version 2.1        *)
+(************************************************************************)
 open Names
 open Term
 open Util
@@ -6,7 +13,7 @@ open Declarations
 open Nativecode
 open Pre_env
 
-exception NotConvertible
+(* This file provides facilities to access the native code compiler *)
 
 let load_paths = ref ([] : string list)
 let imports = ref ([] : string list)
@@ -90,26 +97,6 @@ let topological_sort init xs =
     let kns = Stringmap.empty in
     let (res, kns) = List.fold_right aux init ([],kns) in
       List.rev res, kns
-
-exception Bug of string
-
-type nbe_annotation =
-  | CaseAnnot of case_info
-  | SortAnnot of sorts
-
-module NbeAnnotTbl =
-  struct
-   type t = {max_index : int; tbl : nbe_annotation Intmap.t}
-
-   let empty = {max_index = 0; tbl = Intmap.empty}
-   let add x t =
-     let i = t.max_index in
-     {max_index = i+1; tbl = Intmap.add i x t.tbl}, i
-
-   let find x t = Intmap.find x t.tbl
-
-  end
-
 
 let rt1 = ref (mk_accu dummy_atom)
 let rt2 = ref (mk_accu dummy_atom)

@@ -11,8 +11,6 @@ open Nativevalues
 open Nativelambda
 open Nativecode 
 
-exception NotConvertible
-
 let rec conv_val pb lvl v1 v2 cu = 
   if v1 == v2 then cu 
   else
