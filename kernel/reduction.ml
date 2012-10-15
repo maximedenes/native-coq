@@ -624,11 +624,9 @@ let set_nat_conv f = nat_conv := f
 let native_conv cv_pb env t1 t2 =
   if eq_constr t1 t2 then empty_constraint
   else begin
-     try
-        let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
-        let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
-        !nat_conv cv_pb env t1 t2 
-      with e -> anomaly (Printexc.to_string e)
+    let t1 = (it_mkLambda_or_LetIn t1 (rel_context env)) in
+    let t2 = (it_mkLambda_or_LetIn t2 (rel_context env)) in
+    !nat_conv cv_pb env t1 t2 
   end
 
 let vm_conv = ref (fun cv_pb -> fconv cv_pb false (fun _->None))
