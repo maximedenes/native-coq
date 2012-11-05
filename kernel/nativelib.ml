@@ -45,6 +45,9 @@ let push_comp_stack l =
 let clear_comp_stack () =
   comp_stack := []
 
+let rt1 = ref (dummy_value ())
+let rt2 = ref (dummy_value ())
+
 let compile_terms base_mp header code =
   let code =
     !open_header@header@(List.rev_append !comp_stack code)
@@ -76,6 +79,8 @@ let call_linker env f mf =
       clear_comp_stack ()
     | _ -> ());
   in
+  rt1 := dummy_value ();
+  rt2 := dummy_value ();
   if Dynlink.is_native then (Dynlink.loadfile f; aux mf)
   else (!load_obj f; aux mf)
 
@@ -97,9 +102,6 @@ let topological_sort init xs =
     let kns = Stringmap.empty in
     let (res, kns) = List.fold_right aux init ([],kns) in
       List.rev res, kns
-
-let rt1 = ref (mk_accu dummy_atom)
-let rt2 = ref (mk_accu dummy_atom)
 
 let extern_state s =
   let f = Dynlink.adapt_filename (s^".cma") in

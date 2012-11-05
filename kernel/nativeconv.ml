@@ -19,12 +19,12 @@ open Nativelambda
 open Nativecode 
 
 let rec conv_val pb lvl v1 v2 cu = 
-  if v1 == v2 then cu 
+  if v1 == v2 then cu
   else
     match kind_of_value v1, kind_of_value v2 with
     | Vaccu k1, Vaccu k2 ->
 	conv_accu pb lvl k1 k2 cu
-    | Vfun f1, Vfun f2 -> 
+    | Vfun f1, Vfun f2 ->
 	let v = mk_rel_accu lvl in
 	conv_val CONV (lvl+1) (f1 v) (f2 v) cu
     | Vconst i1, Vconst i2 -> 
@@ -148,14 +148,12 @@ let nconv pb env t1 t2 =
   | (0,fn,modname) ->
       begin
         print_endline "Running test...";
-        try
-          let t0 = Sys.time () in
-          call_linker env fn (Some modname);
-          let t1 = Sys.time () in
-          Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
-          (* TODO change 0 when we can have deBruijn *)
-          conv_val pb 0 !rt1 !rt2 empty_constraint
-        with _ -> raise NotConvertible
+        let t0 = Sys.time () in
+        call_linker env fn (Some modname);
+        let t1 = Sys.time () in
+        Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
+        (* TODO change 0 when we can have deBruijn *)
+        conv_val pb 0 !rt1 !rt2 empty_constraint
       end
   | _ -> anomaly "Compilation failure" 
   

@@ -7,6 +7,7 @@
 (************************************************************************)
 open Term
 open Names
+open Errors
 
 type t = t -> t
     
@@ -188,9 +189,9 @@ let mk_block tag args =
   done;
   (Obj.magic r : t)
 
-
-
-let dummy_atom = Arel (-1)
+(* Two instances of dummy_value should not be pointer equal, otherwise
+ comparing them as terms would succeed *)
+let dummy_value : unit -> t = fun () _ -> anomaly "Evaluation failed"
 
 let cast_accu v = (Obj.magic v:accumulator)
 

@@ -64,7 +64,7 @@ val mk_int : int -> t
 val napply : t -> t array -> t
 (* Functions over accumulators *)
 
-val dummy_atom : atom    
+val dummy_value : unit -> t
 val atom_of_accu : accumulator -> atom
 val args_of_accu : accumulator -> t list
 val accu_nargs : accumulator -> int
