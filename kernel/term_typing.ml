@@ -148,17 +148,13 @@ let build_constant_declaration env kn (def,typ,cst,inline_code,ctx) =
           (Idset.elements (Idset.diff inferred_set declared_set)))));
     declared in
   let tps = Cemitcodes.from_val (compile_constant_body env def) in
-  let kn = canonical_con kn in
-  let (mp,_,l) = repr_kn kn in
-  let tr, auxdefs, is_lazy = compile_constant (pre_env env) mp l def in
   let cb = { const_hyps = hyps;
     const_body = def;
     const_type = typ;
     const_body_code = tps;
     const_constraints = cst;
-    const_native_lazy = is_lazy;
+    const_native_name = ref NotLinked;
     const_inline_code = inline_code } in
-  Nativelib.push_comp_stack (tr::auxdefs);
   cb
 
 (*s Global and local constant declaration. *)
@@ -174,5 +170,4 @@ let translate_recipe env kn r =
 (* Insertion of inductive types. *)
 
 let translate_mind env kn mie =
-  let mib = check_inductive env kn mie in
-  Nativelib.push_comp_stack (Nativecode.compile_mind mib kn []); mib
+  check_inductive env kn mie

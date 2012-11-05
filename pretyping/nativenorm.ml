@@ -1,4 +1,3 @@
-(*i camlp4use: "q_MLast.cmo" i*)
 open Errors
 open Term
 open Environ
@@ -415,17 +414,16 @@ and  nf_predicate env ind mip params v pT =
 let native_norm env c ty =  
   let penv = Environ.pre_env env in 
   let mp = penv.Pre_env.current_mp in
-  let code = Nativelambda.lambda_of_constr penv c in
   (*
   Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
   Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
   *)
-  let header, code = mk_norm_code penv code in
-  match Nativelib.compile_terms mp header code with
+  let code, upd = mk_norm_code penv c in
+  match Nativelib.call_compiler mp code with
     | 0,fn,modname ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
-	Nativelib.call_linker (pre_env env) fn (Some modname);
+	Nativelib.call_linker (pre_env env) fn (Some modname) (Some upd);
 	let t1 = Sys.time () in
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty

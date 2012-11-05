@@ -63,13 +63,18 @@ type 'a constant_def =
   | OpaqueDef of lazy_constr
   | Primitive of Native.op
 
+type native_name =
+  | Linked of string
+  | LinkedLazy of string
+  | NotLinked
+
 type constant_body = {
     const_hyps : section_context; (** New: younger hyp at top *)
     const_body : constr_substituted constant_def;
     const_type : constant_type;
     const_body_code : to_patch_substituted;
     const_constraints : constraints;
-    const_native_lazy : bool;
+    const_native_name : native_name ref;
     const_inline_code : bool }
 
 val subst_const_def : substitution -> constr_substituted constant_def ->
@@ -153,6 +158,11 @@ type one_inductive_body = {
     (not used in the kernel) *)
 
     mind_recargs : wf_paths; (** Signature of recursive arguments in the constructors *)
+
+(** {8 Data for native compilation } *)
+
+    mind_native_name : native_name ref; (** status of the code (linked or not, and where) *)
+
 
 (** {8 Datas for bytecode compilation } *)
 

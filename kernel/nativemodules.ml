@@ -43,19 +43,19 @@ let rec translate_mod mp env mod_expr acc =
   | SEBfunctor (mbid,mtb,meb) -> acc
   | SEBapply (f,x,_) -> assert false
   | SEBwith _ -> assert false
-and translate_fields mp env (l,x) (trs,values as acc) =
+and translate_fields mp env (l,x) (trs,values,upds as acc) =
   match x with
   | SFBconst cb ->
-      let tr, auxdefs, values =
-	compile_constant_field (pre_env env) mp l values cb
+      let tr, auxdefs, values, upd =
+        compile_constant_field (pre_env env) mp l values cb
       in
       let l = optimize_stk (tr::auxdefs) in
       let tr, auxdefs = List.hd l, List.rev (List.tl l) in
-      MFglobal(tr,auxdefs)::trs, values
+      MFglobal(tr,auxdefs)::trs, values, upd::upds
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in
-      let tr, values = compile_mind_field mb kn [] values in
-      List.fold_left (fun acc g -> MFglobal(g,[])::acc) trs tr, values
+      let tr, values, upds = compile_mind_field mb kn values upds in
+      List.fold_left (fun acc g -> MFglobal(g,[])::acc) trs tr, values, upds
   | SFBmodule md ->
       translate_mod md.mod_mp env md.mod_type acc
   | SFBmodtype mdtyp ->
@@ -66,13 +66,15 @@ let dump_library mp env mod_expr =
   match mod_expr with
   | SEBstruct msb ->
       let env = add_signature mp msb empty_delta_resolver env in
-      let t0 = Sys.time ()in 
-      let mlcode, values = List.fold_right (translate_fields mp env) msb ([],[]) in
+      let t0 = Sys.time () in 
+      let mlcode, values, upds =
+        List.fold_right (translate_fields mp env) msb ([],[],[])
+      in
       let t1 = Sys.time () in
 (*      let mlopt = optimize_stk mlcode in
       let t2 = Sys.time () in*)
       Flags.if_verbose (Format.eprintf "Compiled library. ml %.5f@.") (t1-.t0);
-      mlcode, Array.of_list (List.rev values)
+      mlcode, Array.of_list (List.rev values), upds
   | _ -> assert false
 
 

@@ -113,16 +113,14 @@ and check_with_def env sign (idl,c) mp equiv =
 		    let def = Def (Declarations.from_val c) in
 		    def,cst
 	      in
-              let tr, auxdefs, is_lazy = compile_constant (pre_env env) mp l def in
 	      let cb' =
 		{ cb with
 		  const_body = def;
 		  const_body_code =
 		    Cemitcodes.from_val (compile_constant_body env' def);
-		  const_native_lazy = is_lazy;
+          const_native_name = ref NotLinked;
 		  const_constraints = cst }
 	      in
-              Nativelib.push_comp_stack (tr::auxdefs);
 	      SEBstruct(before@(l,SFBconst(cb'))::after),cb',cst
       else
 	      (* Definition inside a sub-module *)

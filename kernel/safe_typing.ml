@@ -694,7 +694,8 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast,values = Nativemodules.dump_library mp senv.env str in
+  let ast,values,upds = Nativemodules.dump_library mp senv.env str in
+  List.iter Nativecode.update_location upds;
   mp, (dir,mb,senv.imports,engagement senv.env,values), (ast, mp),
     List.map fst senv.imports
 

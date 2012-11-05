@@ -236,7 +236,8 @@ let register_loaded_library m =
     let dirname = Filename.dirname (library_full_filename m.library_name) in
     let f = Nativecode.mod_uid_of_dirpath m.library_name ^ ".cmo" in
     let f = Dynlink.adapt_filename f in
-    Nativelib.call_linker Pre_env.empty_env (Filename.concat dirname f) None
+    Nativelib.call_linker Pre_env.empty_env (Filename.concat dirname f)
+      None None
   in
   let rec aux = function
     | [] -> link m ; [m]

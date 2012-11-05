@@ -643,6 +643,7 @@ let build_inductive env env_ar params isrecord isfinite inds nmr recargs cst =
 	mind_user_lc = lc;
 	mind_nf_lc = nf_lc;
 	mind_recargs = recarg;
+    mind_native_name = ref NotLinked;
 	mind_nb_constant = !nconst;
 	mind_nb_args = !nblock;
 	mind_reloc_tbl = rtbl;

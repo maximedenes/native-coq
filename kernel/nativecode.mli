@@ -47,25 +47,33 @@ val get_ind : symbol array -> int -> inductive
 
 val get_symbols_tbl : unit -> symbol array
 
+type code_location_update
+type code_location_updates
+type linkable_code = global list * code_location_updates
+
 val compile_constant : env -> module_path -> label ->
-  constr_substituted constant_def -> global * global list * bool
+  constr_substituted constant_def -> global * global list * native_name
 
 val compile_constant_field : env -> module_path -> label ->
-  symbol list -> constant_body -> global * global list * symbol list
+  symbol list -> constant_body ->
+    global * global list * symbol list * code_location_update
 
-val compile_mind : mutual_inductive_body -> mutual_inductive ->
-  global list -> global list
 val compile_mind_sig : mutual_inductive_body -> mutual_inductive ->
   (global * gname list) list -> (global * gname list) list
 
 val compile_mind_field : mutual_inductive_body -> mutual_inductive ->
-  global list -> symbol list -> global list * symbol list
-
+  symbol list -> code_location_update list ->
+    global list * symbol list * code_location_update list
 
 val optimize_stk : global list -> global list
-val mk_conv_code : env -> lambda -> lambda -> global list * global list
-val mk_norm_code : env -> lambda -> global list * global list
+val mk_conv_code : env -> constr -> constr -> linkable_code
+val mk_norm_code : env -> constr -> linkable_code
 
 val mk_library_header : dir_path -> global list -> global list
 
 val mod_uid_of_dirpath : dir_path -> string
+
+val compile_deps : Pre_env.env -> linkable_code -> Term.constr -> linkable_code
+
+val update_location : code_location_update -> unit
+val update_locations : code_location_updates -> unit

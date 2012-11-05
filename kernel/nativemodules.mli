@@ -14,7 +14,7 @@ type mod_field
 type mod_expr
 
 val dump_library : module_path -> env -> struct_expr_body ->
-  mod_field list * symbol array
+  mod_field list * symbol array * code_location_update list
 
 val pp_mod_fields : module_path -> Format.formatter -> mod_field list -> unit
 

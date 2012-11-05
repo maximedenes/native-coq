@@ -85,13 +85,18 @@ type 'a constant_def =
   | OpaqueDef of lazy_constr
   | Primitive of Native.op
 
+type native_name =
+  | Linked of string
+  | LinkedLazy of string
+  | NotLinked
+
 type constant_body = {
     const_hyps : section_context; (* New: younger hyp at top *)
     const_body : constr_substituted constant_def;
     const_type : constant_type;
     const_body_code : Cemitcodes.to_patch_substituted;
     const_constraints : constraints;
-    const_native_lazy : bool;
+    const_native_name : native_name ref;
     const_inline_code : bool }
 
 let body_of_constant cb = match cb.const_body with
@@ -138,7 +143,7 @@ let subst_const_body sub cb = {
   const_type = subst_const_type sub cb.const_type;
   const_body_code = Cemitcodes.subst_to_patch_subst sub cb.const_body_code;
   const_constraints = cb.const_constraints;
-  const_native_lazy = cb.const_native_lazy;
+  const_native_name = ref NotLinked;
   const_inline_code = cb.const_inline_code }
 
 (* Hash-consing of [constant_body] *)
@@ -279,6 +284,11 @@ type one_inductive_body = {
  (* Signature of recursive arguments in the constructors *)
     mind_recargs : wf_paths;
 
+(* Data for native compilation *)
+
+ (* status of the code (linked or not, and where) *)
+    mind_native_name : native_name ref;
+
 (* Datas for bytecode compilation *)
 
  (* number of constant constructor *)
@@ -342,6 +352,7 @@ let subst_mind_packet sub mbp =
     mind_nrealargs_ctxt = mbp.mind_nrealargs_ctxt;
     mind_kelim = mbp.mind_kelim;
     mind_recargs = subst_wf_paths sub mbp.mind_recargs (*wf_paths*);
+    mind_native_name = ref NotLinked;
     mind_nb_constant = mbp.mind_nb_constant;
     mind_nb_args = mbp.mind_nb_args;
     mind_reloc_tbl = mbp.mind_reloc_tbl }

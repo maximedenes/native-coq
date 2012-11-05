@@ -677,13 +677,16 @@ module Renv =
 	r
   end
 
+let is_lazy t = (* APPROXIMATION *)
+  not (isLambda t || isFix t)
+
 let empty_ids = [||]
 
 let rec lambda_of_constr env c =
 (*  try *)
   match kind_of_term c with
-  | Meta _ -> raise (Invalid_argument "Cbytegen.lambda_of_constr: Meta")
-  | Evar _ -> raise (Invalid_argument "Cbytegen.lambda_of_constr : Evar")
+  | Meta _ -> raise (Invalid_argument "Nativelambda.lambda_of_constr: Meta")
+  | Evar _ -> raise (Invalid_argument "Nativelambda.lambda_of_constr : Evar")
 	
   | Cast (c, _, _) -> lambda_of_constr env c
 	
@@ -776,16 +779,15 @@ and lambda_of_app env f args =
       let cb = lookup_constant kn !global_env in
       begin match cb.const_body with
       | Primitive op -> lambda_of_prim kn op (lambda_of_args env 0 args)
-      | Def csubst when cb.const_inline_code ->
-	let t = force csubst in
-	if cb.const_native_lazy then mkLapp Lforce [|lambda_of_app env t args|]
-	else lambda_of_app env t args
-      | Def _ | OpaqueDef _ | Undef _ ->
-	let t =
-	  if cb.const_native_lazy then mkLapp Lforce [|Lconst kn|]
-	  else Lconst kn
-	in
+      | Def csubst ->
+          if cb.const_inline_code then lambda_of_app env (force csubst) args
+          else
+          let t =
+            if is_lazy (force csubst) then mkLapp Lforce [|Lconst kn|]
+            else Lconst kn
+          in
         mkLapp t (lambda_of_args env 0 args)
+      | OpaqueDef _ | Undef _ -> mkLapp (Lconst kn) (lambda_of_args env 0 args)
       end
   | Construct c ->
       let tag, nparams, arity = Renv.get_construct_info env c in

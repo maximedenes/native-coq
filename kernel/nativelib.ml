@@ -21,7 +21,6 @@ let imports = ref ([] : string list)
 let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";
 				   "Nativeconv";"Declaremods"]
 let open_header = ref (init_opens : global list)
-let comp_stack = ref ([] : global list)
 
 (* Global settings and utilies for interface with OCaml *)
 let compiler_name =
@@ -39,18 +38,12 @@ let include_dirs =
 (* Pointer to the function linking an ML object into coq's toplevel *)
 let load_obj = ref (fun x -> () : string -> unit)
 
-let push_comp_stack l =
-  comp_stack := l@(!comp_stack)
-
-let clear_comp_stack () =
-  comp_stack := []
-
 let rt1 = ref (dummy_value ())
 let rt2 = ref (dummy_value ())
 
-let compile_terms base_mp header code =
+let call_compiler base_mp code =
   let code =
-    !open_header@header@(List.rev_append !comp_stack code)
+    !open_header@code
   in
   let mod_name = Filename.temp_file "Coq_native" ".ml" in
   let ch_out = open_out mod_name in
@@ -72,17 +65,17 @@ let compile_terms base_mp header code =
   let mod_name = Filename.chop_extension (Filename.basename mod_name) in
   res, filename, mod_name
 
-let call_linker env f mf =
+let call_linker env f mf upds =
   let aux mf = (match mf with
-    | Some mf -> if !comp_stack != [] then
+    | Some mf -> (* TODO if !comp_stack != [] then *)
       open_header := !open_header@[mk_open mf];
-      clear_comp_stack ()
     | _ -> ());
   in
   rt1 := dummy_value ();
   rt2 := dummy_value ();
-  if Dynlink.is_native then (Dynlink.loadfile f; aux mf)
-  else (!load_obj f; aux mf)
+  (if Dynlink.is_native then (Dynlink.loadfile f; aux mf)
+  else (!load_obj f; aux mf));
+  match upds with Some upds -> update_locations upds | _ -> ()
 
 let topological_sort init xs =
   let visited = ref Stringset.empty in
@@ -122,4 +115,4 @@ let intern_state s =
   (** WARNING TODO: if a state with the same file name has already been loaded   **)
   (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
 (*  let temp = Filename.temp_file s ".cmxs" in*)
-  call_linker empty_env (Dynlink.adapt_filename (s^".cma")) None
+  call_linker empty_env (Dynlink.adapt_filename (s^".cma")) None None

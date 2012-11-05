@@ -1248,7 +1248,7 @@ let relative_list_of_mp base_mp mp =
   let l = list_of_mp mp in
   snd (strip_common_prefix base_l l)
 
-let pp_gname base_mp fmt g =
+let string_of_gname base_mp g =
   let relativize =
     match base_mp with
     | Some mp -> mk_relative_id mp
@@ -1258,30 +1258,35 @@ let pp_gname base_mp fmt g =
   | Gind (mind,i) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
       let id = Format.sprintf "indaccu_%s_%i" (string_of_mind mind) i in
-      Format.fprintf fmt "%s" (relativize (mp,id))
+      relativize (mp,id)
   | Gconstruct ((mind,i),j) ->
       let (mp,dp,l) = repr_kn (canonical_mind mind) in
       let id = Format.sprintf "construct_%s_%i_%i" (string_of_mind mind) i (j-1) in
-      Format.fprintf fmt "%s" (relativize (mp,id))
+      relativize (mp,id)
   | Gconstant c ->
       let (mp,dp,l) = repr_kn (canonical_con c) in 
       let id = Format.sprintf "const_%s" (string_of_con c) in
-      Format.fprintf fmt "%s" (relativize (mp,id))
+      relativize (mp,id)
   | Gcase (l,i) ->
-      Format.fprintf fmt "case_%s_%i" (string_of_label_def l) i
+      Format.sprintf "case_%s_%i" (string_of_label_def l) i
   | Gpred (l,i) ->
-      Format.fprintf fmt "pred_%s_%i" (string_of_label_def l) i
+      Format.sprintf "pred_%s_%i" (string_of_label_def l) i
   | Gfixtype (l,i) ->
-      Format.fprintf fmt "fixtype_%s_%i" (string_of_label_def l) i
+      Format.sprintf "fixtype_%s_%i" (string_of_label_def l) i
   | Gnorm (l,i) ->
-      Format.fprintf fmt "norm_%s_%i" (string_of_label_def l) i
-  | Ginternal s -> Format.fprintf fmt "%s" s
+      Format.sprintf "norm_%s_%i" (string_of_label_def l) i
+  | Ginternal s -> Format.sprintf "%s" s
   | Gnormtbl (l,i) -> 
-      Format.fprintf fmt "normtbl_%s_%i" (string_of_label_def l) i
+      Format.sprintf "normtbl_%s_%i" (string_of_label_def l) i
   | Grel i ->
-      Format.fprintf fmt "rel_%i" i
+      Format.sprintf "rel_%i" i
   | Gnamed id ->
-      Format.fprintf fmt "named_%s" (string_of_id id)
+      Format.sprintf "named_%s" (string_of_id id)
+
+
+let pp_gname base_mp fmt g =
+  Format.fprintf fmt "%s" (string_of_gname base_mp g)
+
 
 (*let pp_rel cenv id fmt i =
   assert (i>0);
@@ -1580,42 +1585,42 @@ let pp_global_aux base_mp fmt g auxdefs =
 
 let pp_globals base_mp fmt l = List.iter (pp_global base_mp fmt) l
 
-let is_lazy t code =
-  not (isLambda t || isFix t || is_value code)
-
 (* Compilation of elements in environment *)
 let compile_constant env mp l body =
+  let con = make_con mp empty_dirpath l in
+  let s = string_of_gname None (Gconstant con) in
   match body with
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
-      let is_lazy = is_lazy t code in
+      let is_lazy = is_lazy t in
       let code = if is_lazy then mk_lazy code else code in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
       let l =
-        optimize_stk (Glet(Gconstant (make_con mp empty_dirpath l),code)::auxdefs)
+        optimize_stk (Glet(Gconstant con,code)::auxdefs)
       in
-      List.hd l, List.tl l, is_lazy
+      let name = if is_lazy then LinkedLazy s else Linked s in
+      List.hd l, List.tl l, name
   | _ -> 
-      let kn = make_con mp empty_dirpath l in
-      let i = push_symbol (SymbConst kn) in
-      Glet(Gconstant kn, MLapp (MLprimitive Mk_const, [|get_const_code i|])), [],
-      false
+      let i = push_symbol (SymbConst con) in
+      Glet(Gconstant con, MLapp (MLprimitive Mk_const, [|get_const_code i|])),
+      [], Linked s
 
 let compile_constant_field env mp l values cb =
   reset_symbols_list values;
-  let (t, gl, is_lazy) = compile_constant env mp l cb.const_body in
-  t, gl, !symbols_list
+  let (t, gl, name) = compile_constant env mp l cb.const_body in
+  t, gl, !symbols_list, (cb.const_native_name, name)
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
 
-let compile_mind mb mind stack =
-  let f i acc ob =
+let compile_mind mb mind stack upds =
+  let f i (stack,upds) ob =
     let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in
     let j = push_symbol (SymbInd (mind,i)) in
+    let name = Gind (mind, i) in
     let accu =
-      Glet(Gind (mind,i), MLapp (MLprimitive Mk_ind, [|get_ind_code j|]))
+      Glet(name, MLapp (MLprimitive Mk_ind, [|get_ind_code j|]))
     in
     let nparams = mb.mind_nparams in
     let params = 
@@ -1627,13 +1632,16 @@ let compile_mind mb mind stack =
 	     mkMLlam (Array.append params args)
 	       (MLconstruct(c, Array.map (fun id -> MLlocal id) args)))::acc
     in
-    array_fold_left_i add_construct (gtype::accu::acc) ob.mind_reloc_tbl
+    let s = string_of_gname None name in
+    let upds = (ob.mind_native_name, Linked s)::upds in
+    array_fold_left_i add_construct (gtype::accu::stack) ob.mind_reloc_tbl, upds
   in
-  array_fold_left_i f stack mb.mind_packets
+  array_fold_left_i f (stack,upds) mb.mind_packets
 
-let compile_mind_field mb mind stack values =
+let compile_mind_field mb mind values upds =
   reset_symbols_list values;
-  (compile_mind mb mind stack, !symbols_list)
+  let code, upds = compile_mind mb mind [] upds in
+  code, !symbols_list, upds
 
 let compile_mind_sig mb mind stack =
   let f i acc ob =
@@ -1645,6 +1653,53 @@ let compile_mind_sig mb mind stack =
   in
   array_fold_left_i f stack mb.mind_packets
 
+type code_location_update =
+    Declarations.native_name ref * Declarations.native_name
+type code_location_updates =
+  code_location_update Indmap.t * code_location_update Cmap.t
+
+type linkable_code = global list * code_location_updates
+
+let update_mind mb mind ind_updates =
+  let f i ind_updates ob =
+    let s = string_of_gname None (Gind (mind, i)) in
+    Indmap.add (mind,i) (ob.mind_native_name, Linked s) ind_updates
+    (* let gtype = Gtype((mind, i), Array.map snd ob.mind_reloc_tbl) in *)
+  in
+  array_fold_left_i f ind_updates mb.mind_packets
+
+let compile_ind_deps env (comp_stack, (ind_updates, const_updates) as init) (mind, i as ind) =
+  let mib = lookup_mind mind env in
+  let oib = mib.mind_packets.(snd ind) in
+  if !(oib.mind_native_name) = NotLinked && not (Indmap.mem ind ind_updates)
+  then let comp_stack, _ = compile_mind mib mind comp_stack [] in
+  let ind_updates = update_mind mib mind ind_updates in
+  (comp_stack, (ind_updates, const_updates))
+  else init
+
+let rec compile_deps env (comp_stack, (ind_updates, const_updates) as init) t =
+  match kind_of_term t with
+  | Meta _ -> raise (Invalid_argument "Nativecode.get_deps: Meta")
+  | Evar _ -> raise (Invalid_argument "Nativecode.get_deps: Evar")
+  | Ind ind -> compile_ind_deps env init ind
+  | Const c ->
+      let kn = canonical_con c in
+      let (mp,_,l) = repr_kn kn in
+      let cb = lookup_constant c env in
+      if !(cb.const_native_name) = NotLinked && not cb.const_inline_code
+        && not (Cmap.mem c const_updates) then
+      let header, code, name = compile_constant env mp l cb.const_body in
+      let comp_stack = header::code@comp_stack in
+      let const_updates = Cmap.add c (cb.const_native_name, name) const_updates in
+      let acc = (comp_stack, (ind_updates, const_updates)) in
+      match cb.const_body with
+      | Def t ->
+          compile_deps env acc (Declarations.force t)
+      | _ -> acc
+      else init
+  | Construct (ind,_) -> compile_ind_deps env init ind
+  | _ -> fold_constr (compile_deps env) init t
+
 let mk_open s = Gopen s
 
 let mk_internal_let s code =
@@ -1652,29 +1707,42 @@ let mk_internal_let s code =
 
 
 (* ML Code for conversion function *)
-let mk_conv_code env code1 code2 =
+let mk_conv_code env t1 t2 =
+  let code1 = lambda_of_constr env t1 in
+  let code2 = lambda_of_constr env t2 in
   let (gl,code1) = compile_with_fv env [] None code1 in
   let (gl,code2) = compile_with_fv env gl None code2 in
+  let gl, (ind_updates, const_updates) =
+    compile_deps env (gl, (Indmap.empty, Cmap.empty)) t1
+  in
+  let gl, (ind_updates, const_updates) =
+    compile_deps env (gl, (ind_updates, const_updates)) t2
+  in
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
-  let header = [Glet(Ginternal "symbols_tbl",
+  let header = Glet(Ginternal "symbols_tbl",
     MLapp (MLglobal (Ginternal "get_symbols_tbl"),
-      [|MLglobal (Ginternal "()")|]))] in
-  header, (List.rev_append gl
+      [|MLglobal (Ginternal "()")|])) in
+  header::(gl@
   [mk_internal_let "t1" code1;
   mk_internal_let "t2" code2;
   Glet(Ginternal "_", MLsetref("rt1",g1));
-  Glet(Ginternal "_", MLsetref("rt2",g2))])
+  Glet(Ginternal "_", MLsetref("rt2",g2))]),
+  (ind_updates, const_updates)
 
-let mk_norm_code env code =
+let mk_norm_code env t =
+  let code = lambda_of_constr env t in
   let (gl,code) = compile_with_fv env [] None code in
+  let gl, (ind_updates, const_updates) =
+    compile_deps env (gl, (Indmap.empty, Cmap.empty)) t
+  in
   let g1 = MLglobal (Ginternal "t1") in
-  let header = [Glet(Ginternal "symbols_tbl",
+  let header = Glet(Ginternal "symbols_tbl",
     MLapp (MLglobal (Ginternal "get_symbols_tbl"),
-      [|MLglobal (Ginternal "()")|]))] in
-  header, (List.rev_append gl
+      [|MLglobal (Ginternal "()")|])) in
+  header::(gl@
   [mk_internal_let "t1" code;
-  Glet(Ginternal "_", MLsetref("rt1",g1))])
+  Glet(Ginternal "_", MLsetref("rt1",g1))]), (ind_updates, const_updates)
 
 let mk_library_header dir opens =
   let libname = Format.sprintf "(str_decode \"%s\")" (str_encode dir) in
@@ -1683,3 +1751,9 @@ let mk_library_header dir opens =
     [|MLglobal (Ginternal libname)|]))]
   in
   opens @ header
+
+let update_location (r,v) = r := v
+
+let update_locations (ind_updates,const_updates) =
+  Indmap.iter (fun _ -> update_location) ind_updates;
+  Cmap.iter (fun _ -> update_location) const_updates
