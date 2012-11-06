@@ -678,7 +678,7 @@ module Renv =
   end
 
 let is_lazy t = (* APPROXIMATION *)
-  not (isLambda t || isFix t)
+  isApp t || isLetIn t
 
 let empty_ids = [||]
 
