@@ -1600,16 +1600,16 @@ let compile_constant env mp l body =
         optimize_stk (Glet(Gconstant con,code)::auxdefs)
       in
       let name = if is_lazy then LinkedLazy s else Linked s in
-      List.hd l, List.tl l, name
+      l, name
   | _ -> 
       let i = push_symbol (SymbConst con) in
-      Glet(Gconstant con, MLapp (MLprimitive Mk_const, [|get_const_code i|])),
-      [], Linked s
+      [Glet(Gconstant con, MLapp (MLprimitive Mk_const, [|get_const_code i|]))],
+      Linked s
 
 let compile_constant_field env mp l values cb =
   reset_symbols_list values;
-  let (t, gl, name) = compile_constant env mp l cb.const_body in
-  t, gl, !symbols_list, (cb.const_native_name, name)
+  let (gl, name) = compile_constant env mp l cb.const_body in
+  gl, !symbols_list, (cb.const_native_name, name)
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
@@ -1688,17 +1688,21 @@ let rec compile_deps env (comp_stack, (ind_updates, const_updates) as init) t =
       let cb = lookup_constant c env in
       if !(cb.const_native_name) = NotLinked && not cb.const_inline_code
         && not (Cmap.mem c const_updates) then
-      let header, code, name = compile_constant env mp l cb.const_body in
-      let comp_stack = header::code@comp_stack in
+      let comp_stack, (ind_updates, const_updates) = match cb.const_body with
+        | Def t -> compile_deps env init (Declarations.force t)
+        | _ -> init
+      in
+      let code, name = compile_constant env mp l cb.const_body in
+      let comp_stack = List.rev_append code comp_stack in
       let const_updates = Cmap.add c (cb.const_native_name, name) const_updates in
-      let acc = (comp_stack, (ind_updates, const_updates)) in
-      match cb.const_body with
-      | Def t ->
-          compile_deps env acc (Declarations.force t)
-      | _ -> acc
+      comp_stack, (ind_updates, const_updates)
       else init
   | Construct (ind,_) -> compile_ind_deps env init ind
   | _ -> fold_constr (compile_deps env) init t
+
+let compile_deps env init t =
+  let comp_stack, updates = compile_deps env init t in
+  List.rev comp_stack, updates
 
 let mk_open s = Gopen s
 

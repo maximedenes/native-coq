@@ -46,11 +46,12 @@ let rec translate_mod mp env mod_expr acc =
 and translate_fields mp env (l,x) (trs,values,upds as acc) =
   match x with
   | SFBconst cb ->
-      let tr, auxdefs, values, upd =
+      let gl, values, upd =
         compile_constant_field (pre_env env) mp l values cb
       in
-      let l = optimize_stk (tr::auxdefs) in
-      let tr, auxdefs = List.hd l, List.rev (List.tl l) in
+      let gl = optimize_stk gl in
+      let tr, auxdefs = List.hd gl, List.rev (List.tl gl) in (* TODO: can we
+      avoid this? *)
       MFglobal(tr,auxdefs)::trs, values, upd::upds
   | SFBmind mb ->
       let kn = make_mind mp empty_dirpath l in

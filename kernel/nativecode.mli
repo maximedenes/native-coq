@@ -52,11 +52,11 @@ type code_location_updates
 type linkable_code = global list * code_location_updates
 
 val compile_constant : env -> module_path -> label ->
-  constr_substituted constant_def -> global * global list * native_name
+  constr_substituted constant_def -> global list * native_name
 
 val compile_constant_field : env -> module_path -> label ->
   symbol list -> constant_body ->
-    global * global list * symbol list * code_location_update
+    global list * symbol list * code_location_update
 
 val compile_mind_sig : mutual_inductive_body -> mutual_inductive ->
   (global * gname list) list -> (global * gname list) list
