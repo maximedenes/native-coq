@@ -1693,7 +1693,7 @@ let rec compile_deps env (comp_stack, (ind_updates, const_updates) as init) t =
         | _ -> init
       in
       let code, name = compile_constant env mp l cb.const_body in
-      let comp_stack = List.rev_append code comp_stack in
+      let comp_stack = code@comp_stack in
       let const_updates = Cmap.add c (cb.const_native_name, name) const_updates in
       comp_stack, (ind_updates, const_updates)
       else init
