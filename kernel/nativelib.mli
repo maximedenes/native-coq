@@ -9,7 +9,6 @@ open Names
 open Term
 open Nativevalues
 open Nativecode
-open Nativemodules
 open Pre_env
 
 (* This file provides facilities to access the native code compiler *)

@@ -1593,13 +1593,13 @@ let compile_constant env mp l body =
   | Def t ->
       let t = Declarations.force t in
       let code = lambda_of_constr ~opt:true env t in
-      let is_lazy = is_lazy t in
-      let code = if is_lazy then mk_lazy code else code in
+      let code, name =
+        if is_lazy t then mk_lazy code, LinkedLazy s else code, Linked s
+      in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
       let l =
         optimize_stk (Glet(Gconstant con,code)::auxdefs)
       in
-      let name = if is_lazy then LinkedLazy s else Linked s in
       l, name
   | _ -> 
       let i = push_symbol (SymbConst con) in
@@ -1683,6 +1683,7 @@ let rec compile_deps env (comp_stack, (ind_updates, const_updates) as init) t =
   | Evar _ -> raise (Invalid_argument "Nativecode.get_deps: Evar")
   | Ind ind -> compile_ind_deps env init ind
   | Const c ->
+      let c = get_allias env c in
       let kn = canonical_con c in
       let (mp,_,l) = repr_kn kn in
       let cb = lookup_constant c env in

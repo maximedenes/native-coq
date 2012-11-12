@@ -620,7 +620,7 @@ let set_engagement c senv =
 type compiled_library =
     dir_path * module_body * library_info list * engagement option * Nativecode.symbol array
 
-type native_library = Nativemodules.mod_field list * module_path
+type native_library = Nativelibrary.mod_field list * module_path
 
 (* We check that only initial state Require's were performed before
    [start_library] was called *)
@@ -694,7 +694,7 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast,values,upds = Nativemodules.dump_library mp senv.env str in
+  let ast,values,upds = Nativelibrary.dump_library mp senv.env str in
   List.iter Nativecode.update_location upds;
   mp, (dir,mb,senv.imports,engagement senv.env,values), (ast, mp),
     List.map fst senv.imports
