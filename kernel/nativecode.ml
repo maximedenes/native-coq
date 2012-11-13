@@ -169,42 +169,42 @@ type primitive =
   | Val_of_int
   | Val_of_bool
   (* Coq primitive with check *)
-  | Chead0 of constant option
-  | Ctail0 of constant option
-  | Cadd of constant option
-  | Csub of constant option
-  | Cmul of constant option
-  | Cdiv of constant option
-  | Crem of constant option
-  | Clsr of constant option
-  | Clsl of constant option
-  | Cand of constant option
-  | Cor of constant option
-  | Cxor of constant option
-  | Caddc of constant option
-  | Csubc of constant option
-  | CaddCarryC of constant option
-  | CsubCarryC of constant option
-  | Cmulc of constant option
-  | Cdiveucl of constant option
-  | Cdiv21 of constant option
-  | CaddMulDiv of constant option
-  | Ceq of constant option
-  | Clt of constant option
-  | Cle of constant option
+  | Chead0 of (string * constant) option
+  | Ctail0 of (string * constant) option
+  | Cadd of (string * constant) option
+  | Csub of (string * constant) option
+  | Cmul of (string * constant) option
+  | Cdiv of (string * constant) option
+  | Crem of (string * constant) option
+  | Clsr of (string * constant) option
+  | Clsl of (string * constant) option
+  | Cand of (string * constant) option
+  | Cor of (string * constant) option
+  | Cxor of (string * constant) option
+  | Caddc of (string * constant) option
+  | Csubc of (string * constant) option
+  | CaddCarryC of (string * constant) option
+  | CsubCarryC of (string * constant) option
+  | Cmulc of (string * constant) option
+  | Cdiveucl of (string * constant) option
+  | Cdiv21 of (string * constant) option
+  | CaddMulDiv of (string * constant) option
+  | Ceq of (string * constant) option
+  | Clt of (string * constant) option
+  | Cle of (string * constant) option
   | Clt_b 
   | Cle_b
-  | Ccompare of constant option
-  | Cprint of constant option
-  | Carraymake of constant option
-  | Carrayget of constant option
-  | Carraydefault of constant option
-  | Carrayset of constant option
-  | Carraycopy of constant option
-  | Carrayreroot of constant option
-  | Carraylength of constant option
-  | Carrayinit of constant option
-  | Carraymap of constant option
+  | Ccompare of (string * constant) option
+  | Cprint of (string * constant) option
+  | Carraymake of (string * constant) option
+  | Carrayget of (string * constant) option
+  | Carraydefault of (string * constant) option
+  | Carrayset of (string * constant) option
+  | Carraycopy of (string * constant) option
+  | Carrayreroot of (string * constant) option
+  | Carraylength of (string * constant) option
+  | Carrayinit of (string * constant) option
+  | Carraymap of (string * constant) option
   (* Caml primitive *)
   | MLand
   | MLle
@@ -538,7 +538,7 @@ let mlprim_of_cprim p kn =
   | Native.ArrayMap        -> Carraymap (Some kn)
 
 type prim_aux = 
-  | PAprim of constant option * Native.prim_op * prim_aux array
+  | PAprim of (string * constant) option * Native.prim_op * prim_aux array
   (*| PAcprim of constant * Native.caml_prim * prim_aux array *)
   | PAml of mllambda
 
@@ -710,7 +710,7 @@ let compile_cprim prefix kn p args =
 	    MLapp(MLprimitive (Carrayset None),[|mlt;mli;mlv|]),
 	    MLapp(MLglobal (Gconstant (prefix, kn)),[|args.(0);mlt;mli;mlv|])))))
   | _ ->
-      MLapp(MLprimitive (mlprim_of_cprim p kn), args)
+      MLapp(MLprimitive (mlprim_of_cprim p (prefix, kn)), args)
 
  
 	  
@@ -1429,8 +1429,8 @@ let pp_mllam fmt l =
   and pp_vprim o s = 
     match o with
     | None -> Format.fprintf fmt "no_check_%s" s
-    | Some kn ->
-        Format.fprintf fmt "%s %a" s pp_mllam (MLglobal (Gconstant ("",kn)))
+    | Some (prefix,kn) ->
+        Format.fprintf fmt "%s %a" s pp_mllam (MLglobal (Gconstant (prefix,kn)))
 
   and pp_primitive fmt = function
     | Mk_prod -> Format.fprintf fmt "mk_prod_accu" 

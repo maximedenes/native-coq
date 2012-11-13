@@ -22,7 +22,7 @@ type lambda =
   | Llet          of name * lambda * lambda
   | Lapp          of lambda * lambda array
   | Lconst        of string * constant (* prefix, constant name *)
-  | Lprim         of constant option * Native.prim_op * lambda array
+  | Lprim         of (string * constant) option * Native.prim_op * lambda array
 	(* No check if None *)
   | Lcprim        of string * constant * Native.caml_prim * lambda array
                   (* prefix, constant name, primitive, arguments *)
@@ -560,7 +560,9 @@ let prim env kn op args =
 	Lif(isint h,
             Lint (Uint31.of_int 0) (* constructor eq_refl *),
 	    Lapp(Lconst (prefix,kn), [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
-  | Native.Oprim p      -> Lprim(Some kn, p, args)
+  | Native.Oprim p      ->
+      let prefix = get_const_prefix env kn in
+      Lprim(Some (prefix, kn), p, args)
   | Native.Ocaml_prim p ->
       let prefix = get_const_prefix env kn in
       Lcprim(prefix, kn, p, args)
