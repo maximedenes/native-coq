@@ -56,7 +56,7 @@ val compile_constant : env -> module_path -> label ->
   constr_substituted constant_def -> global list * native_name
   *)
 
-val compile_constant_field : env -> string -> module_path -> label ->
+val compile_constant_field : env -> string -> constant ->
   symbol list -> constant_body ->
     global list * symbol list * code_location_update
 

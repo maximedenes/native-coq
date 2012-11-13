@@ -1226,8 +1226,8 @@ let string_of_kn kn =
   let mp = list_of_mp mp in
   String.concat "_" mp ^ "_" ^ string_of_label l
 
-let string_of_con c = string_of_kn (canonical_con c)
-let string_of_mind mind = string_of_kn (canonical_mind mind)
+let string_of_con c = string_of_kn (user_con c)
+let string_of_mind mind = string_of_kn (user_mind mind)
 
 let rec strip_common_prefix l1 l2 =
   match l1, l2 with
@@ -1253,13 +1253,10 @@ let relative_list_of_mp env mp =
 let string_of_gname g =
   match g with
   | Gind (prefix, (mind, i as ind)) ->
-      let (mp,dp,l) = repr_kn (canonical_mind mind) in
       Format.sprintf "%sindaccu_%s_%i" prefix (string_of_mind mind) i
   | Gconstruct (prefix, ((mind, i as ind), j)) ->
-      let (mp,dp,l) = repr_kn (canonical_mind mind) in
       Format.sprintf "%sconstruct_%s_%i_%i" prefix (string_of_mind mind) i (j-1)
   | Gconstant (prefix, c) ->
-      let (mp,dp,l) = repr_kn (canonical_con c) in 
       Format.sprintf "%sconst_%s" prefix (string_of_con c)
   | Gcase (l,i) ->
       Format.sprintf "case_%s_%i" (string_of_label_def l) i
@@ -1305,7 +1302,6 @@ let pp_ldecls fmt ids =
   done
 
 let string_of_construct prefix ((mind,i as ind),j) =
-  let (mp,dp,l) = repr_kn (canonical_mind mind) in
   let id = Format.sprintf "Construct_%s_%i_%i" (string_of_mind mind) i (j-1) in
   prefix ^ id
    
@@ -1336,7 +1332,6 @@ let pp_mllam fmt l =
     | MLmatch (asw, c, accu_br, br) ->
 	let mind,i = asw.asw_ind in
     let prefix = asw.asw_prefix in
-	let (mp,dp,l) = repr_kn (canonical_mind mind) in
 	let accu = Format.sprintf "%sAccu_%s_%i" prefix (string_of_mind mind) i in
 	Format.fprintf fmt 
 	  "@[begin match Obj.magic (%a) with@\n| %s _ ->@\n  %a@\n%aend@]"
@@ -1539,7 +1534,6 @@ let pp_global fmt g =
   | Gopen s ->
       Format.fprintf fmt "@[open %s@]@." s
   | Gtype ((mind, i), lar) ->
-      let (_,_,l) = repr_kn (canonical_mind mind) in
       let l = string_of_mind mind in
       let rec aux s ar = 
 	if ar = 0 then s else aux (s^" * Nativevalues.t") (ar-1) in
@@ -1581,8 +1575,7 @@ let pp_global_aux fmt g auxdefs =
 let pp_globals fmt l = List.iter (pp_global fmt) l
 
 (* Compilation of elements in environment *)
-let compile_constant env prefix mp l body =
-  let con = make_con mp empty_dirpath l in
+let compile_constant env prefix con body =
   match body with
   | Def t ->
       let t = Declarations.force t in
@@ -1591,6 +1584,7 @@ let compile_constant env prefix mp l body =
         if is_lazy t then mk_lazy code, LinkedLazy prefix
         else code, Linked prefix
       in
+      let l = con_label con in
       let auxdefs,code = compile_with_fv env [] (Some l) code in
       let l =
         optimize_stk (Glet(Gconstant ("",con),code)::auxdefs)
@@ -1601,9 +1595,9 @@ let compile_constant env prefix mp l body =
       [Glet(Gconstant ("",con), MLapp (MLprimitive Mk_const, [|get_const_code i|]))],
       Linked prefix
 
-let compile_constant_field env prefix mp l values cb =
+let compile_constant_field env prefix con values cb =
   reset_symbols_list values;
-  let (gl, name) = compile_constant env prefix mp l cb.const_body in
+  let (gl, name) = compile_constant env prefix con cb.const_body in
   gl, !symbols_list, (cb.const_native_name, name)
 
 let param_name = Name (id_of_string "params")
@@ -1662,8 +1656,6 @@ let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as in
   | Ind (mind,_) -> compile_mind_deps env prefix init mind
   | Const c ->
       let c = get_allias env c in
-      let kn = canonical_con c in
-      let (mp,_,l) = repr_kn kn in
       let cb = lookup_constant c env in
       if !(cb.const_native_name) = NotLinked && not cb.const_inline_code
         && not (Cmap.mem c const_updates) then
@@ -1671,7 +1663,7 @@ let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as in
         | Def t -> compile_deps env prefix init (Declarations.force t)
         | _ -> init
       in
-      let code, name = compile_constant env prefix mp l cb.const_body in
+      let code, name = compile_constant env prefix c cb.const_body in
       let comp_stack = code@comp_stack in
       let const_updates = Cmap.add c (cb.const_native_name, name) const_updates in
       comp_stack, (mind_updates, const_updates)

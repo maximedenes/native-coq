@@ -46,8 +46,9 @@ let rec translate_mod prefix mp env mod_expr acc =
 and translate_fields prefix mp env (l,x) (trs,values,upds as acc) =
   match x with
   | SFBconst cb ->
+      let con = make_con mp empty_dirpath l in
       let gl, values, upd =
-        compile_constant_field (pre_env env) prefix mp l values cb
+        compile_constant_field (pre_env env) prefix con values cb
       in
       let gl = optimize_stk gl in
       let tr, auxdefs = List.hd gl, List.rev (List.tl gl) in (* TODO: can we
