@@ -159,11 +159,6 @@ type one_inductive_body = {
 
     mind_recargs : wf_paths; (** Signature of recursive arguments in the constructors *)
 
-(** {8 Data for native compilation } *)
-
-    mind_native_name : native_name ref; (** status of the code (linked or not, and where) *)
-
-
 (** {8 Datas for bytecode compilation } *)
 
     mind_nb_constant : int; (** number of constant constructor *)
@@ -192,6 +187,11 @@ type mutual_inductive_body = {
     mind_params_ctxt : rel_context;  (** The context of parameters (includes let-in declaration) *)
 
     mind_constraints : constraints;  (** Universes constraints enforced by the inductive declaration *)
+
+(** {8 Data for native compilation } *)
+
+    mind_native_name : native_name ref; (** status of the code (linked or not, and where) *)
+
 
   }
 

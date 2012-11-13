@@ -253,5 +253,3 @@ module RedNative :
   functor (E:RedNativeEntries) -> 
     RedNative with type elem = E.elem
     with type args = E.args
-
-val set_current_mp : env -> module_path -> env

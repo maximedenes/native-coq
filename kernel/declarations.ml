@@ -284,11 +284,6 @@ type one_inductive_body = {
  (* Signature of recursive arguments in the constructors *)
     mind_recargs : wf_paths;
 
-(* Data for native compilation *)
-
- (* status of the code (linked or not, and where) *)
-    mind_native_name : native_name ref;
-
 (* Datas for bytecode compilation *)
 
  (* number of constant constructor *)
@@ -330,6 +325,10 @@ type mutual_inductive_body = {
   (* Universes constraints enforced by the inductive declaration *)
     mind_constraints : constraints;
 
+  (* Data for native compilation *)
+  (* Status of the code (linked or not, and where) *)
+    mind_native_name : native_name ref;
+
   }
 
 let subst_indarity sub = function
@@ -352,7 +351,6 @@ let subst_mind_packet sub mbp =
     mind_nrealargs_ctxt = mbp.mind_nrealargs_ctxt;
     mind_kelim = mbp.mind_kelim;
     mind_recargs = subst_wf_paths sub mbp.mind_recargs (*wf_paths*);
-    mind_native_name = ref NotLinked;
     mind_nb_constant = mbp.mind_nb_constant;
     mind_nb_args = mbp.mind_nb_args;
     mind_reloc_tbl = mbp.mind_reloc_tbl }
@@ -367,7 +365,8 @@ let subst_mind sub mib =
     mind_params_ctxt =
       map_rel_context (subst_mps sub) mib.mind_params_ctxt;
     mind_packets = array_smartmap (subst_mind_packet sub) mib.mind_packets ;
-    mind_constraints = mib.mind_constraints  }
+    mind_constraints = mib.mind_constraints;
+    mind_native_name = ref NotLinked }
 
 let hcons_indarity = function
   | Monomorphic a ->

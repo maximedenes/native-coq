@@ -21,7 +21,8 @@ type annot_sw = {
     asw_ind : inductive;
     asw_ci : case_info;
     asw_reloc : reloc_table;
-    asw_finite : bool
+    asw_finite : bool;
+    asw_prefix : string
   }
 
 type sort_annot = string * int

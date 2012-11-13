@@ -140,14 +140,14 @@ and conv_fix lvl t1 f1 t2 f2 cu =
 
 let nconv pb env t1 t2 =
   let env = Environ.pre_env env in 
-  let mp = env.current_mp in
-  let code, upds = mk_conv_code env t1 t2 in
-  match call_compiler mp code with
-  | (0,fn,modname) ->
+  let ml_filename, prefix = get_ml_filename () in
+  let code, upds = mk_conv_code env prefix t1 t2 in
+  match call_compiler ml_filename code with
+  | (0,fn) ->
       begin
         print_endline "Running test...";
         let t0 = Sys.time () in
-        call_linker env fn (Some modname) (Some upds);
+        call_linker env fn (Some upds);
         let t1 = Sys.time () in
         Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
         (* TODO change 0 when we can have deBruijn *)

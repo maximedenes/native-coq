@@ -324,9 +324,8 @@ let start_module l senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
  in
- let env = set_current_mp senv.env mp in
    mp, { old = senv;
-	 env = env;
+	 env = senv.env;
 	 modinfo = modinfo;
 	 modlabels = Labset.empty;
 	 objlabels = Labset.empty;
@@ -533,9 +532,8 @@ let start_modtype l senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
  in
- let env = set_current_mp senv.env mp in
   mp, { old = senv;
-	env = env;
+	env = senv.env;
 	modinfo = modinfo;
 	modlabels = Labset.empty;
 	objlabels = Labset.empty;
@@ -646,9 +644,8 @@ let start_library dir senv =
 		 resolver = empty_delta_resolver;
 		 resolver_of_param = empty_delta_resolver}
   in
-  let env = set_current_mp senv.env mp in
   mp, { old = senv;
-	env = env;
+	env = senv.env;
 	modinfo = modinfo;
 	modlabels = Labset.empty;
 	objlabels = Labset.empty;
@@ -694,7 +691,7 @@ let export senv dir =
       mod_retroknowledge = senv.local_retroknowledge
     }
   in
-  let ast,values,upds = Nativelibrary.dump_library mp senv.env str in
+  let ast,values,upds = Nativelibrary.dump_library mp dir senv.env str in
   List.iter Nativecode.update_location upds;
   mp, (dir,mb,senv.imports,engagement senv.env,values), (ast, mp),
     List.map fst senv.imports

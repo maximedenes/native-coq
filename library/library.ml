@@ -236,8 +236,7 @@ let register_loaded_library m =
     let dirname = Filename.dirname (library_full_filename m.library_name) in
     let f = Nativecode.mod_uid_of_dirpath m.library_name ^ ".cmo" in
     let f = Dynlink.adapt_filename f in
-    Nativelib.call_linker Pre_env.empty_env (Filename.concat dirname f)
-      None None
+    Nativelib.call_linker Pre_env.empty_env (Filename.concat dirname f) None
   in
   let rec aux = function
     | [] -> link m ; [m]
@@ -677,7 +676,7 @@ let save_library_to dir f =
     close_out ch;
     let lp = List.map CUnix.string_of_physical_path (get_load_paths ()) in
     let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
-    match Nativelibrary.compile_library dir ast mp lp fn with
+    match Nativelibrary.compile_library dir ast (* mp *) lp fn with
       | 0 -> ()
       | _ -> anomaly "Library compilation failure"
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e

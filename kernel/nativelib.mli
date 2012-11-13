@@ -23,16 +23,13 @@ val init_opens : global list
 
 val load_obj : (string -> unit) ref
 
-val topological_sort :
-  Util.Stringset.elt list ->
-  ('a * 'b * 'c list * Util.Stringset.elt list) Util.Stringmap.t ->
-  'c list * ('a * 'b) Util.Stringmap.t
+val get_ml_filename : unit -> string * string
 
 val call_compiler :
-  module_path -> global list -> int * string * string
+  string -> global list -> int * string
 
 val call_linker :
-  env -> string -> string option -> code_location_updates option -> unit
+  env -> string -> code_location_updates option -> unit
 
 val rt1 : Nativevalues.t ref
 val rt2 : Nativevalues.t ref

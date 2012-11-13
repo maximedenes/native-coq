@@ -76,8 +76,7 @@ type env = {
   env_rel_native_vals : lazy_native_val list;
   env_nb_rel         : int;
   env_stratification : stratification;
-  env_retroknowledge : retroknowledge;
-  current_mp : module_path
+  env_retroknowledge : retroknowledge
 }
 
 type named_context_val = named_context * named_vals * named_native_vals
@@ -110,8 +109,7 @@ let empty_env = {
   env_stratification = {
     env_universes = initial_universes;
     env_engagement = None };
-  env_retroknowledge = empty_retroknowledge;
-  current_mp = initial_path
+  env_retroknowledge = empty_retroknowledge
 }
 
 

@@ -12,98 +12,6 @@ open Nativecode
 open Inductiveops
 open Closure
 open Nativevalues
-(*
-exception Find_at of int
-
-(* Required to make camlp5 happy. *)
-let loc = Ploc.dummy
-
-let compile env c =  
-  assert false
-(*  let mp = fst (Lib.current_prefix ()) in
-  let code,annots = translate mp env "t1" c in
-  let code =
-    code @ [<:str_item< value _ = rnorm.val := lazy_norm (lazy $lid:"t1"$) >>]
-  in
-  let res,filename,mod_name = call_compiler code in
-    res, filename, mod_name*)
-
-let nf_betadeltaiotazeta env t =
-  norm_val (create_clos_infos betadeltaiota env) (inject t)
-
-let decompose_prod env t =
-  let (name,dom,codom) = destProd (whd_betadeltaiota env t) in
-  let dom = nf_betadeltaiotazeta env dom in
-  if name = Anonymous then (Name (id_of_string "x"),dom,codom)
-  else (name,dom,codom)
-
-let app_type env c =
-  let t = whd_betadeltaiota env c in
-  try destApp t with _ -> (t,[||])
-
-let find_rectype_a env c =
-  let (t, l) = app_type env c in
-  match kind_of_term t with
-  | Term.Ind ind -> (ind, l)
-  | _ -> raise Not_found
-
-let type_constructor mind mib typ params =
-  let s = ind_subst mind mib in
-  let ctyp = substl s typ in
-  let nparams = Array.length params in
-  if nparams = 0 then ctyp
-  else
-    let _,ctyp = decompose_prod_n nparams ctyp in
-    substl (List.rev (Array.to_list params)) ctyp
-
-let invert_tag cst tag reloc_tbl =
-  try
-    for j = 0 to Array.length reloc_tbl - 1 do
-      let tagj,arity = reloc_tbl.(j) in
-      if tag = tagj && (cst && arity = 0 || not(cst || arity = 0)) then
-	raise (Find_at j)
-      else ()
-    done;raise Not_found
-  with Find_at j -> (j+1)
-
-let construct_of_constr_notnative const env tag (mind,_ as ind) allargs =
-    let mib,mip = lookup_mind_specif env ind in
-    let nparams = mib.mind_nparams in
-    let i = invert_tag const tag mip.mind_reloc_tbl in
-    let params = Array.sub allargs 0 nparams in
-    let ctyp = type_constructor mind mib (mip.mind_nf_lc.(i-1)) params in
-      (Term.mkApp(mkConstruct(ind,i), params), ctyp)
-
-let construct_of_constr const env tag typ =
-  let t, l = app_type env typ in
-  match kind_of_term t with
-  | Term.Ind ind -> 
-      construct_of_constr_notnative const env tag ind l
-  | _ ->
-      assert (t = Typeops.type_of_int env);
-      (mkInt (Native.Uint31.of_int tag), t)
-
-
-let build_branch_type env (mind,_ as _ind) mib mip params p i =
-  let rtbl = mip.mind_reloc_tbl in
-  let cty = mip.mind_nf_lc.(i) in
-  (* [build_one_branch i cty] construit le type de la ieme branche (commence
-     a 0) et les lambda correspondant aux realargs *)
-  let typi = type_constructor mind mib cty params in
-  let decl,indapp = Term.decompose_prod typi in
-  let ind,cargs = find_rectype_a env indapp in
-  let nparams = Array.length params in
-  let carity = snd (rtbl.(i)) in
-  let crealargs = Array.sub cargs nparams (Array.length cargs - nparams) in
-  let codom =
-  let papp = mkApp(lift (List.length decl) p,crealargs) in
-  let cstr = ith_constructor_of_inductive ind (i+1) in
-  let relargs = Array.init carity (fun i -> mkRel (carity-i)) in
-  let dep_cstr = mkApp(mkApp(mkConstruct cstr,params),relargs) in
-    mkApp(papp,[|dep_cstr|])
-  in
-  decl, codom
-*)
 
 let decompose_prod env t =
   let (name,dom,codom as res) = destProd (whd_betadeltaiota env t) in
@@ -413,17 +321,17 @@ and  nf_predicate env ind mip params v pT =
 
 let native_norm env c ty =  
   let penv = Environ.pre_env env in 
-  let mp = penv.Pre_env.current_mp in
   (*
   Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
   Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
   *)
-  let code, upd = mk_norm_code penv c in
-  match Nativelib.call_compiler mp code with
-    | 0,fn,modname ->
+  let ml_filename, prefix = Nativelib.get_ml_filename () in
+  let code, upd = mk_norm_code penv prefix c in
+  match Nativelib.call_compiler ml_filename code with
+    | 0,fn ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
-	Nativelib.call_linker (pre_env env) fn (Some modname) (Some upd);
+	Nativelib.call_linker (pre_env env) fn (Some upd);
 	let t1 = Sys.time () in
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty
