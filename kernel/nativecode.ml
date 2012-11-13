@@ -1635,17 +1635,17 @@ let compile_mind_field prefix mp l values mb =
 type code_location_update =
     Declarations.native_name ref * Declarations.native_name
 type code_location_updates =
-  code_location_update Mindmap.t * code_location_update Cmap.t
+  code_location_update Mindmap_env.t * code_location_update Cmap_env.t
 
 type linkable_code = global list * code_location_updates
 
 let compile_mind_deps env prefix
     (comp_stack, (mind_updates, const_updates) as init) mind =
   let mib = lookup_mind mind env in
-  if !(mib.mind_native_name) = NotLinked && not (Mindmap.mem mind mind_updates)
+  if !(mib.mind_native_name) = NotLinked && not (Mindmap_env.mem mind mind_updates)
   then
     let comp_stack, upd = compile_mind prefix mib mind comp_stack in
-    let mind_updates = Mindmap.add mind upd mind_updates in
+    let mind_updates = Mindmap_env.add mind upd mind_updates in
     (comp_stack, (mind_updates, const_updates))
   else init
 
@@ -1658,14 +1658,14 @@ let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as in
       let c = get_allias env c in
       let cb = lookup_constant c env in
       if !(cb.const_native_name) = NotLinked && not cb.const_inline_code
-        && not (Cmap.mem c const_updates) then
+        && not (Cmap_env.mem c const_updates) then
       let comp_stack, (mind_updates, const_updates) = match cb.const_body with
         | Def t -> compile_deps env prefix init (Declarations.force t)
         | _ -> init
       in
       let code, name = compile_constant env prefix c cb.const_body in
       let comp_stack = code@comp_stack in
-      let const_updates = Cmap.add c (cb.const_native_name, name) const_updates in
+      let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
       comp_stack, (mind_updates, const_updates)
       else init
   | Construct ((mind,_),_) -> compile_mind_deps env prefix init mind
@@ -1688,7 +1688,7 @@ let mk_conv_code env prefix t1 t2 =
   let (gl,code1) = compile_with_fv env [] None code1 in
   let (gl,code2) = compile_with_fv env gl None code2 in
   let gl, (mind_updates, const_updates) =
-    compile_deps env prefix (gl, (Mindmap.empty, Cmap.empty)) t1
+    compile_deps env prefix (gl, (Mindmap_env.empty, Cmap_env.empty)) t1
   in
   let gl, (mind_updates, const_updates) =
     compile_deps env prefix (gl, (mind_updates, const_updates)) t2
@@ -1709,7 +1709,7 @@ let mk_norm_code env prefix t =
   let code = lambda_of_constr env t in
   let (gl,code) = compile_with_fv env [] None code in
   let gl, (mind_updates, const_updates) =
-    compile_deps env prefix (gl, (Mindmap.empty, Cmap.empty)) t
+    compile_deps env prefix (gl, (Mindmap_env.empty, Cmap_env.empty)) t
   in
   let g1 = MLglobal (Ginternal "t1") in
   let header = Glet(Ginternal "symbols_tbl",
@@ -1730,5 +1730,5 @@ let mk_library_header dir opens =
 let update_location (r,v) = r := v
 
 let update_locations (ind_updates,const_updates) =
-  Mindmap.iter (fun _ -> update_location) ind_updates;
-  Cmap.iter (fun _ -> update_location) const_updates
+  Mindmap_env.iter (fun _ -> update_location) ind_updates;
+  Cmap_env.iter (fun _ -> update_location) const_updates
