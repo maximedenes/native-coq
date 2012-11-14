@@ -16,7 +16,6 @@ open Pre_env
 val include_dirs : string
 
 val load_paths : string list ref
-val imports : string list ref
 
 val compiler_name : string
 val init_opens : global list
@@ -33,6 +32,3 @@ val call_linker :
 
 val rt1 : Nativevalues.t ref
 val rt2 : Nativevalues.t ref
-
-val extern_state : string -> unit
-val intern_state : string -> unit
