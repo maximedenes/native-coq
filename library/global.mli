@@ -92,7 +92,7 @@ val exists_objlabel  : label -> bool
 (** Compiled modules *)
 val start_library : dir_path -> module_path
 val export : dir_path ->
-      module_path * compiled_library * native_library * dir_path list
+      module_path * compiled_library * native_library
 val import : compiled_library -> Digest.t -> module_path * Nativecode.symbol array
 
 (** {6 ... } *)

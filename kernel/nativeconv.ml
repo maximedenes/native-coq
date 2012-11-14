@@ -139,6 +139,13 @@ and conv_fix lvl t1 f1 t2 f2 cu =
   aux 0 cu
 
 let nconv pb env t1 t2 =
+  if !Flags.no_native_compiler then begin
+    let msg = "Native compiler is disabled, "^
+    "falling back to VM conversion test." in
+    Pp.msg_warning (Pp.str msg);
+    vm_conv pb env t1 t2
+  end
+  else
   let env = Environ.pre_env env in 
   let ml_filename, prefix = get_ml_filename () in
   let code, upds = mk_conv_code env prefix t1 t2 in
@@ -154,5 +161,5 @@ let nconv pb env t1 t2 =
         conv_val pb 0 !rt1 !rt2 empty_constraint
       end
   | _ -> anomaly "Compilation failure" 
-  
-let _ = Reduction.set_nat_conv nconv
+
+let _ = set_nat_conv nconv

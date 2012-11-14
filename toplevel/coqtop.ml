@@ -296,6 +296,8 @@ let parse_args arglist =
 
     | "-filteropts" :: rem -> filter_opts := true; parse rem
 
+    | "-no-native-compiler" :: rem -> no_native_compiler := true; parse rem
+
     | s :: rem ->
       if !filter_opts then
        s :: (parse rem)

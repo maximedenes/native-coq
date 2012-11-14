@@ -121,7 +121,7 @@ val start_library : library_name -> unit
 
 val end_library :
   library_name ->
-    Safe_typing.compiled_library * library_objects * native_library * dir_path list
+    Safe_typing.compiled_library * library_objects * native_library
 
 (** set a function to be executed at end_library *)
 val set_end_library_hook : (unit -> unit) -> unit

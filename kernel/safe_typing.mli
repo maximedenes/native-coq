@@ -102,13 +102,13 @@ val delta_of_senv : safe_environment -> delta_resolver*delta_resolver
 (** exporting and importing modules *)
 type compiled_library
 
-type native_library = Nativelibrary.mod_field list * module_path
+type native_library = Nativelibrary.mod_field list
 
 val start_library : dir_path -> safe_environment
       -> module_path * safe_environment
 
 val export : safe_environment -> dir_path
-      -> module_path * compiled_library * native_library * dir_path list
+      -> module_path * compiled_library * native_library
 
 val import : compiled_library -> Digest.t -> safe_environment
       -> module_path * safe_environment * Nativecode.symbol array

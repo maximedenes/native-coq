@@ -107,3 +107,6 @@ val camlp4bin : string ref
 val set_inline_level : int -> unit
 val get_inline_level : unit -> int
 val default_inline_level : int
+
+(* Disabling native code compilation for conversion and normalization *)
+val no_native_compiler : bool ref

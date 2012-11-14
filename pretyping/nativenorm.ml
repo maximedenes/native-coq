@@ -320,6 +320,9 @@ and  nf_predicate env ind mip params v pT =
 
 
 let native_norm env c ty =  
+  if !Flags.no_native_compiler then
+    error "Native_compute reduction has been disabled"
+  else
   let penv = Environ.pre_env env in 
   (*
   Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);

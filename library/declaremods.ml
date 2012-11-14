@@ -679,9 +679,9 @@ let set_end_library_hook f = end_library_hook := f
 let end_library dir =
   !end_library_hook();
   let prefix, lib_stack = Lib.end_compilation dir in
-  let mp,cenv,ast,imports = Global.export dir in
+  let mp,cenv,ast = Global.export dir in
   let substitute, keep, _ = Lib.classify_segment lib_stack in
-    cenv,(mp,substitute,keep),ast, imports
+    cenv,(mp,substitute,keep),ast
 
 
 (* implementation of Export M and Import M *)
