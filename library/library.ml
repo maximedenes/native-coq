@@ -171,13 +171,17 @@ let unfreeze (mt,mo,mi,me) =
   libraries_table := mt;
   libraries_loaded_list := mo;
   libraries_imports_list := mi;
-  libraries_exports_list := me
+  libraries_exports_list := me;
+  let f m = Nativecode.mod_uid_of_dirpath m.library_name in
+  Nativelib.imports := List.map f !libraries_loaded_list
+
 
 let init () =
   libraries_table := LibraryMap.empty;
   libraries_loaded_list := [];
   libraries_imports_list := [];
-  libraries_exports_list := []
+  libraries_exports_list := [];
+  Nativelib.imports := []
 
 let _ =
   Summary.declare_summary "MODULES"
@@ -239,6 +243,8 @@ let register_loaded_library m =
     | m'::_ as l when m'.library_name = m.library_name -> l
     | m'::l' -> m' :: aux l' in
   libraries_loaded_list := aux !libraries_loaded_list;
+  let f m = Nativecode.mod_uid_of_dirpath m.library_name in
+  Nativelib.imports := List.map f !libraries_loaded_list;
   libraries_table := LibraryMap.add m.library_name m !libraries_table
 
   (* ... while if a library is imported/exported several time, then

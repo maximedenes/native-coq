@@ -324,16 +324,19 @@ let native_norm env c ty =
     error "Native_compute reduction has been disabled"
   else
   let penv = Environ.pre_env env in 
+  (*
+  Format.eprintf "Numbers of free variables (named): %i\n" (List.length vl1);
+  Format.eprintf "Numbers of free variables (rel): %i\n" (List.length vl2);
+  *)
   let ml_filename, prefix = Nativelib.get_ml_filename () in
   let code, upd = mk_norm_code penv prefix c in
   match Nativelib.call_compiler ml_filename code with
     | 0,fn ->
-        Flags.if_verbose Pp.msgnl (Pp.str "Running norm ...");
-        let t0 = Sys.time () in
-        Nativelib.call_linker (pre_env env) fn (Some upd);
-        let t1 = Sys.time () in
-        let msg = Format.sprintf "Evaluation done in %.5f@." (t1 -. t0) in
-        Flags.if_verbose Pp.msgnl (Pp.str msg);
-        nf_val env !Nativelib.rt1 ty
+        print_endline "Running norm ...";
+	let t0 = Sys.time () in
+	Nativelib.call_linker (pre_env env) fn (Some upd);
+	let t1 = Sys.time () in
+	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
+	nf_val env !Nativelib.rt1 ty
     | _ -> anomaly "Compilation failure" 
   

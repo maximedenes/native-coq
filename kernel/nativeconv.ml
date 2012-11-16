@@ -152,7 +152,7 @@ let nconv pb env t1 t2 =
   match call_compiler ml_filename code with
   | (0,fn) ->
       begin
-        Flags.if_verbose Pp.msgnl (Pp.str "Running test...");
+        print_endline "Running test...";
         let t0 = Sys.time () in
         call_linker env fn (Some upds);
         let t1 = Sys.time () in

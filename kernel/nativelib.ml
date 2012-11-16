@@ -52,7 +52,7 @@ let call_compiler ml_filename code =
   let fmt = Format.formatter_of_out_channel ch_out in
   pp_globals fmt code;
   close_out ch_out;
-  Flags.if_verbose Pp.msgnl (Pp.str "Calling OCaml Compiler...");
+  print_endline "Compilation...";
   let include_dirs =
     include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
   in
@@ -72,3 +72,24 @@ let call_linker env f upds =
   (if Dynlink.is_native then Dynlink.loadfile f
   else !load_obj f);
   match upds with Some upds -> update_locations upds | _ -> ()
+
+let extern_state s =
+  let f = Dynlink.adapt_filename (s^".cma") in
+  let include_dirs = "-I " ^ (String.concat " -I " !load_paths) ^ " " in
+  let aux =
+    if Dynlink.is_native then (fun s -> s^".cmx") else (fun s -> s^".cmo")
+  in
+  let imports = List.map aux !imports in
+  let imports = String.concat " " imports in
+  let comp_cmd =
+    Format.sprintf "%s -%s -o %s -rectypes %s %s"
+      compiler_name (if Dynlink.is_native then "shared" else "a") f
+      include_dirs imports
+  in
+  let _ = Sys.command comp_cmd in ()
+
+let intern_state s =
+  (** WARNING TODO: if a state with the same file name has already been loaded   **)
+  (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
+(*  let temp = Filename.temp_file s ".cmxs" in*)
+  call_linker empty_env (Dynlink.adapt_filename (s^".cma")) None
