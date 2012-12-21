@@ -26,7 +26,6 @@ val pp_mllam : Format.formatter -> mllambda -> unit
 
 val pp_global : Format.formatter -> global -> unit
 val pp_global_aux : Format.formatter -> global -> global list -> unit
-val pp_globals : Format.formatter -> global list -> unit
 
 val mk_open : string -> global
 val mk_internal_let : string -> mllambda -> global
@@ -56,6 +55,10 @@ val compile_constant : env -> module_path -> label ->
   constr_substituted constant_def -> global list * native_name
   *)
 
+val locate_native_file : (dir_path -> string option) ref
+
+val register_native_file : string -> unit
+
 val compile_constant_field : env -> string -> constant ->
   symbol list -> constant_body ->
     global list * symbol list * code_location_update
@@ -68,7 +71,7 @@ val optimize_stk : global list -> global list
 val mk_conv_code : env -> string -> constr -> constr -> linkable_code
 val mk_norm_code : env -> string -> constr -> linkable_code
 
-val mk_library_header : dir_path -> global list -> global list
+val mk_library_header : dir_path -> global list
 
 val mod_uid_of_dirpath : dir_path -> string
 

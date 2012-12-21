@@ -279,16 +279,11 @@ let strengthen_const mp_from l cb resolver =
     | _ ->
       let kn = make_kn mp_from empty_dirpath l in
       let con = constant_of_delta_kn resolver kn in
-      let cb = { cb with
+      { cb with
 	const_body = Def (Declarations.from_val (mkConst con));
 	const_body_code = Cemitcodes.from_val (Cbytegen.compile_alias con);
     const_native_name = ref NotLinked
       }
-      in
-      (* let tr, auxdefs = compile_constant (pre_env env) mp_from l cb in
-      Nativelib.push_comp_stack (tr::auxdefs); *)
-      cb
-
 
 let rec strengthen_mod mp_from mp_to mb =
   if mp_in_delta mb.mod_mp mb.mod_delta then

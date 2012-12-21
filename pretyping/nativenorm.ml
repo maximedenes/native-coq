@@ -147,7 +147,7 @@ let rec nf_val env v typ =
       let lvl = nb_rel env in
       let name,dom,codom = 
 	try decompose_prod env typ
-	with _ ->
+	with _ -> (* TODO: is this the right exception to raise? *)
 	  raise (Type_errors.TypeError(env,Type_errors.ReferenceVariables typ))
       in
       let env = push_rel (name,None,dom) env in
@@ -330,11 +330,11 @@ let native_norm env c ty =
   *)
   let ml_filename, prefix = Nativelib.get_ml_filename () in
   let code, upd = mk_norm_code penv prefix c in
-  match Nativelib.call_compiler ml_filename code with
+  match Nativelib.compile ml_filename code with
     | 0,fn ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
-	Nativelib.call_linker (pre_env env) fn (Some upd);
+	Nativelib.call_linker prefix fn (Some upd);
 	let t1 = Sys.time () in
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty

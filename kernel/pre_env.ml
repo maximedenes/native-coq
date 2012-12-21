@@ -183,4 +183,3 @@ let lookup_constant kn env =
 (* Mutual Inductives *)
 let lookup_mind kn env =
   Mindmap_env.find kn env.env_globals.env_inductives
-

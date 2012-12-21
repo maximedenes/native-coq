@@ -1221,6 +1221,11 @@ let rec head_of_mp x = match x with
 
 let list_of_mp mp = list_of_mp [] mp
 
+let rec base_dirpath = function
+  | MPdot (mp,_) -> base_dirpath mp
+  | MPfile dp -> dp
+  | MPbound mbid -> assert false
+
 let string_of_kn kn =
   let (mp,dp,l) = repr_kn kn in
   let mp = list_of_mp mp in
@@ -1568,12 +1573,6 @@ let pp_global_aux fmt g auxdefs =
 	  pp_gname gn pp_auxdefs auxdefs pp_mllam c
     | _ -> assert false
 
-(*let pp_global_aux env fmt g auxdefs = 
-  List.iter (pp_global env fmt) auxdefs;
-  pp_global env fmt g *)
-
-let pp_globals fmt l = List.iter (pp_global fmt) l
-
 (* Compilation of elements in environment *)
 let compile_constant env prefix con body =
   match body with
@@ -1594,6 +1593,33 @@ let compile_constant env prefix con body =
       let i = push_symbol (SymbConst con) in
       [Glet(Gconstant ("",con), MLapp (MLprimitive Mk_const, [|get_const_code i|]))],
       Linked prefix
+
+let loaded_native_files = ref ([] : string list)
+
+let locate_native_file = ref (fun _ -> assert false : dir_path -> string option)
+
+let register_native_file s =
+  print_endline ("register_native_file " ^ s);
+  if not (List.mem s !loaded_native_files) then
+    loaded_native_files := s :: !loaded_native_files
+
+let is_code_loaded name =
+  match name with
+  | NotLinked -> false
+  | LinkedLazy s | Linked s -> List.mem s !loaded_native_files
+
+let load_native_code name f =
+  let s = match name with
+  | NotLinked -> anomaly "load_native_code: code not found"
+  | LinkedLazy s | Linked s -> s
+  in
+  if not (List.mem s !loaded_native_files) then
+  print_endline ("Dynlinking: "^f^" ("^s^")");
+  try
+    (if Dynlink.is_native then Dynlink.loadfile f else () (* TODO *));
+    loaded_native_files := s :: !loaded_native_files
+  with Dynlink.Error e ->
+    anomaly ("Dynlink failed: "^ Dynlink.error_message e)
 
 let compile_constant_field env prefix con values cb =
   reset_symbols_list values;
@@ -1642,12 +1668,16 @@ type linkable_code = global list * code_location_updates
 let compile_mind_deps env prefix
     (comp_stack, (mind_updates, const_updates) as init) mind =
   let mib = lookup_mind mind env in
-  if !(mib.mind_native_name) = NotLinked && not (Mindmap_env.mem mind mind_updates)
-  then
-    let comp_stack, upd = compile_mind prefix mib mind comp_stack in
-    let mind_updates = Mindmap_env.add mind upd mind_updates in
-    (comp_stack, (mind_updates, const_updates))
-  else init
+  if is_code_loaded !(mib.mind_native_name)
+    || Mindmap_env.mem mind mind_updates
+  then init
+  else
+    match !locate_native_file (base_dirpath (mind_modpath mind)) with
+    | Some f -> load_native_code !(mib.mind_native_name) f; init
+    | None ->
+      let comp_stack, upd = compile_mind prefix mib mind comp_stack in
+      let mind_updates = Mindmap_env.add mind upd mind_updates in
+      (comp_stack, (mind_updates, const_updates))
 
 let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as init) t =
   match kind_of_term t with
@@ -1657,17 +1687,26 @@ let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as in
   | Const c ->
       let c = get_allias env c in
       let cb = lookup_constant c env in
-      if !(cb.const_native_name) = NotLinked && not cb.const_inline_code
-        && not (Cmap_env.mem c const_updates) then
+      if is_code_loaded !(cb.const_native_name)
+        || cb.const_inline_code
+        || (Cmap_env.mem c const_updates)
+      then init
+      else
       let comp_stack, (mind_updates, const_updates) = match cb.const_body with
         | Def t -> compile_deps env prefix init (Declarations.force t)
         | _ -> init
       in
-      let code, name = compile_constant env prefix c cb.const_body in
-      let comp_stack = code@comp_stack in
-      let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
-      comp_stack, (mind_updates, const_updates)
-      else init
+      begin
+      match !locate_native_file (base_dirpath (con_modpath c)) with
+      | Some f ->
+          load_native_code !(cb.const_native_name) f;
+          comp_stack, (mind_updates, const_updates)
+      | None ->
+          let code, name = compile_constant env prefix c cb.const_body in
+          let comp_stack = code@comp_stack in
+          let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
+          comp_stack, (mind_updates, const_updates)
+      end
   | Construct ((mind,_),_) -> compile_mind_deps env prefix init mind
   | _ -> fold_constr (compile_deps env prefix) init t
 
@@ -1719,13 +1758,11 @@ let mk_norm_code env prefix t =
   [mk_internal_let "t1" code;
   Glet(Ginternal "_", MLsetref("rt1",g1))]), (mind_updates, const_updates)
 
-let mk_library_header dir opens =
+let mk_library_header dir =
   let libname = Format.sprintf "(str_decode \"%s\")" (str_encode dir) in
-  let header = [Glet(Ginternal "symbols_tbl",
+  [Glet(Ginternal "symbols_tbl",
     MLapp (MLglobal (Ginternal "get_library_symbols_tbl"),
     [|MLglobal (Ginternal libname)|]))]
-  in
-  opens @ header
 
 let update_location (r,v) = r := v
 

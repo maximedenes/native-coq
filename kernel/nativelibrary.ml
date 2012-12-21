@@ -93,22 +93,8 @@ let pp_toplevel_field fmt t =
     pp_global fmt g 
   | _ -> pp_mod_field fmt t
 
-let compile_library dir code load_paths f =
-  let header = mk_library_header dir init_opens in
-  let ch_out = open_out (f^".ml") in
-  let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals fmt header;
-  List.iter (pp_toplevel_field fmt) code;
-  Format.fprintf fmt "@.";
-  let load_paths = "-I " ^ (String.concat " -I " load_paths) ^ " " in
-  close_out ch_out;
-  let comp_cmd =
-    Format.sprintf "%s%s -%s -o %s -rectypes -w -A %s %s %s.ml"
-      (if Flags.is_verbose () then "time " else "")
-      Nativelib.compiler_name (if Dynlink.is_native then "shared" else "c")
-      (Dynlink.adapt_filename (f^".cmo")) include_dirs load_paths f
-  in
-  Flags.if_verbose print_endline "Compiling module...";
-  let res = Sys.command comp_cmd in
-  Sys.rename (f^".ml") (f^".native");
-  Flags.if_verbose print_endline "Compiled"; res
+let compile_library dir code load_path f =
+  let header = mk_library_header dir in
+  let ml_filename = f^".ml" in
+  write_ml_code pp_toplevel_field ml_filename ~header code;
+  fst (call_compiler ml_filename load_path)

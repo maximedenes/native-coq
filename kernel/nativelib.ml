@@ -12,15 +12,15 @@ open Nativevalues
 open Declarations
 open Nativecode
 open Pre_env
+open Errors
 
 (* This file provides facilities to access the native code compiler *)
 
-let load_paths = ref ([] : string list)
-let imports = ref ([] : string list)
+let get_load_paths =
+  ref (fun _ -> anomaly "get_load_paths not initialized" : unit -> string list)
 
-let init_opens = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";
+let open_header = List.map mk_open ["Nativevalues";"Nativecode";"Nativelib";
 				   "Nativeconv";"Declaremods"]
-let open_header = ref (init_opens : global list)
 
 (* Global settings and utilies for interface with OCaml *)
 let compiler_name =
@@ -44,52 +44,40 @@ let get_ml_filename () =
   let prefix = Filename.chop_extension (Filename.basename filename) ^ "." in
   filename, prefix
 
-let call_compiler ml_filename code =
-  let code =
-    !open_header@code
-  in
+let write_ml_code pp ml_filename ?(header=[]) code =
+  let header = open_header@header in
   let ch_out = open_out ml_filename in
   let fmt = Format.formatter_of_out_channel ch_out in
-  pp_globals fmt code;
-  close_out ch_out;
-  print_endline "Compilation...";
+  List.iter (pp_global fmt) header;
+  List.iter (pp fmt) code;
+  close_out ch_out
+
+let call_compiler ml_filename load_path =
   let include_dirs =
-    include_dirs^"-I " ^ (String.concat " -I " !load_paths) ^ " "
+    if load_path <> [] then
+      include_dirs^"-I " ^ (String.concat " -I " load_path) ^ " "
+    else include_dirs
   in
-  let link_filename = Filename.temp_file "coq_native" ".cmo" in
+  let link_filename = Filename.chop_extension ml_filename ^ ".cmo" in
   let link_filename = Dynlink.adapt_filename link_filename in
   let comp_cmd =
     Format.sprintf "%s -%s -o %s -rectypes -w -A %s %s"
       compiler_name (if Dynlink.is_native then "shared" else "c")
       link_filename include_dirs ml_filename
   in
+  print_endline comp_cmd;
   let res = Sys.command comp_cmd in
   res, link_filename
 
-let call_linker env f upds =
+let compile ml_filename code =
+  write_ml_code pp_global ml_filename code;
+  call_compiler ml_filename (!get_load_paths())
+
+let call_linker prefix f upds =
   rt1 := dummy_value ();
   rt2 := dummy_value ();
-  (if Dynlink.is_native then Dynlink.loadfile f
-  else !load_obj f);
+  (try
+    if Dynlink.is_native then Dynlink.loadfile f else !load_obj f;
+    register_native_file prefix
+  with Dynlink.Error e -> anomaly ("Dynlink error, " ^ Dynlink.error_message e));
   match upds with Some upds -> update_locations upds | _ -> ()
-
-let extern_state s =
-  let f = Dynlink.adapt_filename (s^".cma") in
-  let include_dirs = "-I " ^ (String.concat " -I " !load_paths) ^ " " in
-  let aux =
-    if Dynlink.is_native then (fun s -> s^".cmx") else (fun s -> s^".cmo")
-  in
-  let imports = List.map aux !imports in
-  let imports = String.concat " " imports in
-  let comp_cmd =
-    Format.sprintf "%s -%s -o %s -rectypes %s %s"
-      compiler_name (if Dynlink.is_native then "shared" else "a") f
-      include_dirs imports
-  in
-  let _ = Sys.command comp_cmd in ()
-
-let intern_state s =
-  (** WARNING TODO: if a state with the same file name has already been loaded   **)
-  (** Dynlink will ignore it, possibly desynchronizing values in the environment **)
-(*  let temp = Filename.temp_file s ".cmxs" in*)
-  call_linker empty_env (Dynlink.adapt_filename (s^".cma")) None
