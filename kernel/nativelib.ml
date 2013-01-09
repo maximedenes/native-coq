@@ -44,12 +44,11 @@ let get_ml_filename () =
   let prefix = Filename.chop_extension (Filename.basename filename) ^ "." in
   filename, prefix
 
-let write_ml_code pp ml_filename ?(header=[]) code =
+let write_ml_code ml_filename ?(header=[]) code =
   let header = open_header@header in
   let ch_out = open_out ml_filename in
   let fmt = Format.formatter_of_out_channel ch_out in
-  List.iter (pp_global fmt) header;
-  List.iter (pp fmt) code;
+  List.iter (pp_global fmt) (header@code);
   close_out ch_out
 
 let call_compiler ml_filename load_path =
@@ -65,12 +64,11 @@ let call_compiler ml_filename load_path =
       compiler_name (if Dynlink.is_native then "shared" else "c")
       link_filename include_dirs ml_filename
   in
-  print_endline comp_cmd;
   let res = Sys.command comp_cmd in
   res, link_filename
 
 let compile ml_filename code =
-  write_ml_code pp_global ml_filename code;
+  write_ml_code ml_filename code;
   call_compiler ml_filename (!get_load_paths())
 
 let call_linker prefix f upds =

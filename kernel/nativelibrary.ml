@@ -14,50 +14,28 @@ open Modops
 open Nativecode
 open Nativelib
 
-type mod_sig_field =
-  | MSFglobal of gname
-  | MSFtype of global
-  | MSFmodule of module_path * label * mod_sig_expr
-
-and mod_sig_expr =
-  | MSEsig of mod_sig_field list
-  | MSEfunctor of string * mod_sig_expr * mod_sig_expr
-
-type mod_field =
-  | MFglobal of global * global list 
-  | MFmodule of module_path * label * mod_expr
-  | MFmodtype of module_path * label * mod_sig_expr
-
-and mod_expr =
-  | MEident of string
-  | MEapply of mod_expr * mod_expr
-  | MEstruct of mod_field list
-  | MEfunctor of string * mod_sig_expr * mod_expr
+type mod_field = global * global list
 
 let rec translate_mod prefix mp env mod_expr acc =
   match mod_expr with
   | SEBident mp' -> assert false
   | SEBstruct msb ->
       let env' = add_signature mp msb empty_delta_resolver env in
-      List.fold_right (translate_fields prefix mp env') msb acc
+      List.fold_left (translate_field prefix mp env') acc msb
   | SEBfunctor (mbid,mtb,meb) -> acc
   | SEBapply (f,x,_) -> assert false
   | SEBwith _ -> assert false
-and translate_fields prefix mp env (l,x) (trs,values,upds as acc) =
+and translate_field prefix mp env (code, values, upds as acc) (l,x) =
   match x with
   | SFBconst cb ->
       let con = make_con mp empty_dirpath l in
-      let gl, values, upd =
-        compile_constant_field (pre_env env) prefix con values cb
-      in
-      let gl = optimize_stk gl in
-      let tr, auxdefs = List.hd gl, List.rev (List.tl gl) in (* TODO: can we
-      avoid this? *)
-      MFglobal(tr,auxdefs)::trs, values, upd::upds
+      compile_constant_field (pre_env env) prefix con acc cb
   | SFBmind mb ->
-      let tr, values, upd = compile_mind_field prefix mp l values mb in
-      List.fold_left (fun acc g -> MFglobal(g,[])::acc) trs tr, values,
+      compile_mind_field prefix mp l acc mb
+      (*
+      List.fold_left (fun acc g -> (g,[])::acc) code tr, values,
       upd::upds
+      *)
   | SFBmodule md ->
       translate_mod prefix md.mod_mp env md.mod_type acc
   | SFBmodtype mdtyp ->
@@ -71,30 +49,25 @@ let dump_library mp dp env mod_expr =
       let prefix = mod_uid_of_dirpath dp ^ "." in
       let t0 = Sys.time () in 
       let mlcode, values, upds =
-        List.fold_right (translate_fields prefix mp env) msb ([],[],[])
+        List.fold_left (translate_field prefix mp env) ([],[],empty_updates)
+          msb
       in
       let t1 = Sys.time () in
 (*      let mlopt = optimize_stk mlcode in
       let t2 = Sys.time () in*)
       Flags.if_verbose (Format.eprintf "Compiled library. ml %.5f@.") (t1-.t0);
-      mlcode, Array.of_list (List.rev values), upds
+      List.rev mlcode, Array.of_list (List.rev values), upds
   | _ -> assert false
 
 
-let pp_mod_field fmt t =
-  match t with
-  | MFglobal (g,auxdefs) -> pp_global_aux fmt g auxdefs
-  | _ -> assert false
+let pp_mod_field fmt (g,auxdefs) = pp_global_aux fmt g auxdefs
 
-let pp_toplevel_field fmt t =
-  match t with
-  | MFglobal (g,auxdefs) ->
-    List.iter (pp_global fmt) auxdefs;
-    pp_global fmt g 
-  | _ -> pp_mod_field fmt t
+let pp_toplevel_field fmt (g,auxdefs) =
+  List.iter (pp_global fmt) auxdefs;
+  pp_global fmt g 
 
 let compile_library dir code load_path f =
   let header = mk_library_header dir in
   let ml_filename = f^".ml" in
-  write_ml_code pp_toplevel_field ml_filename ~header code;
+  write_ml_code ml_filename ~header code;
   fst (call_compiler ml_filename load_path)

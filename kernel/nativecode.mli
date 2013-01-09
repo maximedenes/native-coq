@@ -50,22 +50,19 @@ type code_location_update
 type code_location_updates
 type linkable_code = global list * code_location_updates
 
-(*
-val compile_constant : env -> module_path -> label ->
-  constr_substituted constant_def -> global list * native_name
-  *)
-
-val locate_native_file : (dir_path -> string option) ref
+val empty_updates : code_location_updates
 
 val register_native_file : string -> unit
 
 val compile_constant_field : env -> string -> constant ->
-  symbol list -> constant_body ->
-    global list * symbol list * code_location_update
+  global list * symbol list * code_location_updates ->
+  constant_body ->
+    global list * symbol list * code_location_updates
 
 val compile_mind_field : string -> module_path -> label ->
-  symbol list -> mutual_inductive_body ->
-  global list * symbol list * code_location_update
+  global list * symbol list * code_location_updates ->
+  mutual_inductive_body ->
+    global list * symbol list * code_location_updates
 
 val optimize_stk : global list -> global list
 val mk_conv_code : env -> string -> constr -> constr -> linkable_code
@@ -75,7 +72,4 @@ val mk_library_header : dir_path -> global list
 
 val mod_uid_of_dirpath : dir_path -> string
 
-val compile_deps : Pre_env.env -> string -> linkable_code -> Term.constr -> linkable_code
-
-val update_location : code_location_update -> unit
 val update_locations : code_location_updates -> unit

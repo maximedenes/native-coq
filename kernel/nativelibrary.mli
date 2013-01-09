@@ -10,11 +10,8 @@ open Declarations
 open Environ
 open Nativecode
 
-type mod_field
-type mod_expr
-
 val dump_library : module_path -> dir_path -> env -> struct_expr_body ->
-  mod_field list * symbol array * code_location_update list
+  global list * symbol array * code_location_updates
 
 val compile_library :
-  dir_path -> mod_field list -> string list -> string -> int
+  dir_path -> global list -> string list -> string -> int

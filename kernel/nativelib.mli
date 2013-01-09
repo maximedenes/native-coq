@@ -21,8 +21,8 @@ val load_obj : (string -> unit) ref
 
 val get_ml_filename : unit -> string * string
 
-val write_ml_code : (Format.formatter -> 'a -> unit) -> string ->
-  ?header:Nativecode.global list -> 'a list -> unit
+val write_ml_code : string ->
+  ?header:Nativecode.global list -> global list -> unit
 
 val call_compiler : string -> string list -> int * string
 

@@ -222,8 +222,15 @@ let opened_libraries () =
      be performed first, thus the libraries_loaded_list ... *)
 
 let register_loaded_library m =
+  let link m =
+    let dirname = Filename.dirname (library_full_filename m.library_name) in
+    let prefix = Nativecode.mod_uid_of_dirpath m.library_name ^ "." in
+    let f = prefix ^ "cmo" in
+    let f = Dynlink.adapt_filename f in
+    Nativelib.call_linker prefix (Filename.concat dirname f) None
+  in
   let rec aux = function
-    | [] -> [m]
+    | [] -> link m; [m]
     | m'::_ as l when m'.library_name = m.library_name -> l
     | m'::l' -> m' :: aux l' in
   libraries_loaded_list := aux !libraries_loaded_list;
@@ -680,14 +687,3 @@ let get_load_paths_str () =
   List.map CUnix.string_of_physical_path (get_load_paths ())
 
 let _ = Nativelib.get_load_paths := get_load_paths_str
-
-let locate_native_file dp =
-  try
-  let f = snd (locate_absolute_library dp) in
-  let dirname = Filename.dirname f in
-  let f = Nativecode.mod_uid_of_dirpath dp ^ ".cmo" in
-  let f = Filename.concat dirname (Dynlink.adapt_filename f) in
-  if Sys.file_exists f then Some f else None
-  with _ -> None
-
-let _ = Nativecode.locate_native_file := locate_native_file

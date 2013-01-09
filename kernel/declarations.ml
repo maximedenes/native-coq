@@ -88,6 +88,7 @@ type 'a constant_def =
 type native_name =
   | Linked of string
   | LinkedLazy of string
+  | LinkedInteractive of string
   | NotLinked
 
 type constant_body = {

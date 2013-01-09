@@ -15,7 +15,7 @@ open Nativelambda
 open Pre_env
 open Sign
 
-(*s Local names *)
+(** Local names {{{**)
 
 type lname = { lname : name; luid : int }
 
@@ -36,8 +36,9 @@ let reset_lname = lname_ctr := -1
 let fresh_lname n = 
   incr lname_ctr;
   { lname = n; luid = !lname_ctr }
+  (**}}}**)
 
-(*s Global names *)
+(** Global names {{{ **)
 type gname = 
   | Gind of string * inductive (* prefix, inductive name *)
   | Gconstruct of string * constructor (* prefix, constructor name *)
@@ -91,6 +92,9 @@ let reset_normtbl () = normtbl_ctr := -1
 let fresh_gnormtbl l =
   incr normtbl_ctr;
   Gnormtbl (l,!normtbl_ctr)
+  (**}}}**)
+
+(** Symbols (pre-computed values) {{{**)
 
 let val_ctr = ref (-1)
 
@@ -146,8 +150,9 @@ let push_symbol x =
 let symbols_tbl_name = Ginternal "symbols_tbl"
 
 let get_symbols_tbl () = Array.of_list (List.rev !symbols_list)
+(**}}}**)
 
-(*s Mllambda *)
+(** Lambda to Mllambda {{{**)
   
 type primitive =
   | Mk_prod
@@ -973,55 +978,9 @@ let mllambda_of_lambda auxdefs l t =
   (* final result : global list, fv, ml *)
   else
     (!global_stack, (fv_named, fv_rel), mkMLlam (Array.of_list params) ml)
+    (**}}}**)
 
-let rec compile_with_fv env auxdefs l t =
-  let (auxdefs,(fv_named,fv_rel),ml) = mllambda_of_lambda auxdefs l t in
-  if fv_named = [] && fv_rel = [] then (auxdefs,ml)
-  else apply_fv env (fv_named,fv_rel) auxdefs ml
-
-and apply_fv env (fv_named,fv_rel) auxdefs ml =
-  let get_rel_val (n,_) auxdefs =
-    match !(lookup_rel_native_val n env) with
-    | NVKnone ->
-        compile_rel env auxdefs n
-    | NVKvalue (v,d) -> assert false
-  in
-  let get_named_val (id,_) auxdefs =
-    match !(lookup_named_native_val id env) with
-    | NVKnone ->
-        compile_named env auxdefs id
-    | NVKvalue (v,d) -> assert false
-  in
-  let auxdefs = List.fold_right get_rel_val fv_rel auxdefs in
-  let auxdefs = List.fold_right get_named_val fv_named auxdefs in
-  let lvl = rel_context_length env.env_rel_context in
-  let fv_rel = List.map (fun (n,_) -> MLglobal (Grel (lvl-n))) fv_rel in
-  let fv_named = List.map (fun (id,_) -> MLglobal (Gnamed id)) fv_named in
-  let aux_name = fresh_lname Anonymous in
-  auxdefs, MLlet(aux_name, ml, mkMLapp (MLlocal aux_name) (Array.of_list (fv_rel@fv_named)))
-
-and compile_rel env auxdefs n =
-  let (_,body,_) = lookup_rel n env.env_rel_context in
-  let n = rel_context_length env.env_rel_context - n in
-  match body with
-  | Some t ->
-      let code = lambda_of_constr ~opt:true env t in
-      let auxdefs,code = compile_with_fv env auxdefs None code in
-      Glet(Grel n, code)::auxdefs
-  | None -> 
-      Glet(Grel n, MLprimitive (Mk_rel n))::auxdefs
-
-and compile_named env auxdefs id =
-  let (_,body,_) = lookup_named id env.env_named_context in
-  match body with
-  | Some t ->
-      let code = lambda_of_constr ~opt:true env t in
-      let auxdefs,code = compile_with_fv env auxdefs None code in
-      Glet(Gnamed id, code)::auxdefs
-  | None -> 
-      Glet(Gnamed id, MLprimitive (Mk_var id))::auxdefs
-
-
+(** Code optimization {{{**)
 
 (** Optimization of match and fix *)
 
@@ -1180,8 +1139,9 @@ let optimize_stk stk =
         Glet(Gconstant (prefix, c), optimize gdef body)
     | _ -> g in
   List.map optimize_global stk
+  (**}}}**)
 
-(** Printing to ocaml **)
+(** Printing to ocaml {{{**)
 (* Redefine a bunch of functions in module Names to generate names
    acceptable to OCaml. *)
 let string_of_id s = ascii_of_ident (string_of_id s)
@@ -1571,9 +1531,57 @@ let pp_global_aux fmt g auxdefs =
 	  List.iter (Format.fprintf fmt "  %a   in@\n"  pp_global) auxdefs in
 	Format.fprintf fmt "@[let %a =@\n%a  %a@]@\n@." 
 	  pp_gname gn pp_auxdefs auxdefs pp_mllam c
-    | _ -> assert false
+    | _ -> assert false(**}}}**)
 
-(* Compilation of elements in environment *)
+(** Compilation of elements in environment {{{**)
+let rec compile_with_fv env auxdefs l t =
+  let (auxdefs,(fv_named,fv_rel),ml) = mllambda_of_lambda auxdefs l t in
+  if fv_named = [] && fv_rel = [] then (auxdefs,ml)
+  else apply_fv env (fv_named,fv_rel) auxdefs ml
+
+and apply_fv env (fv_named,fv_rel) auxdefs ml =
+  let get_rel_val (n,_) auxdefs =
+    match !(lookup_rel_native_val n env) with
+    | NVKnone ->
+        compile_rel env auxdefs n
+    | NVKvalue (v,d) -> assert false
+  in
+  let get_named_val (id,_) auxdefs =
+    match !(lookup_named_native_val id env) with
+    | NVKnone ->
+        compile_named env auxdefs id
+    | NVKvalue (v,d) -> assert false
+  in
+  let auxdefs = List.fold_right get_rel_val fv_rel auxdefs in
+  let auxdefs = List.fold_right get_named_val fv_named auxdefs in
+  let lvl = rel_context_length env.env_rel_context in
+  let fv_rel = List.map (fun (n,_) -> MLglobal (Grel (lvl-n))) fv_rel in
+  let fv_named = List.map (fun (id,_) -> MLglobal (Gnamed id)) fv_named in
+  let aux_name = fresh_lname Anonymous in
+  auxdefs, MLlet(aux_name, ml, mkMLapp (MLlocal aux_name) (Array.of_list (fv_rel@fv_named)))
+
+and compile_rel env auxdefs n =
+  let (_,body,_) = lookup_rel n env.env_rel_context in
+  let n = rel_context_length env.env_rel_context - n in
+  match body with
+  | Some t ->
+      let code = lambda_of_constr ~opt:true env t in
+      let auxdefs,code = compile_with_fv env auxdefs None code in
+      Glet(Grel n, code)::auxdefs
+  | None -> 
+      Glet(Grel n, MLprimitive (Mk_rel n))::auxdefs
+
+and compile_named env auxdefs id =
+  let (_,body,_) = lookup_named id env.env_named_context in
+  match body with
+  | Some t ->
+      let code = lambda_of_constr ~opt:true env t in
+      let auxdefs,code = compile_with_fv env auxdefs None code in
+      Glet(Gnamed id, code)::auxdefs
+  | None -> 
+      Glet(Gnamed id, MLprimitive (Mk_var id))::auxdefs
+
+
 let compile_constant env prefix con body =
   match body with
   | Def t ->
@@ -1596,35 +1604,18 @@ let compile_constant env prefix con body =
 
 let loaded_native_files = ref ([] : string list)
 
-let locate_native_file = ref (fun _ -> assert false : dir_path -> string option)
-
 let register_native_file s =
-  print_endline ("register_native_file " ^ s);
   if not (List.mem s !loaded_native_files) then
     loaded_native_files := s :: !loaded_native_files
 
-let is_code_loaded name =
-  match name with
+let is_code_loaded ~interactive name =
+  match !name with
   | NotLinked -> false
-  | LinkedLazy s | Linked s -> List.mem s !loaded_native_files
-
-let load_native_code name f =
-  let s = match name with
-  | NotLinked -> anomaly "load_native_code: code not found"
-  | LinkedLazy s | Linked s -> s
-  in
-  if not (List.mem s !loaded_native_files) then
-  print_endline ("Dynlinking: "^f^" ("^s^")");
-  try
-    (if Dynlink.is_native then Dynlink.loadfile f else () (* TODO *));
-    loaded_native_files := s :: !loaded_native_files
-  with Dynlink.Error e ->
-    anomaly ("Dynlink failed: "^ Dynlink.error_message e)
-
-let compile_constant_field env prefix con values cb =
-  reset_symbols_list values;
-  let (gl, name) = compile_constant env prefix con cb.const_body in
-  gl, !symbols_list, (cb.const_native_name, name)
+  | LinkedInteractive s ->
+      if (interactive && List.mem s !loaded_native_files) then true
+      else (name := NotLinked; false)
+  | LinkedLazy s | Linked s ->
+   if List.mem s !loaded_native_files then true else (name := NotLinked; false)
 
 let param_name = Name (id_of_string "params")
 let arg_name = Name (id_of_string "arg")
@@ -1652,12 +1643,6 @@ let compile_mind prefix mb mind stack =
   let upd = (mb.mind_native_name, Linked prefix) in
   array_fold_left_i f stack mb.mind_packets, upd
 
-let compile_mind_field prefix mp l values mb =
-  let mind = make_mind mp empty_dirpath l in
-  reset_symbols_list values;
-  let code, upd = compile_mind prefix mb mind [] in
-  code, !symbols_list, upd
-
 type code_location_update =
     Declarations.native_name ref * Declarations.native_name
 type code_location_updates =
@@ -1665,73 +1650,96 @@ type code_location_updates =
 
 type linkable_code = global list * code_location_updates
 
-let compile_mind_deps env prefix
+let empty_updates = Mindmap_env.empty, Cmap_env.empty
+
+let compile_mind_deps env prefix ~interactive
     (comp_stack, (mind_updates, const_updates) as init) mind =
   let mib = lookup_mind mind env in
-  if is_code_loaded !(mib.mind_native_name)
+  if is_code_loaded ~interactive mib.mind_native_name
     || Mindmap_env.mem mind mind_updates
   then init
   else
-    match !locate_native_file (base_dirpath (mind_modpath mind)) with
-    | Some f -> load_native_code !(mib.mind_native_name) f; init
-    | None ->
-      let comp_stack, upd = compile_mind prefix mib mind comp_stack in
-      let mind_updates = Mindmap_env.add mind upd mind_updates in
-      (comp_stack, (mind_updates, const_updates))
+    let comp_stack, upd = compile_mind prefix mib mind comp_stack in
+    let mind_updates = Mindmap_env.add mind upd mind_updates in
+    (comp_stack, (mind_updates, const_updates))
 
-let rec compile_deps env prefix (comp_stack, (mind_updates, const_updates) as init) t =
+(* This function compiles all necessary dependencies of t, and generates code in
+   reverse order, as well as linking information updates *)
+let rec compile_deps env prefix ~interactive init t =
   match kind_of_term t with
   | Meta _ -> raise (Invalid_argument "Nativecode.get_deps: Meta")
   | Evar _ -> raise (Invalid_argument "Nativecode.get_deps: Evar")
-  | Ind (mind,_) -> compile_mind_deps env prefix init mind
+  | Ind (mind,_) -> compile_mind_deps env prefix ~interactive init mind
   | Const c ->
       let c = get_allias env c in
       let cb = lookup_constant c env in
-      if is_code_loaded !(cb.const_native_name)
+      let (_, (_, const_updates)) = init in
+      if is_code_loaded ~interactive cb.const_native_name
         || cb.const_inline_code
         || (Cmap_env.mem c const_updates)
       then init
       else
       let comp_stack, (mind_updates, const_updates) = match cb.const_body with
-        | Def t -> compile_deps env prefix init (Declarations.force t)
+        | Def t -> compile_deps env prefix ~interactive init (Declarations.force t)
         | _ -> init
       in
-      begin
-      match !locate_native_file (base_dirpath (con_modpath c)) with
-      | Some f ->
-          load_native_code !(cb.const_native_name) f;
-          comp_stack, (mind_updates, const_updates)
-      | None ->
-          let code, name = compile_constant env prefix c cb.const_body in
-          let comp_stack = code@comp_stack in
-          let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
-          comp_stack, (mind_updates, const_updates)
-      end
-  | Construct ((mind,_),_) -> compile_mind_deps env prefix init mind
-  | _ -> fold_constr (compile_deps env prefix) init t
+      let code, name = compile_constant env prefix c cb.const_body in
+      let comp_stack = code@comp_stack in
+      let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
+      comp_stack, (mind_updates, const_updates)
+  | Construct ((mind,_),_) -> compile_mind_deps env prefix ~interactive init mind
+  | _ -> fold_constr (compile_deps env prefix ~interactive) init t
 
+
+let compile_constant_field env prefix con (code, symb, (mupds, cupds)) cb =
+  reset_symbols_list symb;
+  let acc = (code, (mupds, cupds)) in
+  match cb.const_body with
+  | Def t ->
+    let t = Declarations.force t in
+    let (code, (mupds, cupds)) = compile_deps env prefix ~interactive:false acc t in
+    let (gl, name) = compile_constant env prefix con cb.const_body in
+    let cupds = Cmap_env.add con (cb.const_native_name, name) cupds in
+    gl@code, !symbols_list, (mupds, cupds)
+  | _ ->
+    let (gl, name) = compile_constant env prefix con cb.const_body in
+    let cupds = Cmap_env.add con (cb.const_native_name, name) cupds in
+    gl@code, !symbols_list, (mupds, cupds)
+
+let compile_mind_field prefix mp l (code, symb, (mupds, cupds)) mb =
+  let mind = make_mind mp empty_dirpath l in
+  reset_symbols_list symb;
+  let code, upd = compile_mind prefix mb mind code in
+  let mupds = Mindmap_env.add mind upd mupds in
+  code, !symbols_list, (mupds, cupds)
+
+
+(*
 let compile_deps env prefix init t =
   let comp_stack, updates = compile_deps env prefix init t in
   List.rev comp_stack, updates
+  *)
 
 let mk_open s = Gopen s
 
 let mk_internal_let s code =
   Glet(Ginternal s, code)
 
-
 (* ML Code for conversion function *)
 let mk_conv_code env prefix t1 t2 =
+  let gl, (mind_updates, const_updates) =
+    let init = ([], empty_updates) in
+    compile_deps env prefix ~interactive:true init t1
+  in
+  let gl, (mind_updates, const_updates) =
+    let init = (gl, (mind_updates, const_updates)) in
+    compile_deps env prefix ~interactive:true init t2
+  in
+  let gl = List.rev gl in
   let code1 = lambda_of_constr env t1 in
   let code2 = lambda_of_constr env t2 in
-  let (gl,code1) = compile_with_fv env [] None code1 in
+  let (gl,code1) = compile_with_fv env gl None code1 in
   let (gl,code2) = compile_with_fv env gl None code2 in
-  let gl, (mind_updates, const_updates) =
-    compile_deps env prefix (gl, (Mindmap_env.empty, Cmap_env.empty)) t1
-  in
-  let gl, (mind_updates, const_updates) =
-    compile_deps env prefix (gl, (mind_updates, const_updates)) t2
-  in
   let g1 = MLglobal (Ginternal "t1") in
   let g2 = MLglobal (Ginternal "t2") in
   let header = Glet(Ginternal "symbols_tbl",
@@ -1745,11 +1753,13 @@ let mk_conv_code env prefix t1 t2 =
   (mind_updates, const_updates)
 
 let mk_norm_code env prefix t =
-  let code = lambda_of_constr env t in
-  let (gl,code) = compile_with_fv env [] None code in
   let gl, (mind_updates, const_updates) =
-    compile_deps env prefix (gl, (Mindmap_env.empty, Cmap_env.empty)) t
+    let init = ([], empty_updates) in
+    compile_deps env prefix ~interactive:true init t
   in
+  let gl = List.rev gl in
+  let code = lambda_of_constr env t in
+  let (gl,code) = compile_with_fv env gl None code in
   let g1 = MLglobal (Ginternal "t1") in
   let header = Glet(Ginternal "symbols_tbl",
     MLapp (MLglobal (Ginternal "get_symbols_tbl"),
@@ -1769,3 +1779,6 @@ let update_location (r,v) = r := v
 let update_locations (ind_updates,const_updates) =
   Mindmap_env.iter (fun _ -> update_location) ind_updates;
   Cmap_env.iter (fun _ -> update_location) const_updates
+(** }}} **)
+
+(* vim: set filetype=ocaml foldmethod=marker: *)
