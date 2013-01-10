@@ -57,7 +57,8 @@ let call_compiler ml_filename load_path =
       include_dirs^"-I " ^ (String.concat " -I " load_path) ^ " "
     else include_dirs
   in
-  let link_filename = Filename.chop_extension ml_filename ^ ".cmo" in
+  let f = Filename.chop_extension ml_filename in
+  let link_filename = f ^ ".cmo" in
   let link_filename = Dynlink.adapt_filename link_filename in
   let comp_cmd =
     Format.sprintf "%s -%s -o %s -rectypes -w -A %s %s"
@@ -65,6 +66,7 @@ let call_compiler ml_filename load_path =
       link_filename include_dirs ml_filename
   in
   let res = Sys.command comp_cmd in
+  Sys.rename (f^".ml") (f^".native");
   res, link_filename
 
 let compile ml_filename code =
