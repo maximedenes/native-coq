@@ -227,6 +227,9 @@ let parse_args arglist =
     | "-require" :: f :: rem -> add_require f; parse rem
     | "-require" :: []       -> usage ()
 
+    | "-print-mod-uid" :: f :: rem -> Flags.print_mod_uid := true;
+                                      add_require f; parse rem
+
     | "-compile" :: f :: rem -> add_compile false f; if not !glob_opt then Dumpglob.dump_to_dotglob (); parse rem
     | "-compile" :: []       -> usage ()
 

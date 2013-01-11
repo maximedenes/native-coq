@@ -468,6 +468,8 @@ let rec_intern_by_filename_only id f =
   let m = try intern_from_file f with Sys_error s -> error s in
   (* Only the base name is expected to match *)
   check_library_short_name f m.library_name id;
+  if !Flags.print_mod_uid then
+    print_endline (Nativecode.mod_uid_of_dirpath m.library_name);
   (* We check no other file containing same library is loaded *)
   if library_is_loaded m.library_name then
     begin
