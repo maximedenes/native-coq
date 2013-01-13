@@ -134,7 +134,7 @@ let classify_files_by_root var files (inc_i,inc_r) =
 	  inc_r;
     end
 
-let install_include_by_root files_var files (inc_i,inc_r) =
+let install_include_by_root ?(add_obj=false) files_var files (inc_i,inc_r) =
   try
     (* All files caught by a -R . option (assuming it is the only one) *)
     let ldir = match inc_r with
@@ -143,7 +143,9 @@ let install_include_by_root files_var files (inc_i,inc_r) =
 	 let () = prerr_string "Warning: install rule assumes that -R . _ is the only -R option" in
 	   out in
     let pdir = physical_dir_of_logical_dir ldir in
-      printf "\tfor i in $(%s); do \\\n" files_var;
+      if add_obj then
+        printf "\tfor i in $(%s) $(OBJFILES) $(OBJFILES:.o=.cm*); do \\\n" files_var
+      else printf "\tfor i in $(%s); do \\\n" files_var;
       printf "\t install -d `dirname $(DSTROOT)$(COQLIBINSTALL)/%s/$$i`; \\\n" pdir;
       printf "\t install -m 0644 $$i $(DSTROOT)$(COQLIBINSTALL)/%s/$$i; \\\n" pdir;
       printf "\tdone\n"
@@ -224,7 +226,7 @@ let install (vfiles,(mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles),_,sds) in
     print "install:";
     if (not_empty cmxsfiles) then print "$(if ifeq '$(HASNATDYNLINK)' 'true',install-natdynlink)";
     print "\n";
-    if not_empty vfiles then install_include_by_root "VOFILES" vfiles inc;
+    if not_empty vfiles then install_include_by_root ~add_obj:true "VOFILES" vfiles inc;
     if (not_empty cmofiles) then
       install_include_by_root "CMOFILES" cmofiles inc;
     if (not_empty cmifiles) then
@@ -467,6 +469,8 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
   in
   section "Files dispatching.";
   decl_var "VFILES" vfiles;
+  print "vo_to_obj = $(foreach vo,$(1),$(shell $(COQBIN)/coqtop -batch -quiet";
+  print " -print-mod-uid $(vo:.vo=)).o)\n";
   begin match vfiles with
     |[] -> ()
     |l ->
@@ -476,7 +480,8 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
       print "VIFILES:=$(VFILES:.v=.vi)\n";
       print "GFILES:=$(VFILES:.v=.g)\n";
       print "HTMLFILES:=$(VFILES:.v=.html)\n";
-      print "GHTMLFILES:=$(VFILES:.v=.g.html)\n"
+      print "GHTMLFILES:=$(VFILES:.v=.g.html)\n";
+      print "OBJFILES:=$(call vo_to_obj,$(VOFILES))\n"
   end;
   decl_var "ML4FILES" ml4files;
   decl_var "MLFILES" mlfiles;
