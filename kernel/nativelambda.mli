@@ -55,4 +55,4 @@ val mk_lazy : lambda -> lambda
 
 val get_allias : env -> constant -> constant
 
-val lambda_of_constr : ?opt:bool -> env -> types -> lambda
+val lambda_of_constr : env -> types -> lambda

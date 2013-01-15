@@ -1501,7 +1501,7 @@ and compile_rel env auxdefs n =
   let n = rel_context_length env.env_rel_context - n in
   match body with
   | Some t ->
-      let code = lambda_of_constr ~opt:true env t in
+      let code = lambda_of_constr env t in
       let auxdefs,code = compile_with_fv env auxdefs None code in
       Glet(Grel n, code)::auxdefs
   | None -> 
@@ -1511,7 +1511,7 @@ and compile_named env auxdefs id =
   let (_,body,_) = lookup_named id env.env_named_context in
   match body with
   | Some t ->
-      let code = lambda_of_constr ~opt:true env t in
+      let code = lambda_of_constr env t in
       let auxdefs,code = compile_with_fv env auxdefs None code in
       Glet(Gnamed id, code)::auxdefs
   | None -> 
@@ -1521,7 +1521,7 @@ let compile_constant env prefix con body =
   match body with
   | Def t ->
       let t = Declarations.force t in
-      let code = lambda_of_constr ~opt:true env t in
+      let code = lambda_of_constr env t in
       let code, name =
         if is_lazy t then mk_lazy code, LinkedLazy prefix
         else code, Linked prefix

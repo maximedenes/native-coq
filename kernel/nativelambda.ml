@@ -839,7 +839,7 @@ let optimize lam =
     (msgerrnl (str "Remove let = \n" ++ pp_lam lam);flush_all()); *)
   lam
 
-let lambda_of_constr ?(opt=false) env c =
+let lambda_of_constr env c =
   set_global_env env;
   let env = Renv.make () in
   let ids = List.rev_map (fun (id, _, _) -> id) !global_env.env_rel_context in
@@ -849,7 +849,7 @@ let lambda_of_constr ?(opt=false) env c =
     (msgerrnl (str "Constr = \n" ++ pr_constr c);flush_all()); 
     (msgerrnl (str "Lambda = \n" ++ pp_lam lam);flush_all()); 
   end; *)
-  if opt then optimize lam else lam 
+  optimize lam
 
 let mk_lazy c =
   mkLapp Llazy [|c|]
