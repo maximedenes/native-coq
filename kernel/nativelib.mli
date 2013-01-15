@@ -15,8 +15,6 @@ open Pre_env
 
 val get_load_paths : (unit -> string list) ref
 
-val compiler_name : string
-
 val load_obj : (string -> unit) ref
 
 val get_ml_filename : unit -> string * string

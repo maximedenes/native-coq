@@ -393,8 +393,6 @@ let get_prod_name codom =
   | MLlam(ids,_) -> ids.(0).lname
   | _ -> assert false
 
-let empty_params = [||]
-
 let get_lname (_,l) = 
   match l with
   | MLlocal id -> id
@@ -598,7 +596,6 @@ let (*rec*) of_int v =
 (*  | MLif(e,b1,b2) -> MLif(e,of_int b1, of_int b2) *)
   | _ -> MLapp(MLprimitive Val_of_int,[|v|]) 
 
-
 let check_bound v b1 b2 =
   match v with
   | MLint(_,x) -> if 0 <= x && x < 31 then b1 else b2
@@ -717,11 +714,7 @@ let compile_cprim prefix kn p args =
   | _ ->
       MLapp(MLprimitive (mlprim_of_cprim p (prefix, kn)), args)
 
- 
-	  
-
-
-let rec ml_of_lam env l t =
+ let rec ml_of_lam env l t =
   match t with
   | Lrel(id ,i) -> get_rel env id i
   | Lvar id -> get_var env id
@@ -1041,7 +1034,6 @@ let subst_case params args s =
   done;
   !s, params.(len-1), args.(len-1)
     
-    
 let empty_gdef = Intmap.empty, Intmap.empty
 let get_norm (gnorm, _) i = Intmap.find i gnorm
 let get_case (_, gcase) i = Intmap.find i gcase
@@ -1175,16 +1167,7 @@ let rec list_of_mp acc = function
       string_of_dirpath dp :: acc
   | MPbound mbid -> ("X"^string_of_id (id_of_mbid mbid))::acc
 
-let rec head_of_mp x = match x with
-  | MPdot (mp,l) -> head_of_mp mp
-  | _ -> x
-
 let list_of_mp mp = list_of_mp [] mp
-
-let rec base_dirpath = function
-  | MPdot (mp,_) -> base_dirpath mp
-  | MPfile dp -> dp
-  | MPbound mbid -> assert false
 
 let string_of_kn kn =
   let (mp,dp,l) = repr_kn kn in
@@ -1193,27 +1176,6 @@ let string_of_kn kn =
 
 let string_of_con c = string_of_kn (user_con c)
 let string_of_mind mind = string_of_kn (user_mind mind)
-
-let rec strip_common_prefix l1 l2 =
-  match l1, l2 with
-  | [], _
-  | _, [] -> l1, l2
-  | hd1::tl1, hd2::tl2 ->
-      if hd1 = hd2 then strip_common_prefix tl1 tl2 else hd1::tl1, hd2::tl2
-
-let mk_relative_id env (mp,id) =
-  let base_h = head_of_mp env in
-  let h = head_of_mp mp in
-  match base_h, h with
-    | MPfile dp1, MPfile dp2 when not (dp1 = dp2) ->
-        let dp = repr_dirpath dp2 in
-        string_of_dirpath dp ^ "." ^ id
-    | _ -> id
-
-let relative_list_of_mp env mp =
-  let base_l = list_of_mp env in
-  let l = list_of_mp mp in
-  snd (strip_common_prefix base_l l)
 
 let string_of_gname g =
   match g with
@@ -1239,26 +1201,12 @@ let string_of_gname g =
   | Gnamed id ->
       Format.sprintf "named_%s" (string_of_id id)
 
-
 let pp_gname fmt g =
   Format.fprintf fmt "%s" (string_of_gname g)
-
-
-(*let pp_rel cenv id fmt i =
-  assert (i>0);
-  let lvl = cenv.env_bound - i in
-  match List.nth cenv.env_rel (i-1) with
-    | MLlocal id' ->
-      assert (id == id');
-      let s = string_of_name id.lname in
-      Format.fprintf fmt "r_%i_%s" lvl s
-    | _ -> assert false*)
 
 let pp_lname fmt ln =
   let s = ascii_of_ident (string_of_name ln.lname) in
   Format.fprintf fmt "x_%s_%i" s ln.luid
-
-
 
 let pp_ldecls fmt ids =
   let len = Array.length ids in
@@ -1478,7 +1426,6 @@ let pp_mllam fmt l =
   in
   Format.fprintf fmt "@[%a@]" pp_mllam l
   
-
 let pp_array fmt t =
   let len = Array.length t in
   Format.fprintf fmt "@[[|";
@@ -1520,18 +1467,7 @@ let pp_global fmt g =
   | Gletcase(g,params,annot,a,accu,bs) ->
       Format.fprintf fmt "@[let rec %a %a =@\n  %a@]@\n@."
 	pp_gname g pp_ldecls params 
-	pp_mllam (MLmatch(annot,a,accu,bs))
-
-let pp_global_aux fmt g auxdefs = 
-  if auxdefs = [] then pp_global fmt g
-  else
-    match g with
-    | Glet(gn, c) ->
-	let pp_auxdefs fmt auxdefs =
-	  List.iter (Format.fprintf fmt "  %a   in@\n"  pp_global) auxdefs in
-	Format.fprintf fmt "@[let %a =@\n%a  %a@]@\n@." 
-	  pp_gname gn pp_auxdefs auxdefs pp_mllam c
-    | _ -> assert false(**}}}**)
+	pp_mllam (MLmatch(annot,a,accu,bs))(**}}}**)
 
 (** Compilation of elements in environment {{{**)
 let rec compile_with_fv env auxdefs l t =
@@ -1580,7 +1516,6 @@ and compile_named env auxdefs id =
       Glet(Gnamed id, code)::auxdefs
   | None -> 
       Glet(Gnamed id, MLprimitive (Mk_var id))::auxdefs
-
 
 let compile_constant env prefix con body =
   match body with
@@ -1690,7 +1625,6 @@ let rec compile_deps env prefix ~interactive init t =
   | Construct ((mind,_),_) -> compile_mind_deps env prefix ~interactive init mind
   | _ -> fold_constr (compile_deps env prefix ~interactive) init t
 
-
 let compile_constant_field env prefix con (code, symb, (mupds, cupds)) cb =
   reset_symbols_list symb;
   let acc = (code, (mupds, cupds)) in
@@ -1712,13 +1646,6 @@ let compile_mind_field prefix mp l (code, symb, (mupds, cupds)) mb =
   let code, upd = compile_mind prefix mb mind code in
   let mupds = Mindmap_env.add mind upd mupds in
   code, !symbols_list, (mupds, cupds)
-
-
-(*
-let compile_deps env prefix init t =
-  let comp_stack, updates = compile_deps env prefix init t in
-  List.rev comp_stack, updates
-  *)
 
 let mk_open s = Gopen s
 

@@ -32,10 +32,6 @@ and translate_field prefix mp env (code, values, upds as acc) (l,x) =
       compile_constant_field (pre_env env) prefix con acc cb
   | SFBmind mb ->
       compile_mind_field prefix mp l acc mb
-      (*
-      List.fold_left (fun acc g -> (g,[])::acc) code tr, values,
-      upd::upds
-      *)
   | SFBmodule md ->
       translate_mod prefix md.mod_mp env md.mod_type acc
   | SFBmodtype mdtyp ->
@@ -53,18 +49,10 @@ let dump_library mp dp env mod_expr =
           msb
       in
       let t1 = Sys.time () in
-(*      let mlopt = optimize_stk mlcode in
-      let t2 = Sys.time () in*)
       Flags.if_verbose (Format.eprintf "Compiled library. ml %.5f@.") (t1-.t0);
       List.rev mlcode, Array.of_list (List.rev values), upds
   | _ -> assert false
 
-
-let pp_mod_field fmt (g,auxdefs) = pp_global_aux fmt g auxdefs
-
-let pp_toplevel_field fmt (g,auxdefs) =
-  List.iter (pp_global fmt) auxdefs;
-  pp_global fmt g 
 
 let compile_library dir code load_path f =
   let header = mk_library_header dir in

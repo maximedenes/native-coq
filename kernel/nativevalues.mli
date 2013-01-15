@@ -192,4 +192,3 @@ val no_check_arrayset : t -> t -> t -> t
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a
-

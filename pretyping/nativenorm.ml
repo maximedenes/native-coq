@@ -317,8 +317,6 @@ and  nf_predicate env ind mip params v pT =
       true, mkLambda(name,dom,body)
   | _, _ -> false, nf_type env v
 
-
-
 let native_norm env c ty =  
   if !Flags.no_native_compiler then
     error "Native_compute reduction has been disabled"
@@ -339,4 +337,3 @@ let native_norm env c ty =
 	Format.eprintf "Evaluation done in %.5f@." (t1 -. t0);
 	nf_val env !Nativelib.rt1 ty
     | _ -> anomaly "Compilation failure" 
-  

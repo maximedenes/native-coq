@@ -14,21 +14,9 @@ open Nativelambda
 type mllambda
 type global
 
-type gname
-
-val relative_list_of_mp : module_path -> module_path -> string list
-
-val compile_with_fv : env -> global list -> label option -> lambda ->
-  global list * mllambda
-
-val pp_gname : Format.formatter -> gname -> unit
-val pp_mllam : Format.formatter -> mllambda -> unit
-
 val pp_global : Format.formatter -> global -> unit
-val pp_global_aux : Format.formatter -> global -> global list -> unit
 
 val mk_open : string -> global
-val mk_internal_let : string -> mllambda -> global
 
 type symbol
 
@@ -64,7 +52,6 @@ val compile_mind_field : string -> module_path -> label ->
   mutual_inductive_body ->
     global list * symbol list * code_location_updates
 
-val optimize_stk : global list -> global list
 val mk_conv_code : env -> string -> constr -> constr -> linkable_code
 val mk_norm_code : env -> string -> constr -> linkable_code
 

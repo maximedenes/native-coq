@@ -212,7 +212,6 @@ let can_subst lam =
   | Lval _ | Lsort _ | Lind _ | Llam _ | Lconstruct _ -> true
   | _ -> false
 
-
 let can_merge_if bt bf =
   match bt, bf with
   | Llam(idst,_), Llam(idsf,_) -> true
@@ -232,7 +231,6 @@ let merge_if t bt bf =
        Lif(lam_lift (Array.length common) t, 
 	   mkLlam idst bodyt,
 	   mkLlam idsf bodyf))
-
 
 let rec simplify subst lam =
   match lam with
@@ -403,7 +401,6 @@ let makeblock env cn tag args =
     let prefix = get_mind_prefix env (fst (fst cn)) in
     Lmakeblock(prefix, cn, tag, args)
 
-  
 let makearray args =   
   try
     let p = Array.map get_value args in
@@ -542,13 +539,7 @@ let lambda_of_iterator env kn op args =
 		   r_f 1; r_max 3; r_min 2; r_cont 4|]
 		 extra4))))))
 
-
-
-
-
 (* Compilation of primitive *)
-  
-
 let _h =  Name(id_of_string "f")
 
 let prim env kn op args =
@@ -568,7 +559,7 @@ let prim env kn op args =
       Lcprim(prefix, kn, p, args)
   | Native.Oiterator p  -> lambda_of_iterator env kn p args
 
-let expense_prim env kn op arity =
+let expand_prim env kn op arity =
   let ids = Array.make arity Anonymous in
   let args = make_args arity 1 in
   Llam(ids, prim env kn op args)
@@ -577,7 +568,7 @@ let lambda_of_prim env kn op args =
   let (nparams, arity) = Native.arity op in
   let expected = nparams + arity in
   if Array.length args >= expected then prim env kn op args
-  else mkLapp (expense_prim env kn op expected) args
+  else mkLapp (expand_prim env kn op expected) args
 
 
 (*i Global environment *)
@@ -586,15 +577,9 @@ let global_env = ref empty_env
 
 let set_global_env env = global_env := env
 
-let inline_global kn = 
-  match (lookup_constant kn !global_env).const_body with
-  | Def csubst -> force csubst
-  | _ -> assert false
-      
 let get_names decl = 
   let decl = Array.of_list decl in
   Array.map fst decl
-
 
 (* Rel Environment *)
 module Vect = 
@@ -655,8 +640,6 @@ module Vect =
     let to_array v = Array.sub v.elems 0 v.size
       
   end
-
-let dummy_lambda = Lrel(Anonymous, 0)
 
 let empty_args = [||]
 
@@ -846,12 +829,6 @@ and lambda_of_args env start args =
     Array.init (nargs - start) 
       (fun i -> lambda_of_constr env args.(start + i))
   else empty_args
- 
-
-
-
-(*********************************)
-
 
 let optimize lam =
   let lam = simplify subst_id lam in
@@ -861,20 +838,6 @@ let optimize lam =
   if Flags.vm_draw_opt () then 
     (msgerrnl (str "Remove let = \n" ++ pp_lam lam);flush_all()); *)
   lam
-
-let print_time = ref false
-
-let time = ref 0.0
-
-let init_time () =
-  time :=  Sys.time ()
-
-let get_time () =
-  let t = Sys.time () in
-  let diff = t -. !time in
-  time := t;
-  diff
-
 
 let lambda_of_constr ?(opt=false) env c =
   set_global_env env;
