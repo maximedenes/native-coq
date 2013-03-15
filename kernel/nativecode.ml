@@ -1610,11 +1610,10 @@ let rec compile_deps env prefix ~interactive init t =
       let cb = lookup_constant c env in
       let (_, (_, const_updates)) = init in
       if is_code_loaded ~interactive cb.const_native_name
-        || cb.const_inline_code
         || (Cmap_env.mem c const_updates)
       then init
       else
-      let comp_stack, (mind_updates, const_updates) = match cb.const_body with
+      let comp_stack, (mind_updates, const_updates) as init = match cb.const_body with
         | Def t -> compile_deps env prefix ~interactive init (Declarations.force t)
         | _ -> init
       in
@@ -1623,6 +1622,10 @@ let rec compile_deps env prefix ~interactive init t =
       let const_updates = Cmap_env.add c (cb.const_native_name, name) const_updates in
       comp_stack, (mind_updates, const_updates)
   | Construct ((mind,_),_) -> compile_mind_deps env prefix ~interactive init mind
+  | Case (ci, p, c, ac) ->
+      let mind = fst ci.ci_ind in
+      let init = compile_mind_deps env prefix ~interactive init mind in
+      fold_constr (compile_deps env prefix ~interactive) init t
   | _ -> fold_constr (compile_deps env prefix ~interactive) init t
 
 let compile_constant_field env prefix con (code, symb, (mupds, cupds)) cb =
