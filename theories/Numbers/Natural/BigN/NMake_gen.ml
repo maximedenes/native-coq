@@ -13,7 +13,7 @@
 
 (*s The parameter that control the generation: *)
 
-let size = 6 (* how many times should we repeat the Z/nZ --> Z/2nZ
+let size = 12 (* how many times should we repeat the Z/nZ --> Z/2nZ
                 process before relying on a generic construct *)
 
 (*s Some utilities *)

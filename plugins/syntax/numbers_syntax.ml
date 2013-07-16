@@ -50,7 +50,7 @@ let bigN_t = make_mind_mpdot bigN_module "BigN" "t'"
 let bigN_scope = "bigN_scope"
 
 (* number of inlined level of bigN (actually the level 0 to n_inlined-1 are inlined) *)
-let n_inlined = of_string "7"
+let n_inlined = of_string "13"
 
 let rec int_of_pos_bigint i = 
   if equal i zero then 0
