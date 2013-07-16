@@ -55,7 +55,7 @@ let set_global v =
 (* Initializing Ocaml primitive for the virtual machine *)
 let prim_print_int =
        let pr x =
-	 Printf.fprintf stdout "%s\n" (Uint31.to_string x);
+	 Printf.fprintf stdout "%s\n" (Uint63.to_string x);
 	 flush stdout;
 	 x in
        set_global (Obj.magic pr)

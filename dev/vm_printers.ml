@@ -82,14 +82,14 @@ and ppwhd whd =
       open_hbox();ppatom a;close_box();
       print_string"@";ppstack s
   | Varray p ->
-      let length = Uint31.to_int (Parray.length p) in
+      let length = Uint63.to_int (Parray.length p) in
       open_hbox();
       print_string "[|";
       for i = 0 to length - 2 do
-	ppvalues (Parray.get p (Uint31.of_int i));
+	ppvalues (Parray.get p (Uint63.of_int i));
 	print_string "; "
       done;
-      ppvalues (Parray.get p (Uint31.of_int (length - 1)));
+      ppvalues (Parray.get p (Uint63.of_int (length - 1)));
       print_string " | ";
       ppvalues (Parray.default p);
       print_string " |]";

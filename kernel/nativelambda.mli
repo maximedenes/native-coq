@@ -36,7 +36,7 @@ type lambda =
 	(* A fully applied constructor *)
   | Lconstruct    of string * constructor (* prefix, constructor name *)
 	(* A partially applied constructor *)
-  | Lint          of Uint31.t
+  | Lint          of Uint63.t
   | Lparray       of lambda array
   | Lval          of Nativevalues.t
   | Lsort         of sorts

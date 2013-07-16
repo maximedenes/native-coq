@@ -239,88 +239,88 @@ let val_to_int x = Obj.magic x
 
 
 let is_int (x:t) = Obj.is_int (Obj.repr x)
-let to_uint (x:t) = (Obj.magic x : Uint31.t)
-let of_uint (x: Uint31.t) = (Obj.magic x : t)
+let to_uint (x:t) = (Obj.magic x : Uint63.t)
+let of_uint (x: Uint63.t) = (Obj.magic x : t)
 
 let no_check_head0 x =
- of_uint (Uint31.head0 (to_uint x))
+ of_uint (Uint63.head0 (to_uint x))
 
 let head0 accu x =
  if is_int x then  no_check_head0 x
  else accu x
 
 let no_check_tail0 x =
-  of_uint (Uint31.tail0 (to_uint x))
+  of_uint (Uint63.tail0 (to_uint x))
 
 let tail0 accu x =
  if is_int x then no_check_tail0 x
  else accu x
 
 let no_check_add  x y =
-  of_uint (Uint31.add (to_uint x) (to_uint y))
+  of_uint (Uint63.add (to_uint x) (to_uint y))
 
 let add accu x y =
   if is_int x && is_int y then no_check_add x y 
   else accu x y
 
 let no_check_sub x y =
-     of_uint (Uint31.sub (to_uint x) (to_uint y))
+     of_uint (Uint63.sub (to_uint x) (to_uint y))
 
 let sub accu x y =
   if is_int x && is_int y then no_check_sub x y
   else accu x y
 
 let no_check_mul x y =
-  of_uint (Uint31.mul (to_uint x) (to_uint y))
+  of_uint (Uint63.mul (to_uint x) (to_uint y))
 
 let mul accu x y =
   if is_int x && is_int y then no_check_mul x y
   else accu x y
 
 let no_check_div x y =
-  of_uint (Uint31.div (to_uint x) (to_uint y))
+  of_uint (Uint63.div (to_uint x) (to_uint y))
 
 let div accu x y =
   if is_int x && is_int y then no_check_div x y 
   else accu x y
 
 let no_check_rem x y =
-  of_uint (Uint31.rem (to_uint x) (to_uint y))
+  of_uint (Uint63.rem (to_uint x) (to_uint y))
 
 let rem accu x y =
   if is_int x && is_int y then no_check_rem x y
   else accu x y
 
 let no_check_l_sr x y =
-  of_uint (Uint31.l_sr (to_uint x) (to_uint y))
+  of_uint (Uint63.l_sr (to_uint x) (to_uint y))
 
 let l_sr accu x y =
   if is_int x && is_int y then no_check_l_sr x y
   else accu x y
 
 let no_check_l_sl x y =
-  of_uint (Uint31.l_sl (to_uint x) (to_uint y))
+  of_uint (Uint63.l_sl (to_uint x) (to_uint y))
 
 let l_sl accu x y =
   if is_int x && is_int y then no_check_l_sl x y
   else accu x y
 
 let no_check_l_and x y =
-  of_uint (Uint31.l_and (to_uint x) (to_uint y))
+  of_uint (Uint63.l_and (to_uint x) (to_uint y))
 
 let l_and accu x y =
   if is_int x && is_int y then no_check_l_and x y
   else accu x y
 
 let no_check_l_xor x y =
-  of_uint (Uint31.l_xor (to_uint x) (to_uint y))
+  of_uint (Uint63.l_xor (to_uint x) (to_uint y))
 
 let l_xor accu x y =
   if is_int x && is_int y then no_check_l_xor x y
   else accu x y
 
 let no_check_l_or x y =
-  of_uint (Uint31.l_or (to_uint x) (to_uint y))
+  of_uint (Uint63.l_or (to_uint x) (to_uint y))
 
 let l_or accu x y =
   if is_int x && is_int y then no_check_l_or x y
@@ -340,16 +340,16 @@ let mkCarry b i =
   else (Obj.magic (C0(of_uint i)):t)
 
 let no_check_addc x y =
-  let s = Uint31.add (to_uint x) (to_uint y) in
-  mkCarry (Uint31.lt s (to_uint x)) s
+  let s = Uint63.add (to_uint x) (to_uint y) in
+  mkCarry (Uint63.lt s (to_uint x)) s
 
 let addc accu x y =
   if is_int x && is_int y then no_check_addc x y
   else accu x y
 
 let no_check_subc x y =
-  let s = Uint31.sub (to_uint x) (to_uint y) in
-  mkCarry (Uint31.lt (to_uint x) (to_uint y)) s
+  let s = Uint63.sub (to_uint x) (to_uint y) in
+  mkCarry (Uint63.lt (to_uint x) (to_uint y)) s
 
 let subc accu x y =
   if is_int x && is_int y then no_check_subc x y
@@ -357,9 +357,9 @@ let subc accu x y =
 
 let no_check_addCarryC x y =
   let s = 
-    Uint31.add (Uint31.add (to_uint x) (to_uint y))
-      (Uint31.of_int 1) in
-  mkCarry (Uint31.le s (to_uint x)) s
+    Uint63.add (Uint63.add (to_uint x) (to_uint y))
+      (Uint63.of_int 1) in
+  mkCarry (Uint63.le s (to_uint x)) s
 
 let addCarryC accu x y =
   if is_int x && is_int y then no_check_addCarryC x y
@@ -367,9 +367,9 @@ let addCarryC accu x y =
 
 let no_check_subCarryC x y =
   let s = 
-    Uint31.sub (Uint31.sub (to_uint x) (to_uint y))
-      (Uint31.of_int 1) in
-  mkCarry (Uint31.le (to_uint x) (to_uint y)) s
+    Uint63.sub (Uint63.sub (to_uint x) (to_uint y))
+      (Uint63.of_int 1) in
+  mkCarry (Uint63.le (to_uint x) (to_uint y)) s
 
 let subCarryC accu x y =
   if is_int x && is_int y then no_check_subCarryC x y
@@ -379,7 +379,7 @@ let of_pair (x, y) =
   (Obj.magic (PPair(of_uint x, of_uint y)):t)
 
 let no_check_mulc x y =
-    of_pair(Uint31.mulc (to_uint x) (to_uint y))
+    of_pair(Uint63.mulc (to_uint x) (to_uint y))
 
 let mulc accu x y =
   if is_int x && is_int y then no_check_mulc x y
@@ -387,7 +387,7 @@ let mulc accu x y =
 
 let no_check_diveucl x y =
   let i1, i2 = to_uint x, to_uint y in
-  of_pair(Uint31.div i1 i2, Uint31.rem i1 i2)
+  of_pair(Uint63.div i1 i2, Uint63.rem i1 i2)
 
 let diveucl accu x y =
   if is_int x && is_int y then no_check_diveucl x y
@@ -395,7 +395,7 @@ let diveucl accu x y =
 
 let no_check_div21 x y z =
   let i1, i2, i3 = to_uint x, to_uint y, to_uint z in
-  of_pair (Uint31.div21 i1 i2 i3)
+  of_pair (Uint63.div21 i1 i2 i3)
 
 let div21 accu x y z =
   if is_int x && is_int y && is_int z then no_check_div21 x y z
@@ -403,10 +403,10 @@ let div21 accu x y z =
 
 let no_check_addMulDiv x y z =
   let p, i, j = to_uint x, to_uint y, to_uint z in
-  let p' = Uint31.to_int p in
-  of_uint (Uint31.l_or 
-	     (Uint31.l_sl i p) 
-	     (Uint31.l_sr j (Uint31.of_int (31 - p'))))
+  let p' = Uint63.to_int p in
+  of_uint (Uint63.l_or 
+	     (Uint63.l_sl i p) 
+	     (Uint63.l_sr j (Uint63.of_int (31 - p'))))
 
 let addMulDiv accu x y z =
   if is_int x && is_int y && is_int z then no_check_addMulDiv x y z
@@ -430,28 +430,28 @@ let of_bool b = (Obj.magic (not b) : (* coq_bool *) t)
   else (Obj.magic Bfalse:t) 
   *)
 let no_check_eq x y =     
-  of_bool (Uint31.eq (to_uint x) (to_uint y))
+  of_bool (Uint63.eq (to_uint x) (to_uint y))
 
 let eq accu x y =
   if is_int x && is_int y then no_check_eq x y
   else accu x y
 
 let no_check_lt x y =
-  of_bool (Uint31.lt (to_uint x) (to_uint y))
+  of_bool (Uint63.lt (to_uint x) (to_uint y))
 
 let lt accu x y =
   if is_int x && is_int y then no_check_lt x y
   else accu x y
 
 let no_check_le x y =
-  of_bool (Uint31.le (to_uint x) (to_uint y))
+  of_bool (Uint63.le (to_uint x) (to_uint y))
 
 let le accu x y =
   if is_int x && is_int y then no_check_le x y
   else accu x y
 
 let no_check_compare x y =
-  match Uint31.compare (to_uint x) (to_uint y) with
+  match Uint63.compare (to_uint x) (to_uint y) with
   | x when x < 0 -> (Obj.magic CmpLt:t)
   | 0 -> (Obj.magic CmpEq:t)
   | _ -> (Obj.magic CmpGt:t)
@@ -471,7 +471,7 @@ let eqb_correct accu x y heq =
 let print accu x = 
   if is_int x then 
     begin
-      Printf.fprintf stderr "%s" (Uint31.to_string (to_uint x));
+      Printf.fprintf stderr "%s" (Uint63.to_string (to_uint x));
       flush stderr;
       x
     end
@@ -480,11 +480,11 @@ let print accu x =
 let foldi_cont accu _A _B f min max cont =
   if is_int min && is_int max then
     let imin, imax = to_uint min, to_uint max in
-    if Uint31.le imin imax then
+    if Uint63.le imin imax then
       let rec aux i a =
         f (of_uint i) 
-         (if Uint31.lt i imax then
-	   aux (Uint31.add i (Uint31.of_int 1))
+         (if Uint63.lt i imax then
+	   aux (Uint63.add i (Uint63.of_int 1))
 	 else cont) a in
       aux imin
     else cont
@@ -493,11 +493,11 @@ let foldi_cont accu _A _B f min max cont =
 let foldi_down_cont accu _A _B f max min cont =
   if is_int max && is_int min then
     let imax, imin = to_uint max, to_uint min in
-    if Uint31.le imin imax then
+    if Uint63.le imin imax then
       let rec aux i a =
         f (of_uint i) 
-         (if Uint31.lt imin i then
-	   aux (Uint31.sub i (Uint31.of_int 1))
+         (if Uint63.lt imin i then
+	   aux (Uint63.sub i (Uint63.of_int 1))
 	 else cont) a in
       aux imax
     else cont
@@ -567,10 +567,10 @@ let arraymap accu vA vB f t =
 
 
 let lt_b x y =
-  Uint31.lt (to_uint x) (to_uint y)
+  Uint63.lt (to_uint x) (to_uint y)
  
 let le_b x y =
-  Uint31.le (to_uint x) (to_uint y)
+  Uint63.le (to_uint x) (to_uint y)
 
 
 

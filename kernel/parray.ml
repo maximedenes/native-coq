@@ -13,12 +13,12 @@ let warn s =
       
 let rec length p =
   match !p with
-  | Array t -> Uint31.of_int (Array.length t - 1) (* The default value *)
+  | Array t -> Uint63.of_int (Array.length t - 1) (* The default value *)
   | Updated (_, _, p) -> length p
 	
 let length p = 
   match !p with
-  | Array t -> Uint31.of_int (Array.length t - 1)
+  | Array t -> Uint63.of_int (Array.length t - 1)
   | Updated (_, _, p) -> warn "Array.length"; length p
 	
 let rec get_updated p n =
@@ -30,7 +30,7 @@ let rec get_updated p n =
   | Updated (k,e,p) -> if n = k then e else get_updated p n
       
 let get p n =
-  let n = Uint31.to_int n in
+  let n = Uint63.to_int n in
   match !p with
   | Array t ->
       let l = Array.length t in
@@ -40,7 +40,7 @@ let get p n =
 	
 let set p n e =
   let kind = !p in
-  let n = Uint31.to_int n in
+  let n = Uint63.to_int n in
   match kind with
   | Array t ->
       if 0 <= n && n < Array.length t - 1 then
@@ -51,7 +51,7 @@ let set p n e =
       else (warn "Array.set: out of bound"; p)
   | Updated _ ->
       warn "Array.set";
-      if 0 <= n && n < Uint31.to_int (length p) then
+      if 0 <= n && n < Uint63.to_int (length p) then
 	ref (Updated(n, e, p))   
       else (warn "Array.set: out of bound"; p)
 	  
@@ -66,14 +66,14 @@ let default p =
   | Updated (_,_,p) -> warn "Array.default";default_updated p
 	
 let make n def = 
-  let n = Uint31.to_int n in
+  let n = Uint63.to_int n in
   let n = 
     if 0 <= n && n < max_array_length32 then n + 1 
     else max_array_length32 in
   ref (Array (Array.make n def))
 	
 let init n f def =
-  let n = Uint31.to_int n in
+  let n = Uint63.to_int n in
   let n = 
     if 0 <= n && n < max_array_length32 then n + 1 
     else max_array_length32 in
@@ -116,8 +116,8 @@ let map f p =
   match !p with
   | Array t -> ref (Array (Array.map f t))
   | _ ->
-      let len = Uint31.to_int (length p) in
+      let len = Uint63.to_int (length p) in
       ref (Array 
 	     (Array.init (len + 1) 
-		(fun i -> f (get p (Uint31.of_int i)))))
+		(fun i -> f (get p (Uint63.of_int i)))))
 	

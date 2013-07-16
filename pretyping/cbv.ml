@@ -56,7 +56,7 @@ type cbv_value =
   | FIXP of fixpoint * cbv_value subs * cbv_value array
   | COFIXP of cofixpoint * cbv_value subs * cbv_value array
   | CONSTR of constructor * cbv_value array
-  | NATIVEINT of Uint31.t
+  | NATIVEINT of Uint63.t
   | NATIVEARR of cbv_value * cbv_value Parray.t
   | PRIMITIVE of Native.op * constr * cbv_value array
 
@@ -462,7 +462,7 @@ let rec norm_head info env t stack =
       let len = Array.length p - 1 in
       let t = cbv_stack_term info TOP env t in
       let p = 
-	Parray.init (Uint31.of_int len) 
+	Parray.init (Uint63.of_int len) 
 	  (fun i -> cbv_stack_term info TOP env  p.(i))
 	  (cbv_stack_term info TOP env p.(len)) in
       (NATIVEARR(t, p),stack)
@@ -581,16 +581,16 @@ and cbv_val_stack info (v,stack) =
 	with _ -> None in
       begin match get_args () with
       | Some (t,f,a,min,max) ->
-	  if Uint31.lt min max then
+	  if Uint63.lt min max then
 	    let p = PRIMITIVE(op,c,[||]) in
 	    let pstk = 
 	      APP([|t;f;a;
 		    VNativeEntries.mkInt env 
-		      (Uint31.add min (Uint31.of_int 1));
+		      (Uint63.add min (Uint63.of_int 1));
 		    VNativeEntries.get args 4|],TOP) in
 	    let fold = cbv_val_stack info (p,pstk) in
 	    Inl (f,stack_app  [|VNativeEntries.get args 3;fold|] stk)
-	  else if Uint31.eq min max then
+	  else if Uint63.eq min max then
 	    Inl (f,stack_app [|VNativeEntries.get args 3;a|] stk)
 	  else Inl (a,stk)
       | None -> Inr(mkSTACK(PRIMITIVE(op,c,args), stk))
@@ -607,16 +607,16 @@ and cbv_val_stack info (v,stack) =
 	with _ -> None in
       begin match get_args () with
       | Some (t,f,a,min,max) ->
-	  if Uint31.lt min max then
+	  if Uint63.lt min max then
 	    let p = PRIMITIVE(op,c,[||]) in
 	    let pstk = 
 	      APP([|t;f;a;VNativeEntries.get args 3;
 		    VNativeEntries.mkInt env 
-		      (Uint31.sub max (Uint31.of_int 1));
+		      (Uint63.sub max (Uint63.of_int 1));
 		  |],TOP) in
 	    let fold = cbv_val_stack info (p,pstk) in
 	    Inl (f,stack_app  [|VNativeEntries.get args 4;fold|] stk)
-	  else if Uint31.eq min max then
+	  else if Uint63.eq min max then
 	    Inl (f,stack_app [|VNativeEntries.get args 3;a|] stk)
 	  else Inl (a,stk)
       | None -> Inr(mkSTACK(PRIMITIVE(op,c,args), stk))
@@ -675,11 +675,11 @@ and cbv_norm_value info = function (* reduction under binders *)
   | NATIVEINT i -> mkInt i
   | NATIVEARR(t,p) ->
       let ct = cbv_norm_value info t in
-      let len = Uint31.to_int (Parray.length p) in
+      let len = Uint63.to_int (Parray.length p) in
       let cdef = cbv_norm_value info (Parray.default p) in
       let cp = Array.create (len + 1) cdef in  
       for i = 0 to len - 1 do
-	cp.(i) <- cbv_norm_value info (Parray.get p (Uint31.of_int i))
+	cp.(i) <- cbv_norm_value info (Parray.get p (Uint63.of_int i))
       done;
       mkArray(ct, cp)
   | PRIMITIVE(op,c,args) ->

@@ -54,9 +54,9 @@ and conv_whd pb k whd1 whd2 cu =
 	let n = Parray.length p1 in
 	if n = Parray.length p2 then
 	  let rcu = ref cu in
-	  let n = Uint31.to_int n in
+	  let n = Uint63.to_int n in
 	  for i = 0 to n - 1 do
-	    let i = Uint31.of_int i in
+	    let i = Uint63.of_int i in
 	    rcu := 
 	      conv_val CONV k 
 		(Parray.get p1 i) (Parray.get p2 i) !rcu

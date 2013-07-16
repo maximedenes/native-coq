@@ -204,7 +204,7 @@ let rec pp_expr par env args =
 	pp_par par (str "failwith \"AXIOM TO BE REALIZED\"")
     | MLuint i ->
 	assert (args=[]);
-	str "(ExtrNative.of_uint(" ++ int (Uint31.to_int i) ++ str "))"
+	str "(ExtrNative.of_uint(" ++ int (Uint63.to_int i) ++ str "))"
     | MLparray p ->
 	assert (args=[]);
 	let tuple = pp_array (pp_expr true env []) (Array.to_list p) in

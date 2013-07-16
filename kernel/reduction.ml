@@ -551,11 +551,11 @@ and eqappr cv_pb l2r infos (lft1,st1) (lft2,st2) cuniv =
       if i1 = i2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
       else raise NotConvertible
   | FNativeArr(t1, p1), FNativeArr(t2,p2) ->
-      let len = Uint31.to_int (Parray.length p1) in
-      if len = Uint31.to_int (Parray.length p2) then
+      let len = Uint63.to_int (Parray.length p1) in
+      if len = Uint63.to_int (Parray.length p2) then
 	let u = ref (ccnv CONV l2r infos el1 el2 t1 t2 cuniv) in
 	for i = 0 to len (* default value *) do
-	  let i = Uint31.of_int i in
+	  let i = Uint63.of_int i in
 	  u := ccnv CONV l2r infos el1 el2 (Parray.get p1 i) (Parray.get p2 i) !u
 	done;
 	convert_stacks l2r infos lft1 lft2 v1 v2 !u

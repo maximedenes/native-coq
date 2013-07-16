@@ -104,7 +104,7 @@ type ('constr, 'types) kind_of_term =
   | Case      of case_info * 'constr * 'constr * 'constr array
   | Fix       of ('constr, 'types) pfixpoint
   | CoFix     of ('constr, 'types) pcofixpoint
-  | NativeInt of Uint31.t
+  | NativeInt of Uint63.t
   | NativeArr of 'types * 'constr array 
 
 (* constr is the fixpoint of the previous type. Requires option
@@ -617,7 +617,7 @@ let compare_constr f t1 t2 =
       ln1 = ln2 & array_for_all2 f tl1 tl2 & array_for_all2 f bl1 bl2
   | CoFix(ln1,(_,tl1,bl1)), CoFix(ln2,(_,tl2,bl2)) ->
       ln1 = ln2 & array_for_all2 f tl1 tl2 & array_for_all2 f bl1 bl2
-  | NativeInt i1, NativeInt i2 -> Uint31.eq i1 i2
+  | NativeInt i1, NativeInt i2 -> Uint63.eq i1 i2
   | NativeArr(t1,p1), NativeArr(t2,p2) ->
       Array.length p1 = Array.length p2 &&
       f t1 t2 &&
@@ -1300,7 +1300,7 @@ let equals_constr t1 t2 =
       & array_eqeq lna1 lna2
       & array_eqeq tl1 tl2
       & array_eqeq bl1 bl2
-    | NativeInt i1, NativeInt i2 -> Uint31.eq i1 i2
+    | NativeInt i1, NativeInt i2 -> Uint63.eq i1 i2
     | NativeArr(t1,p1), NativeArr(t2,p2) ->
       t1 == t2 && array_eqeq p1 p2
     | _ -> false
@@ -1388,7 +1388,7 @@ let hcons_term (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | Rel n ->
 	(t, combinesmall 16 n)
       | NativeInt n ->
-        (t, combinesmall 17 (Uint31.to_int n))
+        (t, combinesmall 17 (Uint63.to_int n))
       | NativeArr (t,p) ->
         let hp = hash_term_array p in
         let t, ht = sh_rec t in
@@ -1438,7 +1438,7 @@ let rec hash_constr t =
        combinesmall 14 (combine (hash_term_array bl) (hash_term_array tl))
     | Meta n -> combinesmall 15 n
     | Rel n -> combinesmall 16 n
-    | NativeInt n -> combinesmall 17 (Uint31.to_int n)
+    | NativeInt n -> combinesmall 17 (Uint63.to_int n)
     | NativeArr (t,p) ->
       let hp = hash_term_array p in
       let ht = hash_constr t in

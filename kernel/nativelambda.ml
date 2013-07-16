@@ -37,7 +37,7 @@ type lambda =
 	(* A fully applied constructor *)
   | Lconstruct    of string * constructor (* prefix, constructor name *)
 	(* A partially applied constructor *)
-  | Lint          of Uint31.t
+  | Lint          of Uint63.t
   | Lparray       of lambda array
   | Lval          of Nativevalues.t
   | Lsort         of sorts
@@ -382,7 +382,7 @@ let is_value lc =
 	
 let get_value lc =
   match lc with
-  | Lint i -> Nativevalues.mk_int (Uint31.to_int i)
+  | Lint i -> Nativevalues.mk_int (Uint63.to_int i)
   | Lval v -> v
   | Lmakeblock(_,_,tag,args) when Array.length args = 0 -> 
       Nativevalues.mk_int tag
@@ -423,7 +423,7 @@ let areint l1 l2 = Lareint [|l1; l2|]
 let isint l = Lareint [|l|]
 let add31 l1 l2 =Lprim(None, Native.Int31add, [|l1;l2|]) 
 let sub31 l1 l2 =Lprim(None, Native.Int31sub, [|l1;l2|]) 
-let one31 = Lint (Uint31.of_int 1)
+let one31 = Lint (Uint63.of_int 1)
 
 let _f = Name(id_of_string "f")
 let _min = Name (id_of_string "min") 
@@ -549,7 +549,7 @@ let prim env kn op args =
       let h = Lrel(_h,1) in
       Llet(_h,args.(2),
 	Lif(isint h,
-            Lint (Uint31.of_int 0) (* constructor eq_refl *),
+            Lint (Uint63.of_int 0) (* constructor eq_refl *),
 	    Lapp(Lconst (prefix,kn), [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
   | Native.Oprim p      ->
       let prefix = get_const_prefix env kn in

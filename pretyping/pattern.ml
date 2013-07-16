@@ -50,7 +50,7 @@ type constr_pattern =
       (int * int * constr_pattern) list (** constructor index, nb of args *)
   | PFix of fixpoint
   | PCoFix of cofixpoint
-  | PNativeInt of Uint31.t
+  | PNativeInt of Uint63.t
   | PNativeArr of constr_pattern * constr_pattern array
 
 let rec occur_meta_pattern = function

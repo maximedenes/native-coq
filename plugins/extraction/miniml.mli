@@ -124,7 +124,7 @@ and ml_ast =
   | MLaxiom
   | MLmagic  of ml_ast
   | MLparray of ml_ast array
-  | MLuint   of Uint31.t
+  | MLuint   of Uint63.t
 
 and ml_pattern =
   | Pcons   of global_reference * ml_pattern list

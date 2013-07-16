@@ -320,7 +320,7 @@ and fterm =
   | FProd of name * fconstr * fconstr
   | FLetIn of name * fconstr * fconstr * constr * fconstr subs
   | FEvar of existential * fconstr subs
-  | FNativeInt of Uint31.t
+  | FNativeInt of Uint63.t
   | FNativeArr of fconstr * fconstr Parray.t
   | FLIFT of int * fconstr
   | FCLOS of constr * fconstr subs
@@ -601,7 +601,7 @@ let mk_clos_deep clos_fun env t =
 	{ norm = Cstr;
 	  term = 
 	  FNativeArr(clos_fun env t, 
-		     Parray.init (Uint31.of_int len)
+		     Parray.init (Uint63.of_int len)
 		       (fun i -> clos_fun env p.(i)) 
 		       (clos_fun env p.(len))) 
 	}
@@ -664,9 +664,9 @@ let rec to_constr constr_fun lfts v =
     | FLOCKED -> assert false (*mkVar(id_of_string"_LOCK_")*)
     | FNativeInt i -> mkInt i
     | FNativeArr(t, p) ->
-	let init i = constr_fun lfts (Parray.get p (Uint31.of_int i)) in
+	let init i = constr_fun lfts (Parray.get p (Uint63.of_int i)) in
 	mkArray(constr_fun lfts t,
-		Array.init (Uint31.to_int (Parray.length p) + 1) init)
+		Array.init (Uint63.to_int (Parray.length p) + 1) init)
 
 
 (* This function defines the correspondance between constr and

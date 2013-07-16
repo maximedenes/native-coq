@@ -49,7 +49,7 @@ type aconstr =
   | ASort of glob_sort
   | APatVar of patvar
   | ACast of aconstr * aconstr cast_type
-  | ANativeInt of Uint31.t
+  | ANativeInt of Uint63.t
   | ANativeArr of aconstr * aconstr array
 
 type scope_name = string
@@ -205,7 +205,7 @@ let compare_glob_constr f add t1 t2 = match t1,t2 with
   | GSort (_,s1), GSort (_,s2) -> s1 = s2
   | GLetIn (_,na1,b1,c1), GLetIn (_,na2,b2,c2) when na1 = na2 ->
       on_true_do (f b1 b2 & f c1 c2) add na1
-  | GNativeInt(_,i1), GNativeInt(_,i2) -> Uint31.eq i1 i2
+  | GNativeInt(_,i1), GNativeInt(_,i2) -> Uint63.eq i1 i2
   | GNativeArr(_,t1,p1),GNativeArr(_,t2,p2) -> 
       f t1 t2 & array_for_all2 f p1 p2 
   | (GCases _ | GRec _

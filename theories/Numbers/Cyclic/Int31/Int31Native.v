@@ -17,7 +17,7 @@ RegisterInd carry as ind_carry.
 RegisterInd comparison as ind_cmp.
 RegisterInd eq as ind_eq.
 
-Definition size := 31%nat.
+Definition size := 63%nat.
 
 Register int : Set as int31_type.
 

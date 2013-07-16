@@ -2554,7 +2554,7 @@ Qed.
 Lemma bit_max_int : forall i, (i < digits)%int31 = true -> bit max_int i = true.
 Proof.
  intros;apply (forallb_spec (bit max_int) 0 (digits - 1)).
- vm_compute;trivial.
+ compute;trivial.
  apply leb_0.
  rewrite ltb_spec in H.
  destruct (to_Z_bounded i);rewrite leb_spec.

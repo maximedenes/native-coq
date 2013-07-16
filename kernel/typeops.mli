@@ -108,7 +108,7 @@ val make_polymorphic_if_constant_for_ind : env -> unsafe_judgment ->
 val type_of_int : env -> types
 val type_of_array : env -> types
 
-val judge_of_int : env -> Uint31.t -> unsafe_judgment 
+val judge_of_int : env -> Uint63.t -> unsafe_judgment 
 val judge_of_array : 
     env -> unsafe_type_judgment -> unsafe_judgment array -> unsafe_judgment
 

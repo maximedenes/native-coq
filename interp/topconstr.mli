@@ -45,7 +45,7 @@ type aconstr =
   | ASort of glob_sort
   | APatVar of patvar
   | ACast of aconstr * aconstr cast_type
-  | ANativeInt of Uint31.t
+  | ANativeInt of Uint63.t
   | ANativeArr of aconstr * aconstr array
 
 type scope_name = string

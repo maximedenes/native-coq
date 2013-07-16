@@ -31,7 +31,7 @@ Hashtbl_alt
 Names
 Univ
 Esubst
-Uint31
+Uint63
 Parray
 Native
 Term

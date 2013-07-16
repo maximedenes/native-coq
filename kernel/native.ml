@@ -194,12 +194,12 @@ let arity = function
 module type PARRAY = 
   sig 
     type 'a t
-    val length  : 'a t -> Uint31.t
-    val get     : 'a t -> Uint31.t -> 'a
-    val set     : 'a t -> Uint31.t -> 'a -> 'a t
+    val length  : 'a t -> Uint63.t
+    val get     : 'a t -> Uint63.t -> 'a
+    val set     : 'a t -> Uint63.t -> 'a -> 'a t
     val default : 'a t -> 'a 
-    val make    : Uint31.t -> 'a -> 'a t
-    val init    : Uint31.t -> (int -> 'a) -> 'a -> 'a t
+    val make    : Uint63.t -> 'a -> 'a t
+    val init    : Uint63.t -> (int -> 'a) -> 'a -> 'a t
     val copy    : 'a t -> 'a t
     val reroot  : 'a t -> 'a t
 
@@ -218,15 +218,15 @@ module Narray : PARRAY with type 'a t = 'a array =
 
     let of_array t = assert false
 
-    let length p = Uint31.of_int (Array.length p - 1)
+    let length p = Uint63.of_int (Array.length p - 1)
 
     let get p i = 
-      let i = Uint31.to_int i in
+      let i = Uint63.to_int i in
       if 0 <= i && i < Array.length p then p.(i)
       else p.(Array.length p - 1)
 
     let set p i a = 
-      let i = Uint31.to_int i in
+      let i = Uint63.to_int i in
       if 0 <= i && i < Array.length p - 1 then
 	let p' = Array.copy p in p'.(i) <- a; p'
       else p
@@ -234,14 +234,14 @@ module Narray : PARRAY with type 'a t = 'a array =
     let default p = p.(Array.length p - 1)
 
     let make n def = 
-      let n = Uint31.to_int n in
+      let n = Uint63.to_int n in
       let n = 
 	if 0 <= n && n < max_array_length32 then n + 1 
 	else max_array_length32 in
       Array.make n def
 	
     let init n f def =
-      let n = Uint31.to_int n in
+      let n = Uint63.to_int n in
       let n = 
 	if 0 <= n && n < max_array_length32 then n + 1 
 	else max_array_length32 in

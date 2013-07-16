@@ -789,7 +789,7 @@ let rec extern inctx scopes vars r =
   | GCast (loc,c, CastCoerce) ->
       CCast (loc,sub_extern true scopes vars c, CastCoerce)
   | GNativeInt(loc,i) -> 
-      CPrim(loc, (Numeral (Bigint.of_string (Uint31.to_string i))))
+      CPrim(loc, (Numeral (Bigint.of_string (Uint63.to_string i))))
   | GNativeArr(loc,t,p) ->
       CNativeArr(loc, extern_typ scopes vars t,
 		 Array.map (extern inctx scopes vars) p)

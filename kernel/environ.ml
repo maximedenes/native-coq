@@ -448,11 +448,11 @@ module type RedNativeEntries =
     module Parray : PARRAY
 
     val get : args -> int -> elem
-    val get_int :  elem -> Uint31.t
+    val get_int :  elem -> Uint63.t
     val get_parray : elem -> elem * elem Parray.t
     val is_refl : elem -> bool
     val mk_int_refl : env -> elem -> elem
-    val mkInt : env -> Uint31.t -> elem
+    val mkInt : env -> Uint63.t -> elem
     val mkBool : env -> bool -> elem
     val mkCarry : env -> bool -> elem -> elem (* true if carry *)
     val mkPair : env -> elem -> elem -> elem
@@ -496,76 +496,76 @@ module RedNative (E:RedNativeEntries) :
     let red_prim env op args =
       match op with  
       | Int31head0      -> 
-	  let i = get_int1 args in E.mkInt env (Uint31.head0 i)
+	  let i = get_int1 args in E.mkInt env (Uint63.head0 i)
       | Int31tail0      ->
-	  let i = get_int1 args in E.mkInt env (Uint31.tail0 i)
+	  let i = get_int1 args in E.mkInt env (Uint63.tail0 i)
       | Int31add        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.add i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.add i1 i2)
       | Int31sub        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.sub i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.sub i1 i2)
       | Int31mul        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.mul i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.mul i1 i2)
       | Int31div        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.div i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.div i1 i2)
       | Int31mod        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.rem i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.rem i1 i2)
       | Int31lsr        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.l_sr i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_sr i1 i2)
       | Int31lsl        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.l_sl i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_sl i1 i2)
       | Int31land       ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.l_and i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_and i1 i2)
       | Int31lor        ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.l_or i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_or i1 i2)
       | Int31lxor       ->
-	  let i1, i2 = get_int2 args in E.mkInt env (Uint31.l_xor i1 i2)
+	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_xor i1 i2)
       | Int31addc       ->
 	  let i1, i2 = get_int2 args in 
-	  let s = Uint31.add i1 i2 in
-	  E.mkCarry env (Uint31.lt s i1) (E.mkInt env s)
+	  let s = Uint63.add i1 i2 in
+	  E.mkCarry env (Uint63.lt s i1) (E.mkInt env s)
       | Int31subc       ->
 	  let i1, i2 = get_int2 args in 
-	  let s = Uint31.sub i1 i2 in
-	  E.mkCarry env (Uint31.lt i1 i2) (E.mkInt env s)
+	  let s = Uint63.sub i1 i2 in
+	  E.mkCarry env (Uint63.lt i1 i2) (E.mkInt env s)
       | Int31addCarryC  ->
 	  let i1, i2 = get_int2 args in 
-	  let s = Uint31.add (Uint31.add i1 i2) (Uint31.of_int 1) in
-	  E.mkCarry env (Uint31.le s i1) (E.mkInt env s)
+	  let s = Uint63.add (Uint63.add i1 i2) (Uint63.of_int 1) in
+	  E.mkCarry env (Uint63.le s i1) (E.mkInt env s)
       | Int31subCarryC  ->
 	  let i1, i2 = get_int2 args in 
-	  let s = Uint31.sub (Uint31.sub i1 i2) (Uint31.of_int 1) in
-	  E.mkCarry env (Uint31.le i1 i2) (E.mkInt env s)
+	  let s = Uint63.sub (Uint63.sub i1 i2) (Uint63.of_int 1) in
+	  E.mkCarry env (Uint63.le i1 i2) (E.mkInt env s)
       | Int31mulc       ->
 	  let i1, i2 = get_int2 args in 
-	  let (h, l) = Uint31.mulc i1 i2 in
+	  let (h, l) = Uint63.mulc i1 i2 in
 	  E.mkPair env (E.mkInt env h) (E.mkInt env l)
       | Int31diveucl    ->
 	  let i1, i2 = get_int2 args in 
-	  let q,r = Uint31.div i1 i2, Uint31.rem i1 i2 in
+	  let q,r = Uint63.div i1 i2, Uint63.rem i1 i2 in
 	  E.mkPair env (E.mkInt env q) (E.mkInt env r)
       | Int31div21      ->
 	  let i1, i2, i3 = get_int3 args in 
-	  let q,r = Uint31.div21 i1 i2 i3 in
+	  let q,r = Uint63.div21 i1 i2 i3 in
 	  E.mkPair env (E.mkInt env q) (E.mkInt env r)
       | Int31addMulDiv  ->
 	  let p, i, j = get_int3 args in 
-	  let p' = Uint31.to_int p in
+	  let p' = Uint63.to_int p in
 	  E.mkInt env 
-	    (Uint31.l_or 
-	       (Uint31.l_sl i p) 
-	       (Uint31.l_sr j (Uint31.of_int (31 - p'))))
+	    (Uint63.l_or 
+	       (Uint63.l_sl i p) 
+	       (Uint63.l_sr j (Uint63.of_int (31 - p'))))
       | Int31eq         ->
 	  let i1, i2 = get_int2 args in 
-	  E.mkBool env (Uint31.eq i1 i2)
+	  E.mkBool env (Uint63.eq i1 i2)
       | Int31lt         ->
 	  let i1, i2 = get_int2 args in 
-	  E.mkBool env (Uint31.lt i1 i2)
+	  E.mkBool env (Uint63.lt i1 i2)
       | Int31le         ->
 	  let i1, i2 = get_int2 args in 
-	  E.mkBool env (Uint31.le i1 i2)
+	  E.mkBool env (Uint63.le i1 i2)
       | Int31compare    ->
 	  let i1, i2 = get_int2 args in 
-	  begin match Uint31.compare i1 i2 with
+	  begin match Uint63.compare i1 i2 with
 	  | x when x < 0 ->  E.mkLt env
 	  | 0 -> E.mkEq env
 	  | _ -> E.mkGt env
@@ -579,7 +579,7 @@ module RedNative (E:RedNativeEntries) :
       match op with
       | Int31print      -> 
 	  let i = get_int1 args in
-	  Printf.fprintf stderr "%s\n" (Uint31.to_string i);flush stderr;
+	  Printf.fprintf stderr "%s\n" (Uint63.to_string i);flush stderr;
 	  E.mkInt env i
       | ArrayMake       ->
 	  let t = E.get args 0 in
@@ -641,9 +641,9 @@ module RedNative (E:RedNativeEntries) :
 	  let typ =  mkRel 1 (*_A*) in
 	  (* a->#1;_A->#2;_B->#3;f->#4;min->#5;max ->#6;cont->#7 *)
 	  let body =
-	    if Uint31.lt min max then 
+	    if Uint63.lt min max then 
 	      begin
-		let minp1 = Uint31.add min (Uint31.of_int 1) in
+		let minp1 = Uint63.add min (Uint63.of_int 1) in
 		mkApp (mkRel 4(*f*),
 		       [|mkRel 5 (* min *);
 			 mkApp (it,
@@ -658,7 +658,7 @@ module RedNative (E:RedNativeEntries) :
 		       |])
 	      end
 	    else 
-	      if Uint31.eq min max then 
+	      if Uint63.eq min max then 
 		mkApp(mkRel 4(*f *),
 		      [| mkRel 5; (* min *)
 			 mkRel 7; (* cont *)
@@ -682,9 +682,9 @@ module RedNative (E:RedNativeEntries) :
 	  let typ =  mkRel 1 (*_A*) in
 	  (* a->#1;_A->#2;_B->#3;f->#4;min->#5;max ->#6;cont->#7 *)
 	  let body =
-	    if Uint31.lt min max then 
+	    if Uint63.lt min max then 
 	      begin
-		let maxp1 = Uint31.sub max (Uint31.of_int 1) in
+		let maxp1 = Uint63.sub max (Uint63.of_int 1) in
 		mkApp (mkRel 4(*f*),
 		       [|mkRel 6 (* max *);
 			 mkApp (it,
@@ -699,7 +699,7 @@ module RedNative (E:RedNativeEntries) :
 		       |])
 	      end
 	    else 
-	      if Uint31.eq min max then 
+	      if Uint63.eq min max then 
 		mkApp(mkRel 4(*f *),
 		      [| mkRel 5; (* min *)
 			 mkRel 7; (* cont *)

@@ -180,7 +180,7 @@ type cofixpoint = int * rec_declaration
 val mkCoFix : cofixpoint -> constr
 
 (* Constructs native term *)
-val mkInt : Uint31.t -> constr
+val mkInt : Uint63.t -> constr
 val mkArray : types * constr array  -> constr
 
 
@@ -213,7 +213,7 @@ type ('constr, 'types) kind_of_term =
   | Case      of case_info * 'constr * 'constr * 'constr array
   | Fix       of ('constr, 'types) pfixpoint
   | CoFix     of ('constr, 'types) pcofixpoint
-  | NativeInt of Uint31.t
+  | NativeInt of Uint63.t
   | NativeArr of 'types * 'constr array
 
 (** User view of [constr]. For [App], it is ensured there is at
@@ -333,7 +333,7 @@ val destFix : constr -> fixpoint
 val destCoFix : constr -> cofixpoint
 
 (* Destructs native term *)
-val destInt : constr -> Uint31.t
+val destInt : constr -> Uint63.t
 val destArray : constr -> types * constr array
 
 (** {6 Local } *)

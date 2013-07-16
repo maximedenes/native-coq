@@ -1,9 +1,13 @@
 type t
 
+val uint_size : int
+
       (* conversion to int *)
-val to_int : t -> int
 val of_int : int -> t
+val to_int : t -> int
+(*
 val of_uint : int -> t
+*)
 
      (* convertion to a string *)
 val to_string : t -> string

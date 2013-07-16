@@ -573,11 +573,8 @@ let extract_prim ml_of l =
   (!decl, !cond, res)
 
 let app_prim p args = MLapp(MLprimitive p, args)
-let select f32 f64 = if Sys.word_size = 64 then f64 else f32
 
-let mk_of_int32 i = i
-let mk_of_int64 i = app_prim MLland [|i;MLint(true,0x7FFFFFFF)|]
-let mk_of_int = select mk_of_int32 mk_of_int64
+let mk_of_int i = i
 
 let (*rec*) to_int v =
   match v with
@@ -598,10 +595,10 @@ let (*rec*) of_int v =
 
 let check_bound v b1 b2 =
   match v with
-  | MLint(_,x) -> if 0 <= x && x < 31 then b1 else b2
+  | MLint(_,x) -> if 0 <= x && x < Uint63.uint_size then b1 else b2
   | _ -> 
       let t1 = app_prim MLle [|MLint(true,0); v|] in
-      let t2 = app_prim MLlt [|v; MLint(true,31)|] in
+      let t2 = app_prim MLlt [|v; MLint(true,Uint63.uint_size)|] in
       MLif(app_prim MLand [|t1;t2|], b1, b2)
       
 let mk_lsl args = 
@@ -630,22 +627,13 @@ let compile_prim decl cond paux =
     | PAprim(o, op, args) ->
 	let args = Array.map opt_prim_aux args in
 	begin match o, op with
-	| None, Native.Int31lt -> 
-            if Sys.word_size = 64 then
-              app_prim MLlt (args_to_int args)
-            else app_prim Clt_b args
-        | Some _, Native.Int31lt -> 
-            if Sys.word_size = 64 then
-              app_prim Val_of_bool [|(app_prim MLlt (args_to_int args))|]
-            else app_prim (Clt None) args
+	| None, Native.Int31lt -> app_prim Clt_b args
+    | Some _, Native.Int31lt -> 
+      app_prim (Clt None) args
 	| None, Native.Int31le ->
-            if Sys.word_size = 64 then
-              app_prim MLle (args_to_int args)
-            else app_prim Cle_b args
-        | Some _, Native.Int31le ->
-            if Sys.word_size = 64 then
-              app_prim Val_of_bool [|(app_prim MLle (args_to_int args))|]
-            else app_prim (Cle None) args
+      app_prim Cle_b args
+    | Some _, Native.Int31le ->
+      app_prim (Cle None) args
 	| _, Native.Int31lsl  -> of_int (mk_lsl (args_to_int args))
 	| _, Native.Int31lsr  -> of_int (mk_lsr (args_to_int args))
 	| _, Native.Int31land -> of_int (mk_land (args_to_int args))
@@ -942,7 +930,7 @@ let compile_cprim prefix kn p args =
       MLconstruct(prefix,cn,Array.map (ml_of_lam env l) args)
   | Lconstruct (prefix, cn) ->
       MLglobal (Gconstruct (prefix, cn))
-  | Lint i -> MLint (false,Uint31.to_int i)
+  | Lint i -> MLint (false,Uint63.to_int i)
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v ->
       let i = push_symbol (SymbValue v) in get_value_code i
@@ -1395,8 +1383,8 @@ let pp_mllam fmt l =
     | Ceq o -> pp_vprim o "eq"
     | Clt o -> pp_vprim o "lt"
     | Cle o -> pp_vprim o "le"
-    | Clt_b  -> if Sys.word_size = 64 then Format.fprintf fmt "(<)" else Format.fprintf fmt "lt_b"
-    | Cle_b -> if Sys.word_size = 64 then Format.fprintf fmt "(<=)" else Format.fprintf fmt "le_b"
+    | Clt_b -> Format.fprintf fmt "lt_b"
+    | Cle_b -> Format.fprintf fmt "le_b"
     | Ccompare o -> pp_vprim o "compare"
     | Cprint o -> pp_vprim o "print"
     | Carraymake o -> pp_vprim o "arraymake"

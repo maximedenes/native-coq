@@ -18,7 +18,7 @@ Set Vm Optimize.
 Local Open Scope int31_scope.
 
 (** The number of digits as a int *)
-Definition digits := 31.
+Definition digits := 63.
 
 (** The bigger int *)
 Definition max_int := Eval compute in 0 - 1.
@@ -44,7 +44,7 @@ Register is_even as PrimInline.
 (** Bit *)
 
 Definition bit i n :=  negb (is_zero ((i >> n) << (digits - 1))).
-Register bit as PrimInline.
+(* Register bit as PrimInline. *)
 
 (** Extra modulo operations *)
 Definition opp (i:int) := 0 - i.

@@ -97,7 +97,7 @@ exception Non_closed
 
 let int31_of_pos_bigint dloc n =
   let i = int_of_pos_bigint n in
-  GNativeInt (dloc, Uint31.of_int i)
+  GNativeInt (dloc, Uint63.of_int i)
 
 let error_negative dloc =
   Errors.user_err_loc (dloc, "interp_int31", Pp.str "int31 are only non-negative numbers.")
@@ -111,7 +111,7 @@ let interp_int31 dloc n =
 
 let bigint_of_int31 i = 
   match i with
-  | GNativeInt(_,i) -> of_string (Uint31.to_string i)
+  | GNativeInt(_,i) -> of_string (Uint63.to_string i)
   | _ -> raise Non_closed
 
 let uninterp_int31 i =
@@ -133,7 +133,7 @@ let _ = Notation.declare_numeral_interpreter int31_scope
 
 (*** Parsing for bigN in digital notation ***)
 (* the base for bigN (in Coq) that is 2^31 in our case *)
-let base = pow two (of_string "31")
+let base = pow two (of_string "63")
 
 (* base of the bigN of height N : *)
 let rank n = pow base (pow two n)
