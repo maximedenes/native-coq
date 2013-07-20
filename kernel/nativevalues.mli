@@ -61,6 +61,7 @@ val mk_block : tag -> t array -> t
 
 
 val mk_int : int -> t
+val mk_uint : Uint63.t -> t
 
 val napply : t -> t array -> t
 (* Functions over accumulators *)
@@ -88,6 +89,7 @@ type kind_of_value =
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
+  | Vint of Uint63.t
   | Varray of t Parray.t 
 
 val kind_of_value : t -> kind_of_value
@@ -98,7 +100,6 @@ val is_accu : t -> bool
 (*** Primitive sur les entiers *)
 
 val val_to_int : t -> int
-val val_of_int : int -> t
 val of_bool : bool -> t
 val is_int : t -> bool
 

@@ -158,6 +158,7 @@ let rec nf_val env v typ =
       let capp,ctyp = construct_of_constr_block env (block_tag b) typ in
       let args = nf_bargs env b ctyp in
       mkApp(capp,args)
+  | Vint i -> mkInt i
   | Varray p -> nf_array env p typ
 
 and nf_type env v =

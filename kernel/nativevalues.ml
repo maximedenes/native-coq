@@ -196,7 +196,8 @@ let dummy_value : unit -> t = fun () _ -> anomaly "Evaluation failed"
 
 let cast_accu v = (Obj.magic v:accumulator)
 
-let mk_int x = Obj.magic x
+let mk_int (x : int) = (Obj.magic x : t)
+let mk_uint (x : Uint63.t) = (Obj.magic x : t)
 
 type block
 
@@ -213,6 +214,7 @@ type kind_of_value =
   | Vfun of (t -> t)
   | Vconst of int
   | Vblock of block
+  | Vint of Uint63.t
   | Varray of t Parray.t 
 	
 let kind_of_value (v:t) =
@@ -223,8 +225,8 @@ let kind_of_value (v:t) =
     if tag = accumulate_tag then 
       if Obj.size o = 1 then Varray (Obj.magic v)
       else Vaccu (Obj.magic v)
-    else 
-      if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
+    else if tag = Obj.custom_tag then Vint (Obj.magic v)
+    else if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
       else
         (* assert (tag = Obj.closure_tag || tag = Obj.infix_tag); 
            or ??? what is 1002*)
@@ -234,93 +236,91 @@ let kind_of_value (v:t) =
 
 (*** Operations pour les entiers **)
 
-let val_of_int x = Obj.magic x 
-let val_to_int x = Obj.magic x
+let is_int (x:t) =
+  let o = Obj.repr x in
+  Obj.is_int o || Obj.tag o = Obj.custom_tag
 
-
-let is_int (x:t) = Obj.is_int (Obj.repr x)
 let to_uint (x:t) = (Obj.magic x : Uint63.t)
-let of_uint (x: Uint63.t) = (Obj.magic x : t)
 
 let no_check_head0 x =
- of_uint (Uint63.head0 (to_uint x))
+ mk_uint (Uint63.head0 (to_uint x))
 
 let head0 accu x =
  if is_int x then  no_check_head0 x
  else accu x
 
 let no_check_tail0 x =
-  of_uint (Uint63.tail0 (to_uint x))
+  mk_uint (Uint63.tail0 (to_uint x))
 
 let tail0 accu x =
  if is_int x then no_check_tail0 x
  else accu x
 
 let no_check_add  x y =
-  of_uint (Uint63.add (to_uint x) (to_uint y))
+  mk_uint (Uint63.add (to_uint x) (to_uint y))
 
 let add accu x y =
   if is_int x && is_int y then no_check_add x y 
   else accu x y
 
 let no_check_sub x y =
-     of_uint (Uint63.sub (to_uint x) (to_uint y))
+     mk_uint (Uint63.sub (to_uint x) (to_uint y))
 
 let sub accu x y =
   if is_int x && is_int y then no_check_sub x y
   else accu x y
 
 let no_check_mul x y =
-  of_uint (Uint63.mul (to_uint x) (to_uint y))
+  mk_uint (Uint63.mul (to_uint x) (to_uint y))
 
 let mul accu x y =
   if is_int x && is_int y then no_check_mul x y
   else accu x y
 
 let no_check_div x y =
-  of_uint (Uint63.div (to_uint x) (to_uint y))
+  mk_uint (Uint63.div (to_uint x) (to_uint y))
 
 let div accu x y =
   if is_int x && is_int y then no_check_div x y 
   else accu x y
 
 let no_check_rem x y =
-  of_uint (Uint63.rem (to_uint x) (to_uint y))
+  mk_uint (Uint63.rem (to_uint x) (to_uint y))
 
 let rem accu x y =
   if is_int x && is_int y then no_check_rem x y
   else accu x y
 
 let no_check_l_sr x y =
-  of_uint (Uint63.l_sr (to_uint x) (to_uint y))
+  mk_uint (Uint63.l_sr (to_uint x) (to_uint y))
 
 let l_sr accu x y =
   if is_int x && is_int y then no_check_l_sr x y
   else accu x y
 
 let no_check_l_sl x y =
-  of_uint (Uint63.l_sl (to_uint x) (to_uint y))
+  mk_uint (Uint63.l_sl (to_uint x) (to_uint y))
 
 let l_sl accu x y =
   if is_int x && is_int y then no_check_l_sl x y
   else accu x y
 
 let no_check_l_and x y =
-  of_uint (Uint63.l_and (to_uint x) (to_uint y))
+  mk_uint (Uint63.l_and (to_uint x) (to_uint y))
 
 let l_and accu x y =
   if is_int x && is_int y then no_check_l_and x y
   else accu x y
 
 let no_check_l_xor x y =
-  of_uint (Uint63.l_xor (to_uint x) (to_uint y))
+  mk_uint (Uint63.l_xor (to_uint x) (to_uint y))
 
 let l_xor accu x y =
   if is_int x && is_int y then no_check_l_xor x y
   else accu x y
 
 let no_check_l_or x y =
-  of_uint (Uint63.l_or (to_uint x) (to_uint y))
+  mk_uint (Uint63.l_or (to_uint x) (to_uint y))
 
 let l_or accu x y =
   if is_int x && is_int y then no_check_l_or x y
@@ -336,8 +336,8 @@ type coq_pair =
   | PPair of t * t
 
 let mkCarry b i =
-  if b then (Obj.magic (C1(of_uint i)):t)
-  else (Obj.magic (C0(of_uint i)):t)
+  if b then (Obj.magic (C1(mk_uint i)):t)
+  else (Obj.magic (C0(mk_uint i)):t)
 
 let no_check_addc x y =
   let s = Uint63.add (to_uint x) (to_uint y) in
@@ -376,7 +376,7 @@ let subCarryC accu x y =
   else accu x y 
 
 let of_pair (x, y) =
-  (Obj.magic (PPair(of_uint x, of_uint y)):t)
+  (Obj.magic (PPair(mk_uint x, mk_uint y)):t)
 
 let no_check_mulc x y =
     of_pair(Uint63.mulc (to_uint x) (to_uint y))
@@ -404,7 +404,7 @@ let div21 accu x y z =
 let no_check_addMulDiv x y z =
   let p, i, j = to_uint x, to_uint y, to_uint z in
   let p' = Uint63.to_int p in
-  of_uint (Uint63.l_or 
+  mk_uint (Uint63.l_or 
 	     (Uint63.l_sl i p) 
 	     (Uint63.l_sr j (Uint63.of_int (31 - p'))))
 
@@ -429,6 +429,9 @@ let of_bool b = (Obj.magic (not b) : (* coq_bool *) t)
   if b then (Obj.magic Btrue:t)
   else (Obj.magic Bfalse:t) 
   *)
+
+let val_to_int (x : t) = (Obj.magic x : int)
+
 let no_check_eq x y =     
   of_bool (Uint63.eq (to_uint x) (to_uint y))
 
@@ -482,7 +485,7 @@ let foldi_cont accu _A _B f min max cont =
     let imin, imax = to_uint min, to_uint max in
     if Uint63.le imin imax then
       let rec aux i a =
-        f (of_uint i) 
+        f (mk_uint i) 
          (if Uint63.lt i imax then
 	   aux (Uint63.add i (Uint63.of_int 1))
 	 else cont) a in
@@ -495,7 +498,7 @@ let foldi_down_cont accu _A _B f max min cont =
     let imax, imin = to_uint max, to_uint min in
     if Uint63.le imin imax then
       let rec aux i a =
-        f (of_uint i) 
+        f (mk_uint i) 
          (if Uint63.lt imin i then
 	   aux (Uint63.sub i (Uint63.of_int 1))
 	 else cont) a in
@@ -548,7 +551,7 @@ let arrayreroot accu vA t =
 
 let arraylength accu vA t =
   if is_parray t then
-    of_uint (Parray.length (to_parray t))
+    mk_uint (Parray.length (to_parray t))
   else accu vA t
 
 let parray_of_array t =

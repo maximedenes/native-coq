@@ -382,7 +382,7 @@ let is_value lc =
 	
 let get_value lc =
   match lc with
-  | Lint i -> Nativevalues.mk_int (Uint63.to_int i)
+  | Lint i -> Nativevalues.mk_uint i
   | Lval v -> v
   | Lmakeblock(_,_,tag,args) when Array.length args = 0 -> 
       Nativevalues.mk_int tag

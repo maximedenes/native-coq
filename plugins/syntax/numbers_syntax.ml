@@ -95,9 +95,20 @@ exception Non_closed
 (* parses a *non-negative* integer (from bigint.ml) into an int31
    wraps modulo 2^31 *)
 
+(* TODO: should use string conversion rather than going through bigint *)
+
+let rec int63_of_pos_bigint i = 
+  if equal i zero then Uint63.of_int 0
+  else
+    let (quo,rem) = div2_with_rest i in
+    if rem then Uint63.add (Uint63.of_int 1)
+      (Uint63.mul (Uint63.of_int 2) (int63_of_pos_bigint quo))
+    else Uint63.mul (Uint63.of_int 2) (int63_of_pos_bigint quo)
+
+
 let int31_of_pos_bigint dloc n =
-  let i = int_of_pos_bigint n in
-  GNativeInt (dloc, Uint63.of_int i)
+  let i = int63_of_pos_bigint n in
+  GNativeInt (dloc, i)
 
 let error_negative dloc =
   Errors.user_err_loc (dloc, "interp_int31", Pp.str "int31 are only non-negative numbers.")

@@ -5,6 +5,7 @@ val uint_size : int
       (* conversion to int *)
 val of_int : int -> t
 val to_int : t -> int
+val of_int64 : Int64.t -> t
 (*
 val of_uint : int -> t
 *)
@@ -12,6 +13,8 @@ val of_uint : int -> t
      (* convertion to a string *)
 val to_string : t -> string
 val of_string : string -> t
+
+val compile : t -> string
 
       (* logical operations *)
 val l_sl    : t -> t -> t

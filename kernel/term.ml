@@ -675,7 +675,7 @@ let constr_ord_int f t1 t2 =
     | CoFix(ln1,(_,tl1,bl1)), CoFix(ln2,(_,tl2,bl2)) ->
 	((Pervasives.compare =? (array_compare f)) ==? (array_compare f))
 	ln1 ln2 tl1 tl2 bl1 bl2
-    | NativeInt i1, NativeInt i2 -> Pervasives.compare i1 i2
+    | NativeInt i1, NativeInt i2 -> Uint63.compare i1 i2
     | NativeArr(t1,a1), NativeArr(t2,a2) -> 
         (f =? (array_compare f)) t1 t2 a1 a2
     | Var _, (Rel _)

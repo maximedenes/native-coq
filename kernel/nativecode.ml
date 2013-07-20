@@ -171,7 +171,7 @@ type primitive =
   | Upd_cofix
   | Force_cofix
   | Val_to_int
-  | Val_of_int
+  | Mk_uint
   | Val_of_bool
   (* Coq primitive with check *)
   | Chead0 of (string * constant) option
@@ -238,7 +238,8 @@ type mllambda =
                               (* argument, prefix, accu branch, branches *)
   | MLconstruct    of string * constructor * mllambda array
                    (* prefix, constructor name, arguments *)
-  | MLint          of bool * int   (* true if the type sould be int *)
+  | MLint          of int
+  | MLuint         of Uint63.t
   | MLparray       of mllambda array
   | MLsetref       of string * mllambda
   | MLsequence     of mllambda * mllambda
@@ -250,7 +251,7 @@ let fv_lam l =
     match l with
     | MLlocal l ->
 	if LNset.mem l bind then fv else LNset.add l fv
-    | MLglobal _ | MLprimitive _  | MLint _ -> fv
+    | MLglobal _ | MLprimitive _  | MLint _ | MLuint _ -> fv
     | MLlam (ln,body) ->
 	let bind = Array.fold_right LNset.add ln bind in
 	aux body bind fv
@@ -430,7 +431,7 @@ let fv_args env fvn fvr =
   if size = 0 then empty_args 
   else 
     begin
-      let args = Array.make size (MLint (false,0)) in
+      let args = Array.make size (MLint 0) in
       let fvn = ref fvn in
       let i = ref 0 in
       while !fvn <> [] do
@@ -450,22 +451,28 @@ let fv_args env fvn fvr =
     end
 
 let get_value_code i =
-  MLapp (MLglobal (Ginternal "get_value"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_value"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 let get_sort_code i =
-  MLapp (MLglobal (Ginternal "get_sort"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_sort"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 let get_name_code i =
-  MLapp (MLglobal (Ginternal "get_name"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_name"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 let get_const_code i =
-  MLapp (MLglobal (Ginternal "get_const"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_const"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 let get_match_code i =
-  MLapp (MLglobal (Ginternal "get_match"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_match"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 let get_ind_code i =
-  MLapp (MLglobal (Ginternal "get_ind"), [|MLglobal symbols_tbl_name;MLint(true,i)|])
+  MLapp (MLglobal (Ginternal "get_ind"),
+    [|MLglobal symbols_tbl_name; MLint i|])
 
 type rlist =
   | Rnil 
@@ -548,7 +555,7 @@ type prim_aux =
 let add_check cond args =
   let aux cond a = 
     match a with
-    | PAml(MLint _) -> cond
+    | PAml (MLuint _) -> cond
     | PAml ml -> if List.mem ml cond then cond else ml::cond 
     | _ -> cond
   in
@@ -578,44 +585,11 @@ let mk_of_int i = i
 
 let (*rec*) to_int v =
   match v with
-  | MLint(false,i) -> MLint(true,i)
   | MLint _ -> v 
 (*  | MLapp(MLprimitive (MLlsl |  MLlsr | MLland | MLlor | MLlxor | MLadd | MLsub | MLmul), _) -> v *)
-  | MLapp(MLprimitive Val_of_int, t) -> t.(0)
 (*  | MLif(e,b1,b2) -> MLif(e,to_int b1, to_int b2) *)
   | _ -> MLapp(MLprimitive Val_to_int, [|v|]) 
 
-let (*rec*) of_int v = 
-  match v with
-  | MLint(true,i) -> MLint(false,i)
-  | MLint _ -> v
-  | MLapp(MLprimitive Val_to_int, t) -> t.(0)
-(*  | MLif(e,b1,b2) -> MLif(e,of_int b1, of_int b2) *)
-  | _ -> MLapp(MLprimitive Val_of_int,[|v|]) 
-
-let check_bound v b1 b2 =
-  match v with
-  | MLint(_,x) -> if 0 <= x && x < Uint63.uint_size then b1 else b2
-  | _ -> 
-      let t1 = app_prim MLle [|MLint(true,0); v|] in
-      let t2 = app_prim MLlt [|v; MLint(true,Uint63.uint_size)|] in
-      MLif(app_prim MLand [|t1;t2|], b1, b2)
-      
-let mk_lsl args = 
-  mk_of_int (check_bound args.(1) (app_prim MLlsl args) (MLint(true,0)))
-
-let mk_lsr args = 
-  (check_bound args.(1) (app_prim MLlsr args) (MLint(true,0)))
-
-let mk_land args = app_prim MLland args
-let mk_lor args = app_prim MLlor args
-let mk_lxor args = app_prim MLlxor args
-
-let mk_add args = mk_of_int (app_prim MLadd args)
-let mk_sub args = mk_of_int (app_prim MLsub args)
-let mk_mul args = mk_of_int (app_prim MLmul args)
-let mk_inteq args = app_prim MLinteq args
-  
 let compile_prim decl cond paux =
   let args_to_int args = 
     for i = 0 to Array.length args - 1 do
@@ -634,14 +608,6 @@ let compile_prim decl cond paux =
       app_prim Cle_b args
     | Some _, Native.Int31le ->
       app_prim (Cle None) args
-	| _, Native.Int31lsl  -> of_int (mk_lsl (args_to_int args))
-	| _, Native.Int31lsr  -> of_int (mk_lsr (args_to_int args))
-	| _, Native.Int31land -> of_int (mk_land (args_to_int args))
-	| _, Native.Int31lor  -> of_int (mk_lor (args_to_int args))
-	| _, Native.Int31lxor -> of_int (mk_lxor (args_to_int args))
-	| _, Native.Int31add  -> of_int (mk_add (args_to_int args))
-	| _, Native.Int31sub  -> of_int (mk_sub (args_to_int args))
-	| _, Native.Int31mul  -> of_int (mk_mul (args_to_int args))
 (*	| _, Native.Int31eq -> mk_inteq (args_to_int args) *)
 	| _, _ -> app_prim (mlprim_of_prim op None) args
 	end
@@ -661,7 +627,7 @@ let compile_prim decl cond paux =
 	let cond = 
 	  List.fold_left 
 	    (fun ml c -> app_prim MLland [| ml; to_int c|])
-            (app_prim MLland [|to_int c1; MLint(true,0)|]) cond in
+            (app_prim MLland [|to_int c1; MLint 0|]) cond in
         let cond = app_prim MLmagic [|cond|] in
 	MLif(cond, naive_prim_aux paux, opt_prim_aux paux) in
   let add_decl decl body =
@@ -930,7 +896,7 @@ let compile_cprim prefix kn p args =
       MLconstruct(prefix,cn,Array.map (ml_of_lam env l) args)
   | Lconstruct (prefix, cn) ->
       MLglobal (Gconstruct (prefix, cn))
-  | Lint i -> MLint (false,Uint63.to_int i)
+  | Lint i -> MLapp(MLprimitive Mk_uint, [|MLuint i|])
   | Lparray t -> MLparray(Array.map (ml_of_lam env l) t)
   | Lval v ->
       let i = push_symbol (SymbValue v) in get_value_code i
@@ -967,7 +933,7 @@ let mllambda_of_lambda auxdefs l t =
 
 let can_subst l = 
   match l with
-  | MLlocal _ | MLint _ | MLglobal _ -> true
+  | MLlocal _ | MLint _ | MLuint _ | MLglobal _ -> true
   | _ -> false
 
 let subst s l =
@@ -976,7 +942,7 @@ let subst s l =
     let rec aux l =
       match l with
       | MLlocal id -> (try LNmap.find id s with _ -> l)
-      | MLglobal _ | MLprimitive _ | MLint _ -> l
+      | MLglobal _ | MLprimitive _ | MLint _ | MLuint _ -> l
       | MLlam(params,body) -> MLlam(params, aux body)
       | MLletrec(defs,body) ->
 	let arec (f,params,body) = (f,params,aux body) in
@@ -1045,7 +1011,7 @@ let optimize gdef l =
   let rec optimize s l =
     match l with
     | MLlocal id -> (try LNmap.find id s with _ -> l)
-    | MLglobal _ | MLprimitive _ | MLint _ -> l
+    | MLglobal _ | MLprimitive _ | MLint _ | MLuint _ -> l
     | MLlam(params,body) -> 
 	MLlam(params, optimize s body)
     | MLletrec(decls,body) ->
@@ -1241,9 +1207,8 @@ let pp_mllam fmt l =
     | MLconstruct(prefix,c,args) ->
         Format.fprintf fmt "@[(Obj.magic (%s%a) : Nativevalues.t)@]" 
           (string_of_construct prefix c) pp_cargs args
-    | MLint(int, i) ->
-	if int then pp_int fmt i
-	else Format.fprintf fmt "(val_of_int %a)" pp_int i
+    | MLint i -> pp_int fmt i
+    | MLuint i -> Format.fprintf fmt "(%s)" (Uint63.compile i)
     | MLparray p ->
 	Format.fprintf fmt "@[(parray_of_array@\n  [|";
 	for i = 0 to Array.length p - 2 do
@@ -1358,7 +1323,7 @@ let pp_mllam fmt l =
     | Upd_cofix -> Format.fprintf fmt "upd_cofix"
     | Force_cofix -> Format.fprintf fmt "force_cofix"
     | Val_to_int -> Format.fprintf fmt "val_to_int"
-    | Val_of_int -> Format.fprintf fmt "val_of_int"
+    | Mk_uint -> Format.fprintf fmt "mk_uint"
     | Val_of_bool -> Format.fprintf fmt "of_bool"
     | Chead0 o -> pp_vprim o "head0" 
     | Ctail0 o -> pp_vprim o "tail0"
