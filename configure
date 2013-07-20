@@ -1063,6 +1063,16 @@ case $ARCH in
 esac
 
 #####################################################
+# Integer arithmetic matching the architecture      #
+#####################################################
+if [ `getconf LONG_BIT` = "64" ]; then
+  cp $COQSRC/kernel/uint63_amd64.ml $COQSRC/kernel/uint63.ml
+else
+  cp $COQSRC/kernel/uint63_x86.ml $COQSRC/kernel/uint63.ml
+fi
+
+
+#####################################################
 # Building the $COQTOP/config/coq_config.ml file
 #####################################################
 

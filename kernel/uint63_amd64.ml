@@ -1,11 +1,12 @@
-type t = int 
+type t = int
+
+let _ = assert Sys.word_size = 64
 
 let uint_size = 63
-    
-  (* to be used only on 32 bits achitectures *)
+
 let maxuint63 = Int64.of_string "0x7FFFFFFFFFFFFFFF"
 let maxuint31 = Int64.to_int (Int64.of_string "0x7FFFFFFF")
-    
+
     (* conversion from an int *)
 let to_uint64 i = Int64.logand (Int64.of_int i) maxuint63
 let of_int i = i
@@ -19,63 +20,39 @@ let of_string s =
   if Int64.compare Int64.zero i64 <= 0
       && Int64.compare i64 maxuint63 <= 0 
   then Int64.to_int i64
-  else raise (Failure "int_of_string")
+  else raise (Failure "Int64.of_string")
 
     (* logical shift *)
 let l_sl x y =
   if 0 <= y && y < 63 then x lsl y else 0
-    
+
 let l_sr x y = 
   if 0 <= y && y < 63 then x lsr y else 0
-    
+
 let l_and x y = x land y
 let l_or x y = x lor y
 let l_xor x y = x lxor y
 
     (* addition of int31 *)
 let add x y = x + y
- 
+
     (* subtraction *)
 let sub x y = x - y
-   
+
     (* multiplication *)
 let mul x y = x * y
-    
-    (* exact multiplication *)
-let mulc x y =
-  let lx = x land maxuint31 in
-  let ly = y land maxuint31 in
-  let hx = x lsr 31 in
-  let hy = y lsr 31 in
-  let r0 = lx * hy in
-  let r1 = hx * ly in
-  let hr = hx * hy in
-  let lr = lx * ly + (hr lsl 62) in
-  let hr = (lx land ly land 0x4000000000000000) + (hr lsr 1) in
-  let lr0 = r0 lsl 31 in
-  let lr1 = r1 lsl 31 in
-  let lr = lr + lr0 in
-  let c0 = lr < lr0 in (* TODO: unsigned compare? *)
-  let lr = lr + lr1 in
-  let c1 = lr < lr1 in
-  let hr = hr + (r0 lsr 32) + (r1 lsr 32) in
-  let hr =
-    match c0, c1 with
-    | false, false -> hr
-    | true, true -> hr + 2
-    | _ -> hr + 1
-  in (hr, lr)
 
     (* division *)
-let div (x : int) (y : int) = if y = 0 then 0 else x / y
-    
+let div (x : int) (y : int) =
+  if y = 0 then 0 else Int64.to_int (Int64.div (to_uint64 x) (to_uint64 y))
+
     (* modulo *)
-let rem (x : int) (y : int) = if y = 0 then 0 else x mod y
-    
+let rem (x : int) (y : int) =
+  if y = 0 then 0 else Int64.to_int (Int64.rem (to_uint64 x) (to_uint64 y))
+
     (* division of two numbers by one *)
-(* TODO *)
 let div21 xh xl y = 0, 0
-    
+
     (* comparison *)
 let lt x y =
   (x lxor 0x4000000000000000) < (y lxor 0x4000000000000000)
@@ -83,10 +60,36 @@ let lt x y =
 let le x y =
   (x lxor 0x4000000000000000) <= (y lxor 0x4000000000000000)
 
+     (* exact multiplication *)
+(* TODO: check that none of these additions could be a logical or *)
+let mulc x y =
+  let lx = ref (x land maxuint31) in
+  let ly = ref (y land maxuint31) in
+  let hx = x lsr 31 in
+  let hy = y lsr 31 in
+  let hr = ref (hx * hy) in
+  let lr = ref (!lx * !ly lor (!hr lsl 62)) in
+  hr := (!hr lsr 1) lor (!hx land !hy land 0x4000000000000000);
+  lx := !lx * hy;
+  ly := hx * !ly;
+  hr := !hr + (!lx lsr 32) + (!ly lsr 32);
+  lx := !lx lsl 31;
+  lr := !lr + !lx;
+  if lt !lr !lx then incr hr;
+  ly := !ly lsl 31;
+  lr := !lr + !ly;
+  if lt !lr !ly then incr hr;
+  (!hr, !lr)
+
 let eq (x : int) (y : int) = x = y
-    
-let compare (x:int) (y:int) = compare x y (* TODO: unsigned compare *)
-  
+
+let compare (x:int) (y:int) =
+  let x = x lxor 0x4000000000000000 in
+  let y = y lxor 0x4000000000000000 in
+  if x > y then 1
+  else if y > x then -1
+  else 0
+
     (* head tail *)
 
 let head0 x =
@@ -112,6 +115,3 @@ let tail0 x =
   if !x land 0x3 = 0    then (x := !x lsr 2;  r := !r + 2);
   if !x land 0x1 = 0    then (                r := !r + 1);
   !r
-
-
- 
