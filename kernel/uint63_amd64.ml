@@ -1,6 +1,6 @@
 type t = int
 
-let _ = assert Sys.word_size = 64
+let _ = assert (Sys.word_size = 64)
 
 let uint_size = 63
 
@@ -11,6 +11,7 @@ let maxuint31 = Int64.to_int (Int64.of_string "0x7FFFFFFF")
 let to_uint64 i = Int64.logand (Int64.of_int i) maxuint63
 let of_int i = i
 let to_int i = i
+let of_int64 i = assert false
 
     (* conversion of an uint31 to a string *)
 let to_string i = Int64.to_string (to_uint64 i)
@@ -21,6 +22,9 @@ let of_string s =
       && Int64.compare i64 maxuint63 <= 0 
   then Int64.to_int i64
   else raise (Failure "Int64.of_string")
+
+(* Compiles an unsigned int to OCaml code *)
+let compile i = Printf.sprintf "Uint63.of_int (%i)" i
 
     (* logical shift *)
 let l_sl x y =
@@ -69,7 +73,7 @@ let mulc x y =
   let hy = y lsr 31 in
   let hr = ref (hx * hy) in
   let lr = ref (!lx * !ly lor (!hr lsl 62)) in
-  hr := (!hr lsr 1) lor (!hx land !hy land 0x4000000000000000);
+  hr := (!hr lsr 1) lor (hx land hy land 0x4000000000000000);
   lx := !lx * hy;
   ly := hx * !ly;
   hr := !hr + (!lx lsr 32) + (!ly lsr 32);
