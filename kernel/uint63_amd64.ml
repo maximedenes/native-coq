@@ -13,7 +13,7 @@ let of_int i = i
 let to_int i = i
 let of_int64 i = assert false
 
-    (* conversion of an uint31 to a string *)
+    (* conversion of an uint63 to a string *)
 let to_string i = Int64.to_string (to_uint64 i)
 
 let of_string s = 
@@ -37,7 +37,7 @@ let l_and x y = x land y
 let l_or x y = x lor y
 let l_xor x y = x lxor y
 
-    (* addition of int31 *)
+    (* addition of int63 *)
 let add x y = x + y
 
     (* subtraction *)

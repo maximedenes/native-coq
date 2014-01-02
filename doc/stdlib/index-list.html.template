@@ -250,7 +250,7 @@ through the <tt>Require Import</tt> command.</p>
     </dt>
 
     <dt> <b>&nbsp;&nbsp;Cyclic</b>: 
-       Abstract and 31-bits-based cyclic arithmetic
+       Abstract and 63-bits-based cyclic arithmetic
     <dd>
     theories/Numbers/Cyclic/Abstract/CyclicAxioms.v
     theories/Numbers/Cyclic/Abstract/NZCyclic.v
@@ -264,19 +264,19 @@ through the <tt>Require Import</tt> command.</p>
     theories/Numbers/Cyclic/DoubleCyclic/DoubleSqrt.v
     theories/Numbers/Cyclic/DoubleCyclic/DoubleSub.v
     theories/Numbers/Cyclic/DoubleCyclic/DoubleType.v
-    theories/Numbers/Cyclic/Int31/Cyclic31.v
-    theories/Numbers/Cyclic/Int31/Int31Axioms.v
-    theories/Numbers/Cyclic/Int31/Int31Native.v
-    theories/Numbers/Cyclic/Int31/Int31Op.v
-    theories/Numbers/Cyclic/Int31/Int31Properties.v
-    theories/Numbers/Cyclic/Int31/Int31.v
-    theories/Numbers/Cyclic/Int31/Ring31.v
+    theories/Numbers/Cyclic/Int63/Cyclic63.v
+    theories/Numbers/Cyclic/Int63/Int63Axioms.v
+    theories/Numbers/Cyclic/Int63/Int63Native.v
+    theories/Numbers/Cyclic/Int63/Int63Op.v
+    theories/Numbers/Cyclic/Int63/Int63Properties.v
+    theories/Numbers/Cyclic/Int63/Int63.v
+    theories/Numbers/Cyclic/Int63/Ring63.v
     theories/Numbers/Cyclic/ZModulo/ZModulo.v
     </dd>
     </dt>
 
     <dt> <b>&nbsp;&nbsp;Natural</b>: 
-       Abstract and 31-bits-words-based natural arithmetic
+       Abstract and 63-bits-words-based natural arithmetic
     <dd>
     theories/Numbers/Natural/Abstract/NAdd.v
     theories/Numbers/Natural/Abstract/NAddOrder.v
@@ -310,7 +310,7 @@ through the <tt>Require Import</tt> command.</p>
     </dt>
 
     <dt> <b>&nbsp;&nbsp;Integer</b>: 
-       Abstract and concrete (especially 31-bits-words-based) integer arithmetic
+       Abstract and concrete (especially 63-bits-words-based) integer arithmetic
     <dd>
     theories/Numbers/Integer/Abstract/ZAdd.v
     theories/Numbers/Integer/Abstract/ZAddOrder.v
@@ -340,7 +340,7 @@ through the <tt>Require Import</tt> command.</p>
     </dt>
 
     <dt><b>&nbsp;&nbsp;Rational</b>:
-       Abstract and 31-bits-words-based rational arithmetic
+       Abstract and 63-bits-words-based rational arithmetic
     <dd>
     theories/Numbers/Rational/SpecViaQ/QSig.v
     theories/Numbers/Rational/BigQ/BigQ.v

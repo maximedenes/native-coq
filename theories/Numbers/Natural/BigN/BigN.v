@@ -6,18 +6,18 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-(** * Efficient arbitrary large natural numbers in base 2^31 *)
+(** * Efficient arbitrary large natural numbers in base 2^63 *)
 
 (** Initial Author: Arnaud Spiwack *)
 
-Require Export Int31 Cyclic31.
-Require Import CyclicAxioms Ring31 NSig NSigNAxioms NMake
+Require Export Int63 Cyclic63.
+Require Import CyclicAxioms Ring63 NSig NSigNAxioms NMake
   NProperties GenericMinMax.
 
 (** The following [BigN] module regroups both the operations and
     all the abstract properties:
 
-    - [NMake.Make Int31Cyclic] provides the operations and basic specs
+    - [NMake.Make Int63Cyclic] provides the operations and basic specs
        w.r.t. ZArith
     - [NTypeIsNAxioms] shows (mainly) that these operations implement
       the interface [NAxioms]
@@ -29,7 +29,7 @@ Require Import CyclicAxioms Ring31 NSig NSigNAxioms NMake
 Delimit Scope bigN_scope with bigN.
 
 Module BigN <: NType <: OrderedTypeFull <: TotalOrder.
- Include NMake.Make Int31Cyclic [scope abstract_scope to bigN_scope].
+ Include NMake.Make Int63Cyclic [scope abstract_scope to bigN_scope].
  Bind Scope bigN_scope with t t'.
  Include NTypeIsNAxioms
   <+ NProp [no inline]
@@ -52,7 +52,7 @@ Local Open Scope bigN_scope.
 
 Notation bigN := BigN.t.
 Bind Scope bigN_scope with bigN BigN.t BigN.t'.
-Arguments BigN.N0 _%int31.
+Arguments BigN.N0 _%int63.
 Local Notation "0" := BigN.zero : bigN_scope. (* temporary notation *)
 Local Notation "1" := BigN.one : bigN_scope. (* temporary notation *)
 Local Notation "2" := BigN.two : bigN_scope. (* temporary notation *)
@@ -135,7 +135,7 @@ Ltac isStaticWordCst t :=
    | false => constr:false
    | true => isStaticWordCst t2
    end
- | _ => isInt31cst t
+ | _ => isInt63cst t
  end.
 
 Ltac isBigNcst t :=

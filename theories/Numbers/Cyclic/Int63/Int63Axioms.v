@@ -9,26 +9,26 @@
 (************************************************************************)
 Require Import Bvector.
 Require Export BigNumPrelude.
-Require Export Int31Native.
-Require Export Int31Op.
+Require Export Int63Native.
+Require Export Int63Op.
 
 Definition wB := (2^(Z_of_nat size)).
 
-Notation "[| x |]" := (to_Z x)  (at level 0, x at level 99) : int31_scope.
+Notation "[| x |]" := (to_Z x)  (at level 0, x at level 99) : int63_scope.
 
 Notation "[+| c |]" :=
-   (interp_carry 1 wB to_Z c)  (at level 0, x at level 99) : int31_scope.
+   (interp_carry 1 wB to_Z c)  (at level 0, x at level 99) : int63_scope.
 
 Notation "[-| c |]" :=
-   (interp_carry (-1) wB to_Z c)  (at level 0, x at level 99) : int31_scope.
+   (interp_carry (-1) wB to_Z c)  (at level 0, x at level 99) : int63_scope.
 
 Notation "[|| x ||]" :=
-   (zn2z_to_Z wB to_Z x)  (at level 0, x at level 99) : int31_scope.
+   (zn2z_to_Z wB to_Z x)  (at level 0, x at level 99) : int63_scope.
 
-Local Open Scope int31_scope.
+Local Open Scope int63_scope.
 Local Open Scope Z_scope.
 
-(* Bijection : int31 <-> Bvector size *)
+(* Bijection : int63 <-> Bvector size *)
 
 Axiom to_Z_inj : forall x y, [|x|] = [|y|] -> x = y.
 
@@ -65,33 +65,33 @@ Axiom div_spec : forall x y, [|x / y|] = [|x|] / [|y|].
 Axiom mod_spec : forall x y, [|x \% y|] = [|x|] mod [|y|].
 
 (* Comparisons *)
-Axiom eqb_refl : forall x, (x == x)%int31 = true.
+Axiom eqb_refl : forall x, (x == x)%int63 = true.
 
-Axiom ltb_spec : forall x y, (x < y)%int31 = true <-> [|x|] < [|y|].
+Axiom ltb_spec : forall x y, (x < y)%int63 = true <-> [|x|] < [|y|].
 
-Axiom leb_spec : forall x y, (x <= y)%int31 = true <-> [|x|] <= [|y|].
+Axiom leb_spec : forall x y, (x <= y)%int63 = true <-> [|x|] <= [|y|].
 
 (** Iterators *)
 
 Axiom foldi_cont_gt : forall A B f from to cont,
-  (to < from)%int31 = true -> foldi_cont (A:=A) (B:=B) f from to cont = cont.
+  (to < from)%int63 = true -> foldi_cont (A:=A) (B:=B) f from to cont = cont.
 
 Axiom foldi_cont_eq : forall A B f from to cont,
   from = to -> foldi_cont (A:=A) (B:=B) f from to cont = f from cont.
 
 Axiom foldi_cont_lt : forall A B f from to cont,
-  (from < to)%int31 = true-> 
+  (from < to)%int63 = true-> 
   foldi_cont (A:=A) (B:=B) f from to cont = 
   f from (fun a' => foldi_cont f (from+1) to cont a').
 
 Axiom foldi_down_cont_lt : forall A B f from downto cont,
-  (from < downto)%int31 = true -> foldi_down_cont (A:=A) (B:=B) f from downto cont = cont.
+  (from < downto)%int63 = true -> foldi_down_cont (A:=A) (B:=B) f from downto cont = cont.
 
 Axiom foldi_down_cont_eq : forall A B f from downto cont,
   from = downto -> foldi_down_cont (A:=A) (B:=B) f from downto cont = f from cont.
 
 Axiom foldi_down_cont_gt : forall A B f from downto cont,
-  (downto < from)%int31 = true-> 
+  (downto < from)%int63 = true-> 
   foldi_down_cont (A:=A) (B:=B) f from downto cont = 
   f from (fun a' => foldi_down_cont f (from-1) downto cont a').
 
@@ -109,11 +109,11 @@ Axiom head0_spec  : forall x,  0 < [|x|] ->
 Axiom tail0_spec  : forall x, 0 < [|x|] ->
          (exists y, 0 <= y /\ [|x|] = (2 * y + 1) * (2 ^ [|tail0 x|]))%Z.
 
-Axiom addc_def_spec : forall x y, (x +c y)%int31 = addc_def x y.
+Axiom addc_def_spec : forall x y, (x +c y)%int63 = addc_def x y.
 
 Axiom addcarryc_def_spec : forall x y, addcarryc x y = addcarryc_def x y.
 
-Axiom subc_def_spec : forall x y, (x -c y)%int31 = subc_def x y.
+Axiom subc_def_spec : forall x y, (x -c y)%int63 = subc_def x y.
 
 Axiom subcarryc_def_spec : forall x y, subcarryc x y = subcarryc_def x y.
 

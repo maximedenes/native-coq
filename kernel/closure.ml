@@ -952,7 +952,7 @@ module FNativeEntries =
     let fint = ref dummy 
 
     let init_int retro =
-      match retro.Pre_env.retro_int31 with
+      match retro.Pre_env.retro_int63 with
       | Some (cte, _) ->
 	  defined_int := true;
 	  fint := { norm = Whnf; term = FFlex (ConstKey cte) }

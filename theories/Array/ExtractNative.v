@@ -1,4 +1,4 @@
-Require Import Int31.
+Require Import Int63.
 Require Import PArray.
 
 Extract Inductive bool => "bool" ["true" "false"].
@@ -9,15 +9,15 @@ Extract Inductive carry => "ExtrNative.carry" ["ExtrNative.C0" "ExtrNative.C1"].
 Extract Constant int => "ExtrNative.uint".
 Extract Constant lsl => "ExtrNative.l_sl".
 Extract Constant lsr => "ExtrNative.l_sr".
-Extract Constant Int31Native.land => "ExtrNative.l_and".
-Extract Constant Int31Native.lor => "ExtrNative.l_or".
-Extract Constant Int31Native.lxor => "ExtrNative.l_xor".
+Extract Constant Int63Native.land => "ExtrNative.l_and".
+Extract Constant Int63Native.lor => "ExtrNative.l_or".
+Extract Constant Int63Native.lxor => "ExtrNative.l_xor".
 Extract Constant add => "ExtrNative.add".
 Extract Constant sub => "ExtrNative.sub". 
 Extract Constant mul => "ExtrNative.mul".
 Extract Constant mulc => "ExtrNative.mulc".
 Extract Constant div => "ExtrNative.div".
-Extract Constant Int31Native.mod => "ExtrNative.rem".
+Extract Constant Int63Native.mod => "ExtrNative.rem".
 Extract Constant eqb => "ExtrNative.eq".
 Extract Constant ltb => "ExtrNative.lt".
 Extract Constant leb => "ExtrNative.le".

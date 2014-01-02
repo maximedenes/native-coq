@@ -6,16 +6,16 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-(** * Int31 numbers defines indeed a cyclic structure : Z/(2^31)Z *)
+(** * Int63 numbers defines indeed a cyclic structure : Z/(2^31)Z *)
 
 (**
 Author: Arnaud Spiwack (+ Pierre Letouzey)
 *)
 Require Import CyclicAxioms.
 Require Export ZArith.
-Require Export Int31Properties.
+Require Export Int63Properties.
 
-Local Open Scope int31_scope.
+Local Open Scope int63_scope.
 (** {2 Operators } **)
 
 Definition Pdigits := Eval compute in P_of_succ_nat (size - 1).
@@ -40,7 +40,7 @@ Definition mulc_WW x y :=
     if is_zero l then W0
     else WW h l
   else WW h l.
-Notation "n '*c' m" := (mulc_WW n m) (at level 40, no associativity) : int31_scope.
+Notation "n '*c' m" := (mulc_WW n m) (at level 40, no associativity) : int63_scope.
 
 Definition pos_mod p x := 
   if p <= digits then
@@ -53,7 +53,7 @@ Instance int_ops : ZnZ.Ops int :=
  digits      := Pdigits; (* number of digits *)
  zdigits     := digits; (* number of digits *)
  to_Z        := to_Z; (* conversion to Z *)
- of_pos      := positive_to_int; (* positive -> N*int31 :  p => N,i
+ of_pos      := positive_to_int; (* positive -> N*int63 :  p => N,i
                                       where p = N*2^31+phi i *)
  head0       := head0;  (* number of head 0 *)
  tail0       := tail0;  (* number of tail 0 *)
@@ -84,8 +84,8 @@ Instance int_ops : ZnZ.Ops int :=
  div_gt      := diveucl; (* this is supposed to be the special case of
                          division a/b where a > b *)
  div         := diveucl;
- modulo_gt   := Int31Native.mod;
- modulo      := Int31Native.mod;
+ modulo_gt   := Int63Native.mod;
+ modulo      := Int63Native.mod;
  gcd_gt      := gcd;
  gcd         := gcd;
  add_mul_div := addmuldiv;
@@ -200,7 +200,7 @@ Lemma pos_mod_spec : forall w p,
 Proof.
  unfold pos_mod;intros.
  assert (W:=to_Z_bounded p);assert (W':=to_Z_bounded digits);assert (W'' := to_Z_bounded w).
- case_eq (p <= digits)%int31;intros Heq.
+ case_eq (p <= digits)%int63;intros Heq.
  rewrite leb_spec in Heq.
  rewrite lsr_spec, lsl_spec.
  assert (0 <= [|p|] <= [|digits|]) by (auto with zarith).
@@ -267,9 +267,9 @@ Global Instance int_specs : ZnZ.Specs int_ops := {
 
 
 
-Module Int31Cyclic <: CyclicType.
+Module Int63Cyclic <: CyclicType.
   Definition t := int.
   Definition ops := int_ops.
   Definition specs := int_specs.
-End Int31Cyclic.
+End Int63Cyclic.
 

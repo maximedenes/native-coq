@@ -15,7 +15,7 @@ let of_int i = Int64.of_int i
 let to_int i = Int64.to_int i
 let of_int64 i = i
 
-    (* conversion of an uint31 to a string *)
+    (* conversion of an uint63 to a string *)
 let to_string i = Int64.to_string i
 
 let of_string s = 
@@ -47,7 +47,7 @@ let l_and x y = Int64.logand x y
 let l_or x y = Int64.logor x y
 let l_xor x y = Int64.logxor x y
 
-    (* addition of int31 *)
+    (* addition of int63 *)
 let add x y = mask63 (Int64.add x y)
 
     (* subtraction *)

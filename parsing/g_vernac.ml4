@@ -243,12 +243,12 @@ GEXTEND Gram
   ;
   
   register_type_token:
-    [ [ "int31_type" -> Native.PT_int31  
+    [ [ "int63_type" -> Native.PT_int63  
       | "array_type" -> Native.PT_array ] ]
   ;
 
   register_prim_token:
-    [ [ "int31_print" -> Native.Ocaml_prim Native.Int31print
+    [ [ "int63_print" -> Native.Ocaml_prim Native.Int63print
       | "array_make" -> Native.Ocaml_prim Native.ArrayMake
       | "array_get" -> Native.Ocaml_prim Native.ArrayGet
       | "array_default" -> Native.Ocaml_prim Native.ArrayGetdefault
@@ -260,34 +260,34 @@ GEXTEND Gram
       | "array_map" -> Native.Ocaml_prim Native.ArrayMap
 
      
-      | "int31_foldi" -> Native.Oiterator Native.Int31foldi
-      | "int31_foldi_down" -> Native.Oiterator Native.Int31foldi_down
+      | "int63_foldi" -> Native.Oiterator Native.Int63foldi
+      | "int63_foldi_down" -> Native.Oiterator Native.Int63foldi_down
 
-      | "int31_head0" -> Native.Oprim Native.Int31head0
-      | "int31_tail0" -> Native.Oprim Native.Int31tail0
-      | "int31_add" -> Native.Oprim Native. Int31add
-      | "int31_sub" -> Native.Oprim Native.Int31sub
-      | "int31_mul" -> Native.Oprim Native.Int31mul
-      | "int31_div" -> Native.Oprim Native.Int31div
-      | "int31_mod" -> Native.Oprim Native.Int31mod
-      | "int31_lsr" -> Native.Oprim Native.Int31lsr
-      | "int31_lsl" -> Native.Oprim Native.Int31lsl
-      | "int31_land" -> Native.Oprim Native.Int31land
-      | "int31_lor" -> Native.Oprim Native.Int31lor
-      | "int31_lxor" -> Native.Oprim Native.Int31lxor
-      | "int31_addc" -> Native.Oprim Native.Int31addc
-      | "int31_subc" -> Native.Oprim Native.Int31subc
-      | "int31_addcarryc" -> Native.Oprim Native.Int31addCarryC
-      | "int31_subcarryc" -> Native.Oprim Native.Int31subCarryC
-      | "int31_mulc" -> Native.Oprim Native.Int31mulc
-      | "int31_diveucl" -> Native.Oprim Native.Int31diveucl
-      | "int31_div21" -> Native.Oprim Native.Int31div21
-      | "int31_addmuldiv" -> Native.Oprim Native.Int31addMulDiv
-      | "int31_eq" -> Native.Oprim Native.Int31eq
-      | "int31_lt" -> Native.Oprim Native.Int31lt
-      | "int31_le" -> Native.Oprim Native.Int31le
-      | "int31_compare" -> Native.Oprim Native.Int31compare 
-      | "int31_eqb_correct" ->  Native.Oprim Native.Int31eqb_correct] ]
+      | "int63_head0" -> Native.Oprim Native.Int63head0
+      | "int63_tail0" -> Native.Oprim Native.Int63tail0
+      | "int63_add" -> Native.Oprim Native. Int63add
+      | "int63_sub" -> Native.Oprim Native.Int63sub
+      | "int63_mul" -> Native.Oprim Native.Int63mul
+      | "int63_div" -> Native.Oprim Native.Int63div
+      | "int63_mod" -> Native.Oprim Native.Int63mod
+      | "int63_lsr" -> Native.Oprim Native.Int63lsr
+      | "int63_lsl" -> Native.Oprim Native.Int63lsl
+      | "int63_land" -> Native.Oprim Native.Int63land
+      | "int63_lor" -> Native.Oprim Native.Int63lor
+      | "int63_lxor" -> Native.Oprim Native.Int63lxor
+      | "int63_addc" -> Native.Oprim Native.Int63addc
+      | "int63_subc" -> Native.Oprim Native.Int63subc
+      | "int63_addcarryc" -> Native.Oprim Native.Int63addCarryC
+      | "int63_subcarryc" -> Native.Oprim Native.Int63subCarryC
+      | "int63_mulc" -> Native.Oprim Native.Int63mulc
+      | "int63_diveucl" -> Native.Oprim Native.Int63diveucl
+      | "int63_div21" -> Native.Oprim Native.Int63div21
+      | "int63_addmuldiv" -> Native.Oprim Native.Int63addMulDiv
+      | "int63_eq" -> Native.Oprim Native.Int63eq
+      | "int63_lt" -> Native.Oprim Native.Int63lt
+      | "int63_le" -> Native.Oprim Native.Int63le
+      | "int63_compare" -> Native.Oprim Native.Int63compare 
+      | "int63_eqb_correct" ->  Native.Oprim Native.Int63eqb_correct] ]
     ;
 
   inline:

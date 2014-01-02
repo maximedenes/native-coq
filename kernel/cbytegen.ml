@@ -433,9 +433,9 @@ let rec compile_lam reloc lam sz cont =
   | Lprim (kn, op, args) -> 
       let nargs = Array.length args in
       begin match op with
-      | Int31lsl when nargs = 2 && args.(1) = Lint 1 ->
+      | Int63lsl when nargs = 2 && args.(1) = Lint 1 ->
 	  compile_args reloc args 0 1 sz (Kprim_const(op,kn,1)::cont)
-      | Int31lsr when nargs = 2 && args.(1) = Lint 1 ->
+      | Int63lsr when nargs = 2 && args.(1) = Lint 1 ->
 	  compile_args reloc args 0 1 sz (Kprim_const(op,kn,1)::cont)
       | _ ->
           compile_args reloc args 0 nargs sz (Kprim(op, kn)::cont)

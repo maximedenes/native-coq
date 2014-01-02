@@ -223,7 +223,7 @@ module VNativeEntries =
     let vint = ref dummy 
 
     let init_int retro =
-      match retro.Pre_env.retro_int31 with
+      match retro.Pre_env.retro_int63 with
       | Some (cte, c) ->
 	  defined_int := true;
 	  vint := VAL(0,c)
@@ -569,7 +569,7 @@ and cbv_val_stack info (v,stack) =
       (try Inl (VredNative.red_prim env cop args, stk)
       with _ -> Inr (mkSTACK(PRIMITIVE(op,c,args), stk)))
 
-  | Oiterator Int31foldi ->
+  | Oiterator Int63foldi ->
       let get_args () =
 	try 
 	  let t = VNativeEntries.get args 0 in
@@ -595,7 +595,7 @@ and cbv_val_stack info (v,stack) =
 	  else Inl (a,stk)
       | None -> Inr(mkSTACK(PRIMITIVE(op,c,args), stk))
       end
-  | Oiterator Int31foldi_down ->
+  | Oiterator Int63foldi_down ->
       let get_args () =
 	try 
 	  let t = VNativeEntries.get args 0 in

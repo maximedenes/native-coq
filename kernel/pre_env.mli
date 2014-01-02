@@ -22,7 +22,7 @@ type key = int option ref
 type constant_key = constant_body * key
 
 type retroknowledge = {
-    retro_int31 : (constant * constr) option;
+    retro_int63 : (constant * constr) option;
     retro_array : (constant * constr) option;
     retro_bool  : (constructor * constructor) option; (* true, false *)
     retro_carry : (constructor * constructor) option; (* C0, C1 *)

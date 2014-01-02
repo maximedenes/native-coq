@@ -488,10 +488,10 @@ let get_constructor_type renv env constr c =
     t
 
 let type_of_int env =
-  match (retroknowledge env).Pre_env.retro_int31 with
+  match (retroknowledge env).Pre_env.retro_int63 with
   | Some (_,c) -> c
   | None -> raise 
-	(Invalid_argument "Typeops.type_of_int: int31 not_defined")
+	(Invalid_argument "Typeops.type_of_int: int63 not_defined")
 
 let internal_type_of_int renv env = 
   if renv.int_checked then renv.int_constr
@@ -717,7 +717,7 @@ let typeof_prim env op =
     try type_of_int env 
     with _ -> 
       raise (Invalid_argument 
-	       "typeof_prim: the type int31 should be register first") 
+	       "typeof_prim: the type int63 should be register first") 
   in
   let type_of_bool env =
     match (retroknowledge env).Pre_env.retro_bool with
@@ -740,41 +740,41 @@ let typeof_prim env op =
     | _ -> raise (Invalid_argument 
 	       "typeof_prim: the type comparison should be register first") in
   match op with
-  | Int31head0 | Int31tail0 ->
+  | Int63head0 | Int63tail0 ->
       mkArrow i i
-  | Int31add | Int31sub | Int31mul | Int31div | Int31mod 
-  | Int31lsr | Int31lsl | Int31land | Int31lor | Int31lxor -> 
+  | Int63add | Int63sub | Int63mul | Int63div | Int63mod 
+  | Int63lsr | Int63lsl | Int63land | Int63lor | Int63lxor -> 
       mkArrow i (mkArrow i i)
-  | Int31addc | Int31subc | Int31addCarryC | Int31subCarryC ->
+  | Int63addc | Int63subc | Int63addCarryC | Int63subCarryC ->
       let c = type_of_carry env in
       mkArrow i (mkArrow i (mkApp (c,[|i|])))
-  | Int31mulc | Int31diveucl ->
+  | Int63mulc | Int63diveucl ->
       let p = type_of_pair env in
       mkArrow i (mkArrow i (mkApp (p,[|i;i|])))
-  | Int31div21 ->
+  | Int63div21 ->
       let p = type_of_pair env in
       mkArrow i (mkArrow i (mkArrow i (mkApp (p,[|i;i|]))))
-  | Int31addMulDiv ->
+  | Int63addMulDiv ->
       mkArrow i (mkArrow i (mkArrow i i))
-  | Int31eq | Int31lt | Int31le ->
+  | Int63eq | Int63lt | Int63le ->
       let b = type_of_bool env in
       mkArrow i (mkArrow i b)
-  | Int31compare ->
+  | Int63compare ->
       let cmp = type_of_cmp env in
       mkArrow i (mkArrow i cmp)
-  | Int31eqb_correct -> 
-     raise  (Invalid_argument "typeof_prim:Int31eqb_correct:not implemented") 
+  | Int63eqb_correct -> 
+     raise  (Invalid_argument "typeof_prim:Int63eqb_correct:not implemented") 
 
 let check_prim_type env op t =
-  if op = Int31eqb_correct then
-    Format.eprintf "Warning check_prim_type: Int31eqb_correct not implemented@."
+  if op = Int63eqb_correct then
+    Format.eprintf "Warning check_prim_type: Int63eqb_correct not implemented@."
   else
     if not (eq_constr (typeof_prim env op) t) then
       raise (Invalid_argument "check_prim_type: not the expected type")
 
 let check_primitive_type env op_t t =
   match op_t with
-  | OT_type PT_int31 -> 
+  | OT_type PT_int63 -> 
       if not (eq_constr t mkSet) then check_primitive_error ()
   | OT_type PT_array -> 
       if isProd t then
