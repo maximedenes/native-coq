@@ -6,8 +6,8 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 type caml_prim =
-  (* Int31 operations *)
-  | Int31print
+  (* Int63 operations *)
+  | Int63print
  
   (* Array operations *)
   | ArrayMake
@@ -26,41 +26,41 @@ type caml_prim =
   | ResourceGeti32
 
 type iterator =
-  | Int31foldi
-  | Int31foldi_down
+  | Int63foldi
+  | Int63foldi_down
  
 type prim_op = 
-  | Int31head0
-  | Int31tail0
+  | Int63head0
+  | Int63tail0
 
-  | Int31add
-  | Int31sub
-  | Int31mul
-  | Int31div
-  | Int31mod
-  | Int31lsr
-  | Int31lsl
-  | Int31land
-  | Int31lor
-  | Int31lxor
+  | Int63add
+  | Int63sub
+  | Int63mul
+  | Int63div
+  | Int63mod
+  | Int63lsr
+  | Int63lsl
+  | Int63land
+  | Int63lor
+  | Int63lxor
 
-  | Int31addc
-  | Int31subc
-  | Int31addCarryC
-  | Int31subCarryC
+  | Int63addc
+  | Int63subc
+  | Int63addCarryC
+  | Int63subCarryC
 
-  | Int31mulc
-  | Int31diveucl
-  | Int31div21
+  | Int63mulc
+  | Int63diveucl
+  | Int63div21
 
-  | Int31addMulDiv
+  | Int63addMulDiv
 
-  | Int31eq
-  | Int31lt
-  | Int31le
+  | Int63eq
+  | Int63lt
+  | Int63le
 
-  | Int31compare
-  | Int31eqb_correct
+  | Int63compare
+  | Int63eqb_correct
 
 type op =
   | Oprim of prim_op
@@ -70,7 +70,7 @@ type op =
 
 
 let caml_prim_to_string = function
-  | Int31print -> "print"
+  | Int63print -> "print"
   | ArrayMake -> "make"
   | ArrayGet -> "get"
   | ArrayGetdefault -> "default"
@@ -85,40 +85,40 @@ let caml_prim_to_string = function
   | ResourceGeti32 -> "rgeti32"
   
 let iterator_to_string = function
-  | Int31foldi -> "foldi"
-  | Int31foldi_down -> "foldi_down"
+  | Int63foldi -> "foldi"
+  | Int63foldi_down -> "foldi_down"
 
 let prim_to_string = function 
-  | Int31head0     -> "head0"
-  | Int31tail0     -> "tail0"
-  | Int31add       -> "add"
-  | Int31sub       -> "sub"
-  | Int31mul       -> "mul"
-  | Int31div       -> "div"
-  | Int31mod       -> "mod"
-  | Int31lsr       -> "lsr"
-  | Int31lsl       -> "lsl"
-  | Int31land      -> "land"
-  | Int31lor       -> "lor"
-  | Int31lxor      -> "lxor"
+  | Int63head0     -> "head0"
+  | Int63tail0     -> "tail0"
+  | Int63add       -> "add"
+  | Int63sub       -> "sub"
+  | Int63mul       -> "mul"
+  | Int63div       -> "div"
+  | Int63mod       -> "mod"
+  | Int63lsr       -> "lsr"
+  | Int63lsl       -> "lsl"
+  | Int63land      -> "land"
+  | Int63lor       -> "lor"
+  | Int63lxor      -> "lxor"
 
-  | Int31addc      -> "addc"
-  | Int31subc      -> "subc"
-  | Int31addCarryC -> "addcarryc"
-  | Int31subCarryC -> "subcarryc"
+  | Int63addc      -> "addc"
+  | Int63subc      -> "subc"
+  | Int63addCarryC -> "addcarryc"
+  | Int63subCarryC -> "subcarryc"
 
-  | Int31mulc      -> "mulc"
-  | Int31diveucl   -> "diveucl"
-  | Int31div21     -> "div21"
+  | Int63mulc      -> "mulc"
+  | Int63diveucl   -> "diveucl"
+  | Int63div21     -> "div21"
 
-  | Int31addMulDiv -> "addmuldiv"
+  | Int63addMulDiv -> "addmuldiv"
 
-  | Int31eq        -> "eq"
-  | Int31lt        -> "lt"
-  | Int31le        -> "le"
+  | Int63eq        -> "eq"
+  | Int63lt        -> "lt"
+  | Int63le        -> "le"
 
-  | Int31compare   -> "compare"
-  | Int31eqb_correct -> "eqb_correct"
+  | Int63compare   -> "compare"
+  | Int63eqb_correct -> "eqb_correct"
 
 let to_string = function
   | Ocaml_prim op -> caml_prim_to_string op
@@ -132,11 +132,11 @@ type arg_kind =
 
 type args_red = arg_kind list
 
-(* Invariant only argument of type int31, array or an inductive can
+(* Invariant only argument of type int63, array or an inductive can
    have kind Kwhnf *)
 
 let caml_prim_kind = function
-  | Int31print  -> [Kwhnf] 
+  | Int63print  -> [Kwhnf] 
   | ArrayMake   -> [Kparam;Kwhnf;Karg]
   | ArrayGet    -> [Kparam;Kwhnf;Kwhnf]
   | ArraySet    -> [Kparam;Kwhnf;Kwhnf;Karg]
@@ -151,18 +151,18 @@ let caml_prim_kind = function
 let iterator_kind _ = [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
     
 let prim_kind = function
-  | Int31head0 | Int31tail0 -> [Kwhnf]
+  | Int63head0 | Int63tail0 -> [Kwhnf]
 	
-  | Int31add | Int31sub | Int31mul 
-  | Int31div | Int31mod
-  | Int31lsr | Int31lsl
-  | Int31land | Int31lor | Int31lxor
-  | Int31addc | Int31subc
-  | Int31addCarryC | Int31subCarryC  | Int31mulc | Int31diveucl
-  | Int31eq | Int31lt | Int31le | Int31compare -> [Kwhnf; Kwhnf]
+  | Int63add | Int63sub | Int63mul 
+  | Int63div | Int63mod
+  | Int63lsr | Int63lsl
+  | Int63land | Int63lor | Int63lxor
+  | Int63addc | Int63subc
+  | Int63addCarryC | Int63subCarryC  | Int63mulc | Int63diveucl
+  | Int63eq | Int63lt | Int63le | Int63compare -> [Kwhnf; Kwhnf]
 
-  | Int31div21 | Int31addMulDiv -> [Kwhnf; Kwhnf; Kwhnf]
-  | Int31eqb_correct -> [Karg;Karg;Kwhnf]
+  | Int63div21 | Int63addMulDiv -> [Kwhnf; Kwhnf; Kwhnf]
+  | Int63eqb_correct -> [Karg;Karg;Kwhnf]
 
 let op_kind = function
   | Ocaml_prim op -> caml_prim_kind op
@@ -177,7 +177,7 @@ let caml_prim_arity = function
   | ArraySet -> (1,3)
   | ArrayCopy | ArrayReroot -> (1,1)
   | ArrayLength -> (1,1)
-  | Int31print -> (0,1)
+  | Int63print -> (0,1)
   | ArrayInit -> (1,3)
   | ArrayMap -> (2,2)
   | ResourceMake -> (0,1)
@@ -187,18 +187,18 @@ let caml_prim_arity = function
 let iterator_arity _ = (2, 4)
     
 let prim_arity = function
-  | Int31head0 | Int31tail0 -> (0,1)
-  | Int31add | Int31sub | Int31mul 
-  | Int31div | Int31mod
-  | Int31lsr | Int31lsl
-  | Int31land | Int31lor | Int31lxor
-  | Int31addc | Int31subc
-  | Int31addCarryC | Int31subCarryC  | Int31mulc | Int31diveucl 
-  | Int31eq | Int31lt | Int31le  
-  | Int31compare -> (0,2)
+  | Int63head0 | Int63tail0 -> (0,1)
+  | Int63add | Int63sub | Int63mul 
+  | Int63div | Int63mod
+  | Int63lsr | Int63lsl
+  | Int63land | Int63lor | Int63lxor
+  | Int63addc | Int63subc
+  | Int63addCarryC | Int63subCarryC  | Int63mulc | Int63diveucl 
+  | Int63eq | Int63lt | Int63le  
+  | Int63compare -> (0,2)
 	
-  | Int31div21 | Int31addMulDiv -> (0,3)
-  | Int31eqb_correct -> (0,3)
+  | Int63div21 | Int63addMulDiv -> (0,3)
+  | Int63eqb_correct -> (0,3)
 
 let arity = function
   | Ocaml_prim op -> caml_prim_arity op
@@ -281,7 +281,7 @@ type prim_ind =
   | PIT_eq
 
 type prim_type =
-  | PT_int31
+  | PT_int63
   | PT_array
   | PT_resource
 
@@ -303,7 +303,7 @@ let prim_ind_to_string = function
   | PIT_eq -> "eq"
 
 let prim_type_to_string = function
-  | PT_int31 -> "int31"
+  | PT_int63 -> "int63"
   | PT_array -> "array"
   | PT_resource -> "resource"
 

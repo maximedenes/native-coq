@@ -29,7 +29,7 @@ type key = int option ref
 type constant_key = constant_body * key
 
 type retroknowledge = {
-    retro_int31  : (constant * constr) option;
+    retro_int63  : (constant * constr) option;
     retro_array  : (constant * constr) option;
     retro_bool   : (constructor * constructor) option; (* true, false *)
     retro_carry  : (constructor * constructor) option; (* C0, C1 *)
@@ -86,7 +86,7 @@ type named_context_val = named_context * named_vals * named_native_vals
 let empty_named_context_val = [],[],[]
 
 let empty_retroknowledge = {
-    retro_int31 = None;
+    retro_int63 = None;
     retro_array = None;
     retro_bool  = None;
     retro_carry = None;

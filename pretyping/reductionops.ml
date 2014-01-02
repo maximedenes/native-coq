@@ -359,7 +359,7 @@ module CNativeEntries =
     let cint = ref dummy 
 
     let init_int retro =
-      match retro.Pre_env.retro_int31 with
+      match retro.Pre_env.retro_int63 with
       | Some (cte, c) ->
 	  defined_int := true;
 	  cint := c

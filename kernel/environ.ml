@@ -377,12 +377,12 @@ let retroknowledge env = env.env_retroknowledge
 
 let add_retroknowledge env (pt,c) = 
   match pt with
-  | Retro_type PT_int31 ->
+  | Retro_type PT_int63 ->
       let cte = destConst c in
       let retro = retroknowledge env in
       let retro = 
-	match retro.retro_int31 with
-	| None -> { retro with retro_int31 = Some (cte,c) }
+	match retro.retro_int63 with
+	| None -> { retro with retro_int63 = Some (cte,c) }
 	| Some(cte',_) -> assert (cte = cte'); retro in
       { env with env_retroknowledge = retro }
   | Retro_type PT_resource ->
@@ -508,89 +508,89 @@ module RedNative (E:RedNativeEntries) :
 
     let red_prim env op args =
       match op with  
-      | Int31head0      -> 
+      | Int63head0      -> 
 	  let i = get_int1 args in E.mkInt env (Uint63.head0 i)
-      | Int31tail0      ->
+      | Int63tail0      ->
 	  let i = get_int1 args in E.mkInt env (Uint63.tail0 i)
-      | Int31add        ->
+      | Int63add        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.add i1 i2)
-      | Int31sub        ->
+      | Int63sub        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.sub i1 i2)
-      | Int31mul        ->
+      | Int63mul        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.mul i1 i2)
-      | Int31div        ->
+      | Int63div        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.div i1 i2)
-      | Int31mod        ->
+      | Int63mod        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.rem i1 i2)
-      | Int31lsr        ->
+      | Int63lsr        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_sr i1 i2)
-      | Int31lsl        ->
+      | Int63lsl        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_sl i1 i2)
-      | Int31land       ->
+      | Int63land       ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_and i1 i2)
-      | Int31lor        ->
+      | Int63lor        ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_or i1 i2)
-      | Int31lxor       ->
+      | Int63lxor       ->
 	  let i1, i2 = get_int2 args in E.mkInt env (Uint63.l_xor i1 i2)
-      | Int31addc       ->
+      | Int63addc       ->
 	  let i1, i2 = get_int2 args in 
 	  let s = Uint63.add i1 i2 in
 	  E.mkCarry env (Uint63.lt s i1) (E.mkInt env s)
-      | Int31subc       ->
+      | Int63subc       ->
 	  let i1, i2 = get_int2 args in 
 	  let s = Uint63.sub i1 i2 in
 	  E.mkCarry env (Uint63.lt i1 i2) (E.mkInt env s)
-      | Int31addCarryC  ->
+      | Int63addCarryC  ->
 	  let i1, i2 = get_int2 args in 
 	  let s = Uint63.add (Uint63.add i1 i2) (Uint63.of_int 1) in
 	  E.mkCarry env (Uint63.le s i1) (E.mkInt env s)
-      | Int31subCarryC  ->
+      | Int63subCarryC  ->
 	  let i1, i2 = get_int2 args in 
 	  let s = Uint63.sub (Uint63.sub i1 i2) (Uint63.of_int 1) in
 	  E.mkCarry env (Uint63.le i1 i2) (E.mkInt env s)
-      | Int31mulc       ->
+      | Int63mulc       ->
 	  let i1, i2 = get_int2 args in 
 	  let (h, l) = Uint63.mulc i1 i2 in
 	  E.mkPair env (E.mkInt env h) (E.mkInt env l)
-      | Int31diveucl    ->
+      | Int63diveucl    ->
 	  let i1, i2 = get_int2 args in 
 	  let q,r = Uint63.div i1 i2, Uint63.rem i1 i2 in
 	  E.mkPair env (E.mkInt env q) (E.mkInt env r)
-      | Int31div21      ->
+      | Int63div21      ->
 	  let i1, i2, i3 = get_int3 args in 
 	  let q,r = Uint63.div21 i1 i2 i3 in
 	  E.mkPair env (E.mkInt env q) (E.mkInt env r)
-      | Int31addMulDiv  ->
+      | Int63addMulDiv  ->
 	  let p, i, j = get_int3 args in 
 	  let p' = Uint63.to_int p in
 	  E.mkInt env 
 	    (Uint63.l_or 
 	       (Uint63.l_sl i p) 
 	       (Uint63.l_sr j (Uint63.of_int (31 - p'))))
-      | Int31eq         ->
+      | Int63eq         ->
 	  let i1, i2 = get_int2 args in 
 	  E.mkBool env (Uint63.eq i1 i2)
-      | Int31lt         ->
+      | Int63lt         ->
 	  let i1, i2 = get_int2 args in 
 	  E.mkBool env (Uint63.lt i1 i2)
-      | Int31le         ->
+      | Int63le         ->
 	  let i1, i2 = get_int2 args in 
 	  E.mkBool env (Uint63.le i1 i2)
-      | Int31compare    ->
+      | Int63compare    ->
 	  let i1, i2 = get_int2 args in 
 	  begin match Uint63.compare i1 i2 with
 	  | x when x < 0 ->  E.mkLt env
 	  | 0 -> E.mkEq env
 	  | _ -> E.mkGt env
 	  end
-      | Int31eqb_correct ->
+      | Int63eqb_correct ->
 	  if E.is_refl (E.get args 2) then E.mk_int_refl env (E.get args 0)
 	  else raise (Invalid_argument "red_prim:eqb_correct:not refl") 
 	  
 	  	  
     let red_caml_prim env op args =
       match op with
-      | Int31print      -> 
+      | Int63print      -> 
 	  let i = get_int1 args in
 	  Printf.fprintf stderr "%s\n" (Uint63.to_string i);flush stderr;
 	  E.mkInt env i
@@ -655,7 +655,7 @@ module RedNative (E:RedNativeEntries) :
 
     let red_iterator env op it args =
       match op with
-      | Int31foldi ->
+      | Int63foldi ->
 	  let _A = E.get args 0 in
 	  let _B = E.get args 1 in
 	  let f = E.get args 2 in
@@ -698,7 +698,7 @@ module RedNative (E:RedNativeEntries) :
 		mkApp(mkRel 7,[|mkRel 1|])
 	  in
 	  E.mkClos name typ body subst
-      | Int31foldi_down ->
+      | Int63foldi_down ->
 	  let _A = E.get args 0 in
 	  let _B = E.get args 1 in
 	  let f = E.get args 2 in

@@ -138,7 +138,7 @@ let slot_for_annot key =
     n
 
 let slot_for_caml_prim = function
-  | Int31print      -> prim_print_int
+  | Int63print      -> prim_print_int
   | ArrayMake       -> prim_Array_make
   | ArrayGet        -> prim_Array_get
   | ArrayGetdefault -> prim_Array_get_default

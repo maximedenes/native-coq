@@ -6,8 +6,8 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 type caml_prim =
-  (* Int31 operations *)
-  | Int31print
+  (* Int63 operations *)
+  | Int63print
   (* Array operations *)
   | ArrayMake
   | ArrayGet
@@ -24,41 +24,41 @@ type caml_prim =
   | ResourceGeti32
 
 type iterator =
-  | Int31foldi
-  | Int31foldi_down
+  | Int63foldi
+  | Int63foldi_down
  
 type prim_op = 
-  | Int31head0
-  | Int31tail0
+  | Int63head0
+  | Int63tail0
 
-  | Int31add
-  | Int31sub
-  | Int31mul
-  | Int31div
-  | Int31mod
-  | Int31lsr
-  | Int31lsl
-  | Int31land
-  | Int31lor
-  | Int31lxor
+  | Int63add
+  | Int63sub
+  | Int63mul
+  | Int63div
+  | Int63mod
+  | Int63lsr
+  | Int63lsl
+  | Int63land
+  | Int63lor
+  | Int63lxor
 
-  | Int31addc
-  | Int31subc
-  | Int31addCarryC
-  | Int31subCarryC
+  | Int63addc
+  | Int63subc
+  | Int63addCarryC
+  | Int63subCarryC
 
-  | Int31mulc
-  | Int31diveucl
-  | Int31div21
+  | Int63mulc
+  | Int63diveucl
+  | Int63div21
 
-  | Int31addMulDiv
+  | Int63addMulDiv
 
-  | Int31eq
-  | Int31lt
-  | Int31le
+  | Int63eq
+  | Int63lt
+  | Int63le
 
-  | Int31compare
-  | Int31eqb_correct
+  | Int63compare
+  | Int63eqb_correct
 
 type op =
   | Oprim of prim_op
@@ -118,7 +118,7 @@ type prim_ind =
   | PIT_eq
 
 type prim_type =
-  | PT_int31
+  | PT_int63
   | PT_array
   | PT_resource
 

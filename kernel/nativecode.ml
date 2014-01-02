@@ -511,35 +511,35 @@ let merge_branches t =
 
 let mlprim_of_prim p o =
   match p with
-  | Native.Int31head0       -> Chead0 o
-  | Native.Int31tail0       -> Ctail0 o
-  | Native.Int31add         -> Cadd o
-  | Native.Int31sub         -> Csub o
-  | Native.Int31mul         -> Cmul o
-  | Native.Int31div         -> Cdiv o
-  | Native.Int31mod         -> Crem o
-  | Native.Int31lsr         -> Clsr o
-  | Native.Int31lsl         -> Clsl o
-  | Native.Int31land        -> Cand o
-  | Native.Int31lor         -> Cor o
-  | Native.Int31lxor        -> Cxor o
-  | Native.Int31addc        -> Caddc o
-  | Native.Int31subc        -> Csubc o
-  | Native.Int31addCarryC   -> CaddCarryC o
-  | Native.Int31subCarryC   -> CsubCarryC o
-  | Native.Int31mulc        -> Cmulc o
-  | Native.Int31diveucl     -> Cdiveucl o
-  | Native.Int31div21       -> Cdiv21 o
-  | Native.Int31addMulDiv   -> CaddMulDiv o
-  | Native.Int31eq          -> Ceq o
-  | Native.Int31lt          -> Clt o
-  | Native.Int31le          -> Cle o
-  | Native.Int31compare     -> Ccompare o
-  | Native.Int31eqb_correct -> assert false
+  | Native.Int63head0       -> Chead0 o
+  | Native.Int63tail0       -> Ctail0 o
+  | Native.Int63add         -> Cadd o
+  | Native.Int63sub         -> Csub o
+  | Native.Int63mul         -> Cmul o
+  | Native.Int63div         -> Cdiv o
+  | Native.Int63mod         -> Crem o
+  | Native.Int63lsr         -> Clsr o
+  | Native.Int63lsl         -> Clsl o
+  | Native.Int63land        -> Cand o
+  | Native.Int63lor         -> Cor o
+  | Native.Int63lxor        -> Cxor o
+  | Native.Int63addc        -> Caddc o
+  | Native.Int63subc        -> Csubc o
+  | Native.Int63addCarryC   -> CaddCarryC o
+  | Native.Int63subCarryC   -> CsubCarryC o
+  | Native.Int63mulc        -> Cmulc o
+  | Native.Int63diveucl     -> Cdiveucl o
+  | Native.Int63div21       -> Cdiv21 o
+  | Native.Int63addMulDiv   -> CaddMulDiv o
+  | Native.Int63eq          -> Ceq o
+  | Native.Int63lt          -> Clt o
+  | Native.Int63le          -> Cle o
+  | Native.Int63compare     -> Ccompare o
+  | Native.Int63eqb_correct -> assert false
       
 let mlprim_of_cprim p kn =
   match p with
-  | Native.Int31print      -> Cprint (Some kn)
+  | Native.Int63print      -> Cprint (Some kn)
   | Native.ArrayMake       -> Carraymake (Some kn)
   | Native.ArrayGet        -> Carrayget (Some kn)
   | Native.ArrayGetdefault -> Carraydefault (Some kn)
@@ -573,7 +573,7 @@ let extract_prim ml_of l =
   let rec aux l = 
     match l with
     | Lprim(o,p,args) ->
-	assert (p <> Native.Int31eqb_correct);
+	assert (p <> Native.Int63eqb_correct);
 	let args = Array.map aux args in
 	if o <> None then cond := add_check !cond args;
 	PAprim(o,p,args)
@@ -602,14 +602,14 @@ let compile_prim decl cond paux =
     | PAprim(o, op, args) ->
 	let args = Array.map opt_prim_aux args in
 	begin match o, op with
-	| None, Native.Int31lt -> app_prim Clt_b args
-    | Some _, Native.Int31lt -> 
+	| None, Native.Int63lt -> app_prim Clt_b args
+    | Some _, Native.Int63lt -> 
       app_prim (Clt None) args
-	| None, Native.Int31le ->
+	| None, Native.Int63le ->
       app_prim Cle_b args
-    | Some _, Native.Int31le ->
+    | Some _, Native.Int63le ->
       app_prim (Cle None) args
-(*	| _, Native.Int31eq -> mk_inteq (args_to_int args) *)
+(*	| _, Native.Int63eq -> mk_inteq (args_to_int args) *)
 	| _, _ -> app_prim (mlprim_of_prim op None) args
 	end
     | PAml ml -> ml 

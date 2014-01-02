@@ -673,7 +673,7 @@ let rec pretype (tycon : type_constraint) env evdref lvar = function
 	  try judge_of_int env i
 	  with Invalid_argument _ ->
 	    user_err_loc (loc,"pretype",
-			  (str "Type of int31 should be register first."))
+			  (str "Type of int63 should be register first."))
 	in
 	inh_conv_coerce_to_tycon loc env evdref resj tycon
 

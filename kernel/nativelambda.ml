@@ -417,13 +417,13 @@ let rec get_allias env kn =
 
 (* Translation of iterators *)
 
-let isle l1 l2 = Lprim(None, Native.Int31le, [|l1;l2|])
-let islt l1 l2 = Lprim(None, Native.Int31lt, [|l1;l2|])
+let isle l1 l2 = Lprim(None, Native.Int63le, [|l1;l2|])
+let islt l1 l2 = Lprim(None, Native.Int63lt, [|l1;l2|])
 let areint l1 l2 = Lareint [|l1; l2|]
 let isint l = Lareint [|l|]
-let add31 l1 l2 =Lprim(None, Native.Int31add, [|l1;l2|]) 
-let sub31 l1 l2 =Lprim(None, Native.Int31sub, [|l1;l2|]) 
-let one31 = Lint (Uint63.of_int 1)
+let add63 l1 l2 =Lprim(None, Native.Int63add, [|l1;l2|]) 
+let sub63 l1 l2 =Lprim(None, Native.Int63sub, [|l1;l2|]) 
+let one63 = Lint (Uint63.of_int 1)
 
 let _f = Name(id_of_string "f")
 let _min = Name (id_of_string "min") 
@@ -447,7 +447,7 @@ let r_a = mkLrel _a
 
 let lambda_of_iterator env kn op args =
   match op with
-  | Native.Int31foldi ->
+  | Native.Int63foldi ->
       (* args = [|A;B;f;min;max;cont;extra|] *)
       (* 
          if min <= max then
@@ -479,7 +479,7 @@ let lambda_of_iterator env kn op args =
 				      [| r_i 2;
 					 Llam([|_a|],
 					      Lapp(r_aux 4,
-						   [| add31 (r_i 3) one31; 
+						   [| add63 (r_i 3) one63; 
 						      r_a 1|]));
 					 r_a 1|]),
 				 Lapp(r_f 4, [|r_i 2; r_cont 7; r_a 1|])))),
@@ -493,7 +493,7 @@ let lambda_of_iterator env kn op args =
 		   r_f 1; r_min 2; r_max 3; r_cont 4|]
 		 extra4))))))
 	
-   | Native.Int31foldi_down -> 
+   | Native.Int63foldi_down -> 
        (* args = [|A;B;f;max;min;cont;extra|] *)
       (* 
          if min <= max then
@@ -525,7 +525,7 @@ let lambda_of_iterator env kn op args =
 				      [| r_i 2;
 					 Llam([|_a|],
 					      Lapp(r_aux 4,
-						   [| sub31 (r_i 3) one31; 
+						   [| sub63 (r_i 3) one63;
 						      r_a 1|]));
 					 r_a 1|]),
 				 Lapp(r_f 4, [|r_i 2; r_cont 7; r_a 1|])))),
@@ -544,7 +544,7 @@ let _h =  Name(id_of_string "f")
 
 let prim env kn op args =
   match op with
-  | Native.Oprim Native.Int31eqb_correct ->
+  | Native.Oprim Native.Int63eqb_correct ->
       let prefix = get_const_prefix env kn in
       let h = Lrel(_h,1) in
       Llet(_h,args.(2),

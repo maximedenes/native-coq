@@ -1,4 +1,4 @@
-Require Export Int31.
+Require Export Int63.
 
 Register array : Type -> Type as array_type.
 
@@ -25,7 +25,7 @@ Delimit Scope array_scope with array.
 Notation "t '.[' i ']'" := (get t i) (at level 50) : array_scope.
 Notation "t '.[' i '<-' a ']'" := (set t i a) (at level 50) : array_scope.
 
-Local Open Scope int31_scope.
+Local Open Scope int63_scope.
 Local Open Scope array_scope.
 
 Set Vm Optimize.
@@ -155,7 +155,7 @@ Proof.
 Qed.
 
 Lemma get_not_default_lt : forall A (t:array A) x,
- t.[x] <> default t -> (x < length t)%int31 = true.
+ t.[x] <> default t -> (x < length t)%int63 = true.
 Proof.
  intros A t x Hd.
  case_eq (x < length t);intros Heq;[trivial | ].
@@ -335,7 +335,7 @@ Proof.
  intros i Hlt;rewrite (reflect_iff _ _ (HA _ _));auto.
  rewrite (reflect_iff _ _ (HA _ _));trivial.
  intros Heq;rewrite Heq in H;clear Heq.
- revert H; rewrite Int31Axioms.eqb_refl;simpl.
+ revert H; rewrite Int63Axioms.eqb_refl;simpl.
  case_eq (Aeqb (default t2) (default t2));simpl;intros H0 H1.
  rewrite <- not_true_iff_false, forallbi_spec in H1;apply H1.
  intros i _; rewrite <- (reflect_iff _ _ (HA _ _));trivial.

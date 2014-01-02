@@ -6,13 +6,13 @@
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
 
-(* digit-based syntax for int31, bigN bigZ and bigQ *)
+(* digit-based syntax for int63, bigN bigZ and bigQ *)
 
 open Bigint
 open Libnames
 open Glob_term
 
-(*** Constants for locating int31 / bigN / bigZ / bigQ constructors ***)
+(*** Constants for locating int63 / bigN / bigZ / bigQ constructors ***)
 
 let make_dir l = Names.make_dirpath (List.map Names.id_of_string (List.rev l))
 let make_path dir id = Libnames.make_path (make_dir dir) (Names.id_of_string id)
@@ -24,16 +24,11 @@ let make_mind_mpdot dir modname id =
   in make_mind mp id
 
 
-(* int31 stuff *)
-let int31_module = ["Coq"; "Numbers"; "Cyclic"; "Int31"; "Int31Native"]
-let int31_path = make_path int31_module "int"
-(*
-let int31_notation_module = 
-  ["Coq"; "Numbers"; "Cyclic"; "Int31"; "Int31Notation"]
-let int31_notation_path = make_path int31_notation_module "int31"
-*)
-let int31_id = make_mind_mpfile int31_module
-let int31_scope = "int31_scope"
+(* int63 stuff *)
+let int63_module = ["Coq"; "Numbers"; "Cyclic"; "Int63"; "Int63Native"]
+let int63_path = make_path int63_module "int"
+let int63_id = make_mind_mpfile int63_module
+let int63_scope = "int63_scope"
 
 
 (* bigN stuff*)
@@ -90,10 +85,10 @@ let bigQ_z =  ConstructRef ((bigQ_t,0),1)
 (*** Definition of the Non_closed exception, used in the pretty printing ***)
 exception Non_closed
 
-(*** Parsing for int31 in digital notation ***)
+(*** Parsing for int63 in digital notation ***)
 
-(* parses a *non-negative* integer (from bigint.ml) into an int31
-   wraps modulo 2^31 *)
+(* parses a *non-negative* integer (from bigint.ml) into an int63
+   wraps modulo 2^63 *)
 
 (* TODO: should use string conversion rather than going through bigint *)
 
@@ -106,51 +101,51 @@ let rec int63_of_pos_bigint i =
     else Uint63.mul (Uint63.of_int 2) (int63_of_pos_bigint quo)
 
 
-let int31_of_pos_bigint dloc n =
+let int63_of_pos_bigint dloc n =
   let i = int63_of_pos_bigint n in
   GNativeInt (dloc, i)
 
 let error_negative dloc =
-  Errors.user_err_loc (dloc, "interp_int31", Pp.str "int31 are only non-negative numbers.")
+  Errors.user_err_loc (dloc, "interp_int63", Pp.str "int63 are only non-negative numbers.")
 
 
-let interp_int31 dloc n = 
-  if is_pos_or_zero n then int31_of_pos_bigint dloc n
+let interp_int63 dloc n = 
+  if is_pos_or_zero n then int63_of_pos_bigint dloc n
   else error_negative dloc
 
-(* Pretty prints an int31 *)
+(* Pretty prints an int63 *)
 
-let bigint_of_int31 i = 
+let bigint_of_int63 i = 
   match i with
   | GNativeInt(_,i) -> of_string (Uint63.to_string i)
   | _ -> raise Non_closed
 
-let uninterp_int31 i =
-  try Some (bigint_of_int31 i)
+let uninterp_int63 i =
+  try Some (bigint_of_int63 i)
   with Non_closed -> None
 
 
-(* Actually declares the interpreter for int31 *)
-let _ = Notation.declare_numeral_interpreter int31_scope
-  (int31_path, int31_module)
-  interp_int31
-  ([], uninterp_int31, true)
+(* Actually declares the interpreter for int63 *)
+let _ = Notation.declare_numeral_interpreter int63_scope
+  (int63_path, int63_module)
+  interp_int63
+  ([], uninterp_int63, true)
   (* TODO
-  ([GRef (Pp.dummy_loc, int31_construct)],
-   uninterp_int31,
+  ([GRef (Pp.dummy_loc, int63_construct)],
+   uninterp_int63,
    true)
    *)
 
 
 (*** Parsing for bigN in digital notation ***)
-(* the base for bigN (in Coq) that is 2^31 in our case *)
+(* the base for bigN (in Coq) that is 2^63 in our case *)
 let base = pow two (of_string "63")
 
 (* base of the bigN of height N : *)
 let rank n = pow base (pow two n)
 
-(* splits a number bi at height n, that is the rest needs 2^n int31 to be stored
-   it is expected to be used only when the quotient would also need 2^n int31 to be
+(* splits a number bi at height n, that is the rest needs 2^n int63 to be stored
+   it is expected to be used only when the quotient would also need 2^n int63 to be
    stored *)
 let split_at n bi =
   euclid bi (rank (sub_1 n))
@@ -172,7 +167,7 @@ let word_of_pos_bigint dloc hght n =
   let ref_WW = GRef (dloc, zn2z_WW) in
   let rec decomp hgt n =
     if is_neg_or_zero hgt then
-      int31_of_pos_bigint dloc n
+      int63_of_pos_bigint dloc n
     else if equal n zero then
       GApp (dloc, ref_W0, [GHole (dloc, Evd.InternalHole)])
     else
@@ -226,7 +221,7 @@ let bigint_of_word =
 	add (mult (rank new_hght)
                (transform (new_hght) lft))
 	  (transform (new_hght) rght)
-    | _ -> bigint_of_int31 rc
+    | _ -> bigint_of_int63 rc
   in
   fun rc ->
     let hght = get_height rc in

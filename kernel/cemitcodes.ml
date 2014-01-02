@@ -161,43 +161,43 @@ and slot_for_caml_prim op =
 (* Emission of one instruction *)
 
 let nocheck_prim_op = function
-  | Int31add -> opADDINT31
-  | Int31sub -> opSUBINT31
-  | Int31lt  -> opLTINT31
-  | Int31le  -> opLEINT31
+  | Int63add -> opADDINT31
+  | Int63sub -> opSUBINT31
+  | Int63lt  -> opLTINT31
+  | Int63le  -> opLEINT31
   | _ -> assert false
 
 
 let check_prim_op = function
-  | Int31head0     -> opCHECKHEAD0INT31
-  | Int31tail0     -> opCHECKTAIL0INT31
-  | Int31add       -> opCHECKADDINT31
-  | Int31sub       -> opCHECKSUBINT31
-  | Int31mul       -> opCHECKMULINT31
-  | Int31div       -> opCHECKDIVINT31
-  | Int31mod       -> opCHECKMODINT31
-  | Int31lsr       -> opCHECKLSRINT31
-  | Int31lsl       -> opCHECKLSLINT31
-  | Int31land      -> opCHECKLANDINT31
-  | Int31lor       -> opCHECKLORINT31
-  | Int31lxor      -> opCHECKLXORINT31
-  | Int31addc      -> opCHECKADDCINT31
-  | Int31subc      -> opCHECKSUBCINT31
-  | Int31addCarryC -> opCHECKADDCARRYCINT31
-  | Int31subCarryC -> opCHECKSUBCARRYCINT31
-  | Int31mulc      -> opCHECKMULCINT31
-  | Int31diveucl   -> opCHECKDIVEUCLINT31
-  | Int31div21     -> opCHECKDIV21INT31
-  | Int31addMulDiv -> opCHECKADDMULDIVINT31
-  | Int31eq        -> opCHECKEQINT31
-  | Int31lt        -> opCHECKLTINT31
-  | Int31le        -> opCHECKLEINT31
-  | Int31compare   -> opCHECKCOMPAREINT31
-  | Int31eqb_correct -> assert false
+  | Int63head0     -> opCHECKHEAD0INT31
+  | Int63tail0     -> opCHECKTAIL0INT31
+  | Int63add       -> opCHECKADDINT31
+  | Int63sub       -> opCHECKSUBINT31
+  | Int63mul       -> opCHECKMULINT31
+  | Int63div       -> opCHECKDIVINT31
+  | Int63mod       -> opCHECKMODINT31
+  | Int63lsr       -> opCHECKLSRINT31
+  | Int63lsl       -> opCHECKLSLINT31
+  | Int63land      -> opCHECKLANDINT31
+  | Int63lor       -> opCHECKLORINT31
+  | Int63lxor      -> opCHECKLXORINT31
+  | Int63addc      -> opCHECKADDCINT31
+  | Int63subc      -> opCHECKSUBCINT31
+  | Int63addCarryC -> opCHECKADDCARRYCINT31
+  | Int63subCarryC -> opCHECKSUBCARRYCINT31
+  | Int63mulc      -> opCHECKMULCINT31
+  | Int63diveucl   -> opCHECKDIVEUCLINT31
+  | Int63div21     -> opCHECKDIV21INT31
+  | Int63addMulDiv -> opCHECKADDMULDIVINT31
+  | Int63eq        -> opCHECKEQINT31
+  | Int63lt        -> opCHECKLTINT31
+  | Int63le        -> opCHECKLEINT31
+  | Int63compare   -> opCHECKCOMPAREINT31
+  | Int63eqb_correct -> assert false
 
 let caml_prim_call op =
   match op with
-  | Int31print -> opISINT_CAML_CALL1
+  | Int63print -> opISINT_CAML_CALL1
   | ArrayMake -> opISINT_CAML_CALL2
   | ArrayGet -> opISARRAY_INT_CAML_CALL2
   | ArraySet ->  opISARRAY_INT_CAML_CALL3
@@ -304,11 +304,11 @@ let emit_instr = function
       out (check_prim_op op);
       slot_for_getglobal q
 
-  | Kprim_const(Int31lsl,Some q,i) ->
+  | Kprim_const(Int63lsl,Some q,i) ->
       assert (i=1);
       out opCHECKLSLINT31CONST1;
       slot_for_getglobal q
-  | Kprim_const(Int31lsr,Some q,i) ->
+  | Kprim_const(Int63lsr,Some q,i) ->
       assert (i=1);
       out opCHECKLSRINT31CONST1;
       slot_for_getglobal q
