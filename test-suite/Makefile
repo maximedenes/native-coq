@@ -72,7 +72,7 @@ BUGS := bugs/opened/shouldnotfail bugs/opened/shouldnotsucceed \
   bugs/closed/shouldsucceed bugs/closed/shouldfail
 
 VSUBSYSTEMS := prerequisite success failure $(BUGS) output \
-  interactive micromega $(COMPLEXITY) modules
+  interactive micromega $(COMPLEXITY) modules arithmetic
 
 # All subsystems
 SUBSYSTEMS := $(VSUBSYSTEMS) misc bugs ide
@@ -132,6 +132,7 @@ summary:
 	  $(call summary_dir, "Complexity tests", complexity); \
 	  $(call summary_dir, "Module tests", modules); \
 	  $(call summary_dir, "IDE tests", ide); \
+	  $(call summary_dir, "Machine arithmetic tests", arithmetic); \
 	  nb_success=`find . -name '*.log' -exec tail -n2 '{}' \; | grep -e $(log_success) | wc -l`; \
 	  nb_failure=`find . -name '*.log' -exec tail -n2 '{}' \; | grep -e $(log_failure) | wc -l`; \
 	  nb_tests=`expr $$nb_success + $$nb_failure`; \
@@ -234,7 +235,7 @@ $(addsuffix .log,$(wildcard prerequisite/*.v)): %.v.log: %.v
 	  fi; \
 	} > "$@"
 
-$(addsuffix .log,$(wildcard success/*.v micromega/*.v modules/*.v)): %.v.log: %.v
+$(addsuffix .log,$(wildcard success/*.v micromega/*.v modules/*.v arithmetic/*.v)): %.v.log: %.v
 	@echo "TEST      $<"
 	$(HIDE){ \
 	  opts="$(if $(findstring modules/,$<),-I modules -impredicative-set)"; \
