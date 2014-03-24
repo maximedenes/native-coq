@@ -215,6 +215,8 @@ type ('constr, 'types) kind_of_term =
   | CoFix     of ('constr, 'types) pcofixpoint
   | NativeInt of Uint63.t
   | NativeArr of 'types * 'constr array
+  | NativeRes of Resource.t
+
 
 (** User view of [constr]. For [App], it is ensured there is at
    least one argument and the function is not itself an applicative
@@ -255,6 +257,7 @@ val isCoFix : constr -> bool
 val isCase : constr -> bool
 val isInt : constr -> bool
 val isArray : constr -> bool
+val isResource : constr -> bool
 
 val is_Prop : constr -> bool
 val is_Set  : constr -> bool
@@ -335,6 +338,7 @@ val destCoFix : constr -> cofixpoint
 (* Destructs native term *)
 val destInt : constr -> Uint63.t
 val destArray : constr -> types * constr array
+val destResource : constr -> Resource.t
 
 (** {6 Local } *)
 (** A {e declaration} has the form [(name,body,type)]. It is either an

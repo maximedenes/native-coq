@@ -86,6 +86,8 @@ let rec pr_constr c = match kind_of_term c with
   | NativeArr (t, p) ->
       str "[|" ++ pr_constr t ++ str ":" ++
       prlist_with_sep spc pr_constr (Array.to_list p)++ str "|]"
+  | NativeRes r ->
+      str "#resource#"
 
 type annot_sw = {
     asw_ind : inductive;

@@ -106,6 +106,7 @@ type ('constr, 'types) kind_of_term =
   | CoFix     of ('constr, 'types) pcofixpoint
   | NativeInt of Uint63.t
   | NativeArr of 'types * 'constr array 
+  | NativeRes of Resource.t
 
 (* constr is the fixpoint of the previous type. Requires option
    -rectypes of the Caml compiler to be set *)
@@ -225,7 +226,7 @@ let mkVar id = Var id
 
 let mkInt i = NativeInt i
 let mkArray (t,p) = NativeArr(t,p)
-
+let mkResource r = NativeRes r
 (************************************************************************)
 (*    kind_of_term = constructions as seen by the user                 *)
 (************************************************************************)
@@ -252,7 +253,7 @@ let kind_of_type = function
   | App (c,l) -> AtomicType (c, l)
   | (Rel _ | Meta _ | Var _ | Evar _ | Const _ | Case _ | Fix _ | CoFix _ | Ind _ as c)
     -> AtomicType (c,[||])
-  | (Lambda _ | Construct _ | NativeInt _ | NativeArr _) -> failwith "Not a type"
+  | (Lambda _ | Construct _ | NativeInt _ | NativeArr _ | NativeRes _) -> failwith "Not a type"
 
 (**********************************************************************)
 (*          Non primitive term destructors                            *)
@@ -426,13 +427,24 @@ let isInt c =
 
 let destArray c =
   match kind_of_term c with
-  | NativeArr (t, p) -> (t, p)
-  | _ -> invalid_arg "destArr"
+  | NativeArr(t,a) -> (t,a)
+  | _ -> invalid_arg "destArray"
 
 let isArray c =
   match kind_of_term c with
   | NativeArr _ -> true
   | _ -> false
+
+let destResource c =
+  match kind_of_term c with
+  | NativeRes r -> r
+  | _ -> invalid_arg "destResource"
+
+let isResource c =
+  match kind_of_term c with
+  | NativeRes _ -> true
+  | _ -> false
+
 
 (******************************************************************)
 (* Cast management                                                *)
@@ -482,7 +494,7 @@ let decompose_app c =
 
 let fold_constr f acc c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> acc
+    | Construct _ | NativeInt _ | NativeRes _) -> acc
   | Cast (c,_,t) -> f (f acc c) t
   | Prod (_,t,c) -> f (f acc t) c
   | Lambda (_,t,c) -> f (f acc t) c
@@ -505,7 +517,7 @@ let fold_constr f acc c = match kind_of_term c with
 
 let iter_constr f c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> ()
+    | Construct _ | NativeInt _ | NativeRes _) -> ()
   | Cast (c,_,t) -> f c; f t
   | Prod (_,t,c) -> f t; f c
   | Lambda (_,t,c) -> f t; f c
@@ -525,7 +537,7 @@ let iter_constr f c = match kind_of_term c with
 
 let iter_constr_with_binders g f n c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> ()
+    | Construct _ | NativeInt _ | NativeRes _) -> ()
   | Cast (c,_,t) -> f n c; f n t
   | Prod (_,t,c) -> f n t; f (g n) c
   | Lambda (_,t,c) -> f n t; f (g n) c
@@ -547,7 +559,7 @@ let iter_constr_with_binders g f n c = match kind_of_term c with
 
 let map_constr f c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> c
+    | Construct _ | NativeInt _ | NativeRes _) -> c
   | Cast (c,k,t) -> mkCast (f c, k, f t)
   | Prod (na,t,c) -> mkProd (na, f t, f c)
   | Lambda (na,t,c) -> mkLambda (na, f t, f c)
@@ -569,7 +581,7 @@ let map_constr f c = match kind_of_term c with
 
 let map_constr_with_binders g f l c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> c
+    | Construct _ | NativeInt _ | NativeRes _) -> c
   | Cast (c,k,t) -> mkCast (f l c, k, f l t)
   | Prod (na,t,c) -> mkProd (na, f l t, f (g l) c)
   | Lambda (na,t,c) -> mkLambda (na, f l t, f (g l) c)
@@ -622,6 +634,7 @@ let compare_constr f t1 t2 =
       Array.length p1 = Array.length p2 &&
       f t1 t2 &&
       array_for_all2 f p1 p2
+  | NativeRes r1, NativeRes r2 -> Resource.eq r1 r2
   | _ -> false
 
 (*******************************)
@@ -678,6 +691,7 @@ let constr_ord_int f t1 t2 =
     | NativeInt i1, NativeInt i2 -> Uint63.compare i1 i2
     | NativeArr(t1,a1), NativeArr(t2,a2) -> 
         (f =? (array_compare f)) t1 t2 a1 a2
+    | NativeRes r1, NativeRes r2 -> Resource.compare r1 r2
     | Var _, (Rel _)
     | Meta _, (Rel _ | Var _)
     | Evar _, (Rel _ | Var _ | Meta _)
@@ -1303,6 +1317,7 @@ let equals_constr t1 t2 =
     | NativeInt i1, NativeInt i2 -> Uint63.eq i1 i2
     | NativeArr(t1,p1), NativeArr(t2,p2) ->
       t1 == t2 && array_eqeq p1 p2
+    | NativeRes r1, NativeRes r2 -> Resource.eq r1 r2
     | _ -> false
 
 (** Note that the following Make has the side effect of creating
@@ -1393,6 +1408,8 @@ let hcons_term (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
         let hp = hash_term_array p in
         let t, ht = sh_rec t in
         (NativeArr (t,p), combine ht hp)
+      | NativeRes r -> 
+        (t, combinesmall 18 (Resource.hash r))
 
   and sh_rec t =
     let (y, h) = hash_term t in
@@ -1443,6 +1460,7 @@ let rec hash_constr t =
       let hp = hash_term_array p in
       let ht = hash_constr t in
       combine ht hp
+    | NativeRes r -> combinesmall 18 (Resource.hash r)
 
 and hash_term_array t =
   Array.fold_left (fun acc t -> combine (hash_constr t) acc) 0 t
