@@ -62,7 +62,7 @@ val mk_block : tag -> t array -> t
 
 val mk_int : int -> t
 val mk_uint : Uint63.t -> t
-
+val mk_resource : Resource.t -> t
 val napply : t -> t array -> t
 (* Functions over accumulators *)
 

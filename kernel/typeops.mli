@@ -106,6 +106,7 @@ val make_polymorphic_if_constant_for_ind : env -> unsafe_judgment ->
 
 (* Native type *)
 val type_of_int : env -> types
+val type_of_resource : env -> types
 val type_of_array : env -> types
 
 val judge_of_int : env -> Uint63.t -> unsafe_judgment 

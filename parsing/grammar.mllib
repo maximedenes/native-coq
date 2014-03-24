@@ -22,6 +22,7 @@ Hashtbl_alt
 Names
 Uint63
 Parray
+Resource
 Native
 Univ
 Esubst

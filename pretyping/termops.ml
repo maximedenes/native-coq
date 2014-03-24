@@ -91,6 +91,7 @@ let rec pr_constr c = match kind_of_term c with
   | NativeArr(t,p) ->
       (str"Array(" ++ pr_constr c ++ str ":|" ++
        prlist_with_sep (fun _ -> str";"++spc ()) pr_constr (Array.to_list p) ++ str")")
+  | NativeRes r -> str"Resource"
 
 
 let term_printer = ref (fun _ -> pr_constr)
@@ -317,7 +318,7 @@ let adjust_app_array_size f1 l1 f2 l2 =
 
 let map_constr_with_named_binders g f l c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> c
+    | Construct _ | NativeInt _ | NativeRes _) -> c
   | Cast (c,k,t) -> mkCast (f l c, k, f l t)
   | Prod (na,t,c) -> mkProd (na, f l t, f (g na l) c)
   | Lambda (na,t,c) -> mkLambda (na, f l t, f (g na l) c)
@@ -351,7 +352,7 @@ let fold_rec_types g (lna,typarray,_) e =
 
 let map_constr_with_binders_left_to_right g f l c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> c
+    | Construct _ | NativeInt _ | NativeRes _) -> c
   | Cast (c,k,t) -> let c' = f l c in mkCast (c',k,f l t)
   | Prod (na,t,c) ->
       let t' = f l t in
@@ -391,7 +392,7 @@ let map_constr_with_binders_left_to_right g f l c = match kind_of_term c with
 (* strong *)
 let map_constr_with_full_binders g f l cstr = match kind_of_term cstr with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | NativeInt _) -> cstr
+    | Construct _ | NativeInt _ | NativeRes _) -> cstr
   | Cast (c,k, t) ->
       let c' = f l c in
       let t' = f l t in
@@ -451,7 +452,7 @@ let map_constr_with_full_binders g f l cstr = match kind_of_term cstr with
 
 let fold_constr_with_binders g f n acc c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _|NativeInt _) -> acc
+    | Construct _|NativeInt _ | NativeRes _) -> acc
   | Cast (c,_, t) -> f n (f n acc c) t
   | Prod (_,t,c) -> f (g n) (f n acc t) c
   | Lambda (_,t,c) -> f (g n) (f n acc t) c
@@ -477,7 +478,7 @@ let fold_constr_with_binders g f n acc c = match kind_of_term c with
 
 let iter_constr_with_full_binders g f l c = match kind_of_term c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _|NativeInt _) -> ()
+    | Construct _|NativeInt _|NativeRes _) -> ()
   | Cast (c,_, t) -> f l c; f l t
   | Prod (na,t,c) -> f l t; f (g (na,None,t) l) c
   | Lambda (na,t,c) -> f l t; f (g (na,None,t) l) c

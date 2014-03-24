@@ -80,6 +80,7 @@ let retype ?(polyprop=true) sigma =
     | Cast (c,_, t) -> t
     | Sort _ | Prod _ -> mkSort (sort_of env cstr)
     | NativeInt _ -> Typeops.type_of_int env
+    | NativeRes _ -> Typeops.type_of_resource env
     | NativeArr(t, _) -> mkApp(Typeops.type_of_array env, [|t|])
 
   and sort_of env t =

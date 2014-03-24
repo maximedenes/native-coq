@@ -19,6 +19,11 @@ type caml_prim =
   | ArrayLength
   | ArrayInit
   | ArrayMap
+  
+  (* Resource Operations *)
+  | ResourceMake
+  | ResourceGetc
+  | ResourceGeti32
 
 type iterator =
   | Int31foldi
@@ -75,6 +80,9 @@ let caml_prim_to_string = function
   | ArrayLength -> "length"
   | ArrayInit -> "init"
   | ArrayMap -> "map"
+  | ResourceMake -> "rmake"
+  | ResourceGetc -> "rgetc"
+  | ResourceGeti32 -> "rgeti32"
   
 let iterator_to_string = function
   | Int31foldi -> "foldi"
@@ -136,6 +144,9 @@ let caml_prim_kind = function
   | ArrayLength -> [Kparam;Kwhnf]
   | ArrayInit -> [Kparam;Kwhnf;Karg;Karg]
   | ArrayMap -> [Kparam;Kparam;Karg;Kwhnf]
+  | ResourceMake -> [Kwhnf]
+  | ResourceGetc -> [Kwhnf;Kwhnf]
+  | ResourceGeti32 -> [Kwhnf;Kwhnf]
 	
 let iterator_kind _ = [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
     
@@ -169,6 +180,9 @@ let caml_prim_arity = function
   | Int31print -> (0,1)
   | ArrayInit -> (1,3)
   | ArrayMap -> (2,2)
+  | ResourceMake -> (0,1)
+  | ResourceGetc -> (0,2)
+  | ResourceGeti32 -> (0,2)
 	
 let iterator_arity _ = (2, 4)
     

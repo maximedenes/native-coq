@@ -198,7 +198,7 @@ let cast_accu v = (Obj.magic v:accumulator)
 
 let mk_int (x : int) = (Obj.magic x : t)
 let mk_uint (x : Uint63.t) = (Obj.magic x : t)
-
+let mk_resource (x:Resource.t) = assert false
 type block
 
 let block_size (b:block) =

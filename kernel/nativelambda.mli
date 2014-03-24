@@ -38,7 +38,6 @@ type lambda =
 	(* A partially applied constructor *)
   | Lint          of Uint63.t
   | Lparray       of lambda array
-  | Lresource     of Resource.t
   | Lval          of Nativevalues.t
   | Lsort         of sorts
   | Lind          of string * inductive (* prefix, inductive name *)

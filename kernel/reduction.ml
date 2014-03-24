@@ -64,6 +64,7 @@ let rec pr_fterm t =
   | FEvar _ -> Printf.printf "EVAR"
   | FNativeInt _ -> Printf.printf "INT"
   | FNativeArr _ -> Printf.printf "ARRAY"
+  | FNativeRes _ -> Printf.printf "RESOURCE"
   | FLIFT (i,a) -> Printf.printf "LIFT_%i(" i; pr_fconstr a;Printf.printf ")"
   | FCLOS (c,s) -> 
       Printf.printf "CLOS(";
@@ -330,7 +331,7 @@ let in_whnf (t,stk) =
     | (FLetIn _ | FCases _ | FApp _ | FCLOS _ | FLIFT _ | FCast _) -> false
     | FLambda _ -> no_arg_available stk
     | FConstruct _ -> no_case_available stk
-    | FNativeInt _ | FNativeArr _ -> no_native_available stk
+    | FNativeInt _ | FNativeArr _ | FNativeRes _ -> no_native_available stk
     | FCoFix _ -> no_case_available stk
     | FFix(((ri,n),(_,_,_)),_) -> no_nth_arg_available ri.(n) stk
     | (FFlex _ | FProd _ | FEvar _ | FInd _ | FAtom _ | FRel _) -> true

@@ -94,7 +94,7 @@ let kind_of_head env t =
   | Meta _ | Evar _ -> NotImmediatelyComputableHead
   | App (c,al) -> aux k (Array.to_list al @ l) c b
   | Case (_,_,c,_) -> aux k [] c true
-  | NativeInt _ | NativeArr _ -> ConstructorHead
+  | NativeInt _ | NativeArr _ | NativeRes _ -> ConstructorHead
   | Fix ((i,j),_) ->
       let n = i.(j) in
       try aux k [] (List.nth l n) true

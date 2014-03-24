@@ -321,6 +321,7 @@ and fterm =
   | FLetIn of name * fconstr * fconstr * constr * fconstr subs
   | FEvar of existential * fconstr subs
   | FNativeInt of Uint63.t
+  | FNativeRes of Resource.t
   | FNativeArr of fconstr * fconstr Parray.t
   | FLIFT of int * fconstr
   | FCLOS of constr * fconstr subs
@@ -470,7 +471,7 @@ let rec compact_constr (lg, subs as s) c k =
         if i < k then c,s else
           (try mkRel (k + lg - list_index (i-k+1) subs), (lg,subs)
           with Not_found -> mkRel (k+lg), (lg+1, (i-k+1)::subs))
-    | (Sort _|Var _|Meta _|Ind _|Const _|Construct _ | NativeInt _) -> c,s
+    | (Sort _|Var _|Meta _|Ind _|Const _|Construct _ | NativeInt _ | NativeRes _) -> c,s
     | Evar(ev,v) ->
         let (v',s) = compact_vect s v k in
         if v==v' then c,s else mkEvar(ev,v'),s
@@ -558,6 +559,7 @@ let mk_clos e t =
     | Ind kn -> { norm = Norm; term = FInd kn }
     | Construct kn -> { norm = Cstr; term = FConstruct kn }
     | NativeInt i -> {norm = Cstr; term = FNativeInt i}
+    | NativeRes r -> {norm = Cstr; term = FNativeRes r}
     | CoFix _|Lambda _|Fix _|Prod _|Evar _|App _|Case _|Cast _|LetIn _
     | NativeArr _ ->
         {norm = Red; term = FCLOS(t,e)}
@@ -570,7 +572,8 @@ let mk_clos_vect env v = Array.map (mk_clos env) v
    Could be used insted of mk_clos. *)
 let mk_clos_deep clos_fun env t =
   match kind_of_term t with
-    | (Rel _|Ind _|Const _|Construct _|Var _|Meta _|Sort _|NativeInt _) ->
+    | (Rel _|Ind _|Const _|Construct _|Var _|Meta _
+      |Sort _|NativeInt _ | NativeRes _) ->
         mk_clos env t
     | Cast (a,k,b) ->
         { norm = Red;
@@ -663,6 +666,7 @@ let rec to_constr constr_fun lfts v =
         to_constr constr_fun lfts unfv
     | FLOCKED -> assert false (*mkVar(id_of_string"_LOCK_")*)
     | FNativeInt i -> mkInt i
+    | FNativeRes r -> mkResource r
     | FNativeArr(t, p) ->
 	let init i = constr_fun lfts (Parray.get p (Uint63.of_int i)) in
 	mkArray(constr_fun lfts t,
@@ -904,7 +908,7 @@ let rec knh m stk =
 (* cases where knh stops *)
     | (FFlex _|FLetIn _|FConstruct _|FEvar _|
        FCoFix _|FLambda _|FRel _|FAtom _|FInd _|FProd _|
-       FNativeInt _|FNativeArr _) ->
+       FNativeInt _|FNativeArr _ | FNativeRes _) ->
         (m, stk)
 
 (* The same for pure terms *)
@@ -919,7 +923,7 @@ and knht e t stk =
     | Rel n -> knh (clos_rel e n) stk
     | (Lambda _|Prod _|Construct _|CoFix _|Ind _|
        LetIn _|Const _|Var _|Evar _|Meta _|Sort _|
-       NativeInt _ | NativeArr _) ->
+       NativeInt _ | NativeArr _ | NativeRes _) ->
         (mk_clos2 e t, stk)
 
 

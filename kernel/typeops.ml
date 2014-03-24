@@ -446,6 +446,9 @@ type renv =
       mutable rc          : constraints;
       mutable int_checked : bool;
       mutable int_constr  : constr;
+      mutable resource_checked : bool;
+      mutable resource_constr  : constr;
+
       mutable arr_checked : bool;
       mutable arr_constr  : constr
     }
@@ -455,6 +458,8 @@ let empty_renv () = {
   rc = empty_constraint;
   int_checked = false;
   int_constr = mkRel 0;
+  resource_checked = false;
+  resource_constr = mkRel 0;
   arr_checked = false;
   arr_constr = mkRel 0;
 }
@@ -499,6 +504,20 @@ let internal_type_of_int renv env =
     let c = type_of_int env in
     renv.int_checked <- true;
     renv.int_constr <- c;
+    c
+
+let type_of_resource env =
+  match (retroknowledge env).Pre_env.retro_resource with
+  | Some (_,c) -> c
+  | None -> raise 
+	(Invalid_argument "Typeops.type_of_resource: resource not_defined")
+
+let internal_type_of_resource renv env = 
+  if renv.resource_checked then renv.resource_constr
+  else 
+    let c = type_of_resource env in
+    renv.resource_checked <- true;
+    renv.resource_constr <- c;
     c
 
 let judge_of_int env i =
@@ -620,6 +639,7 @@ let rec execute renv env cstr =
    
     (* Native representation *)
     | NativeInt _ -> internal_type_of_int renv env
+    | NativeRes _ -> internal_type_of_resource renv env
 
     | NativeArr (t,p) -> 
 	let _ = execute_type renv env t in

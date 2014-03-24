@@ -760,6 +760,7 @@ let check_one_fix renv recpos def =
 
 
 	| NativeInt _ -> assert (l = [])
+	| NativeRes _ -> assert (l = [])
 
 	| NativeArr (t,p) -> 
 	    assert (l = []);

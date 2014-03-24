@@ -39,7 +39,6 @@ type lambda =
 	(* A partially applied constructor *)
   | Lint          of Uint63.t
   | Lparray       of lambda array
-  | Lresource     of Resource.t
   | Lval          of Nativevalues.t
   | Lsort         of sorts
   | Lind          of string * inductive (* prefix, inductive name *)
@@ -97,7 +96,7 @@ let get_const_prefix env c =
 
 let map_lam_with_binders g f n lam =
   match lam with
-  | Lrel _ | Lvar _  | Lconst _ | Lint _ | Lval _ | Lresource _ 
+  | Lrel _ | Lvar _  | Lconst _ | Lint _ | Lval _
   | Lsort _ | Lind _ | Lconstruct _ | Llazy | Lforce -> lam
   | Lprod(dom,codom) -> 
       let dom' = f n dom in
@@ -316,7 +315,7 @@ let rec occurence k kind lam =
       if n = k then 
 	if kind then false else raise Not_found
       else kind
-  | Lvar _  | Lconst _  | Lint _ | Lval _ | Lsort _ | Lind _ | Lresource _ 
+  | Lvar _  | Lconst _  | Lint _ | Lval _ | Lsort _ | Lind _
   | Lconstruct _ | Llazy | Lforce -> kind
   | Lprod(dom, codom) ->
       occurence k (occurence k kind dom) codom
@@ -787,7 +786,7 @@ let rec lambda_of_constr env c =
       Lcofix(init, (names, ltypes, lbodies))
   | NativeInt i -> Lint i
   | NativeArr(_,p) -> makearray (lambda_of_args env 0 p)
-  | NativeRes r -> Lresource r 
+  | NativeRes r -> Lval (Nativevalues.mk_resource r)
 
 
 and lambda_of_app env f args =

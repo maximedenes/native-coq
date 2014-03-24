@@ -18,6 +18,10 @@ type caml_prim =
   | ArrayLength
   | ArrayInit
   | ArrayMap
+  (* Resource Operations *)
+  | ResourceMake
+  | ResourceGetc
+  | ResourceGeti32
 
 type iterator =
   | Int31foldi

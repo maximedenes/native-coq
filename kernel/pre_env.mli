@@ -29,7 +29,8 @@ type retroknowledge = {
     retro_pair  : constructor option;
     retro_cmp   : (constructor * constructor * constructor) option;
                     (* Eq, Lt, Gt *)
-    retro_refl  : constructor option
+    retro_refl  : constructor option;
+    retro_resource: (constant * constr) option;
 }
 
 type globals = {

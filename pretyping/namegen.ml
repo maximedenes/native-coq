@@ -97,6 +97,7 @@ let hdchar env c =
 	lowercase_first_char id
     | Meta _|Evar _|Case (_, _, _, _) -> "y"
     | NativeInt _ -> "i"
+    | NativeRes _ -> "r"
     | NativeArr _ -> "p"
   in
   hdrec 0 c

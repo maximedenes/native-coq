@@ -182,7 +182,7 @@ val mkCoFix : cofixpoint -> constr
 (* Constructs native term *)
 val mkInt : Uint63.t -> constr
 val mkArray : types * constr array  -> constr
-
+val mkResource : Resource.t -> constr
 
 (** {6 Concrete type for making pattern-matching. } *)
 
