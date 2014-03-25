@@ -8,6 +8,7 @@
 *.spot
 *.o
 *.a
+*.so
 *.log
 *.aux
 *.dvi

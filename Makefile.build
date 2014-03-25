@@ -264,6 +264,17 @@ checker/check.cmxa: | checker/check.mllib.d
 	$(SHOW)'OCAMLOPT -a -o $@'
 	$(HIDE)$(OCAMLOPT) $(CHKOPTFLAGS) -a -o $@ $^
 
+#
+kernel/resource/resource.cma: kernel/resource/resource_posix.o | kernel/resource/resource.mllib.d
+	$(SHOW)'OCAMLMKLIB -o kernel/resource/resource $^'
+	$(HIDE)$(OCAMLMKLIB) -o kernel/resource/resource $^
+	$(RANLIB) kernel/resource/libresource.a
+
+kernel/resource/resource.cmxa: kernel/resource/resource_posix.o | kernel/resource/resource.mllib.d
+	$(SHOW)'OCAMLMKLIB -o kernel/resource/resource $^'
+	$(HIDE)$(OCAMLMKLIB) -o kernel/resource/resource $^
+	$(RANLIB) kernel/resource/libresource.a
+
 ###########################################################################
 # Csdp to micromega special targets
 ###########################################################################
@@ -271,6 +282,7 @@ checker/check.cmxa: | checker/check.mllib.d
 plugins/micromega/csdpcert$(EXE): $(CSDPCERTCMO:.cmo=$(BESTOBJ))
 	$(SHOW)'OCAMLBEST -o $@'
 	$(HIDE)$(call bestocaml,,nums unix)
+
 
 ###########################################################################
 # CoqIde special targets
@@ -374,7 +386,7 @@ test-suite: world $(ALLSTDLIB).v
 # partial targets: 1) core ML parts
 ##################################################################
 
-.PHONY: lib kernel byterun library proofs tactics interp parsing pretyping
+.PHONY: lib kernel byterun natresource library proofs tactics interp parsing pretyping
 .PHONY: highparsing toplevel hightactics
 
 lib: lib/clib.cma lib/lib.cma
@@ -720,10 +732,12 @@ dev/printers.cma: | dev/printers.mllib.d
 	$(SHOW)'OCAMLC -a $@'   
 	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
 
-parsing/grammar.cma: | parsing/grammar.mllib.d
+parsing/grammar.cma: kernel/resource/resource.cma | parsing/grammar.mllib.d
 	$(SHOW)'Testing $@'
 	@touch test.ml4
-	$(HIDE)$(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) $^ -impl" -impl test.ml4 -o test-grammar
+	$(HIDE)\
+	  export CAML_LD_LIBRARY_PATH="$(COQSRC)/kernel/resource"; \
+    $(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) -I kernel/resource $^ -impl" -impl test.ml4 -o test-grammar
 	@rm -f test-grammar test.*
 	$(SHOW)'OCAMLC -a $@'   
 	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
@@ -881,9 +895,10 @@ plugins/%_mod.ml: plugins/%.mllib
 %.ml: %.ml4 | %.ml4.d tools/compat5.cmo tools/compat5b.cmo
 	$(SHOW)'CAMLP4O   $<'
 	$(HIDE)\
+	export CAML_LD_LIBRARY_PATH="$(COQSRC)/kernel/resource"; \
 	DEPS="$(call CAMLP4DEPS,$<)"; \
 	if ls $${DEPS} > /dev/null 2>&1; then \
-	$(CAMLP4O) $(PR_O) -I $(CAMLLIB) tools/compat5.cmo $${DEPS} $(CAMLP4USE) $(CAMLP4COMPAT) -impl $< -o $@; \
+	$(CAMLP4O) $(PR_O) -I $(CAMLLIB) -I kernel/resource tools/compat5.cmo $${DEPS} $(CAMLP4USE) $(CAMLP4COMPAT) -impl $< -o $@; \
 	else echo $< : Dependency $${DEPS} not ready yet; false; fi
 
 %.vo %.glob: %.v states/initial.coq $(INITPLUGINSBEST) $(VO_TOOLS_STRICT) | %.v.d  $(VO_TOOLS_ORDER_ONLY)
@@ -931,6 +946,10 @@ checker/%.mli.d: $(D_DEPEND_BEFORE_SRC) checker/%.mli $(D_DEPEND_AFTER_SRC) $(CO
 checker/%.mllib.d: $(D_DEPEND_BEFORE_SRC) checker/%.mllib $(D_DEPEND_AFTER_SRC) $(COQDEPBOOT) $(GENFILES)
 	$(SHOW)'COQDEP  $<'
 	$(HIDE)$(COQDEPBOOT) -slash -I checker -c "$<" $(TOTARGET)
+
+kernel/resource/%.mllib.d: $(D_DEPEND_BEFORE_SRC) kernel/resource/%.mllib $(D_DEPEND_AFTER_SRC) $(COQDEPBOOT) $(GENFILES)
+	$(SHOW)'COQDEP  $<'
+	$(HIDE)$(COQDEPBOOT) -slash -I kernel/resource -c "$<" $(TOTARGET)
 
 %.mllib.d: $(D_DEPEND_BEFORE_SRC) %.mllib $(D_DEPEND_AFTER_SRC) $(COQDEPBOOT) $(GENFILES)
 	$(SHOW)'COQDEP  $<'

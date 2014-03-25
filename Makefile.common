@@ -70,7 +70,7 @@ CSDPCERT:=plugins/micromega/csdpcert$(EXE)
 
 SRCDIRS:=\
   config 	tools 		tools/coqdoc 	scripts		lib \
-  kernel	kernel/byterun	library 	proofs 		tactics \
+  kernel	kernel/resource	kernel/byterun	library 	proofs 		tactics \
   pretyping	interp		toplevel/utils	toplevel 	parsing 	\
   ide/utils	ide		\
   $(addprefix plugins/, \
@@ -155,7 +155,8 @@ BYTERUN:=$(addprefix kernel/byterun/, \
 # respecting this order is useful for developers that want to load or link
 # the libraries directly
 
-CORECMA:=lib/clib.cma lib/lib.cma kernel/kernel.cma library/library.cma \
+CORECMA:=lib/clib.cma lib/lib.cma kernel/resource/resource.cma \
+        kernel/kernel.cma library/library.cma \
         pretyping/pretyping.cma interp/interp.cma proofs/proofs.cma \
         parsing/parsing.cma tactics/tactics.cma toplevel/toplevel.cma \
         parsing/highparsing.cma tactics/hightactics.cma
