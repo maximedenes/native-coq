@@ -198,7 +198,7 @@ let cast_accu v = (Obj.magic v:accumulator)
 
 let mk_int (x : int) = (Obj.magic x : t)
 let mk_uint (x : Uint63.t) = (Obj.magic x : t)
-let mk_resource (x:Resource.t) = assert false
+let mk_resource (x:Resource.t) = (Obj.magic x : t)
 type block
 
 let block_size (b:block) =
@@ -225,20 +225,19 @@ let kind_of_value (v:t) =
     if tag = accumulate_tag then 
       if Obj.size o = 1 then Varray (Obj.magic v)
       else Vaccu (Obj.magic v)
-    else if tag = Obj.custom_tag then Vint (Obj.magic v)
-    else if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
+    else (*if tag = Obj.custom_tag then Vint (Obj.magic v)
+           else *) 
+      if (tag < Obj.lazy_tag) then Vblock (Obj.magic v)
       else
         (* assert (tag = Obj.closure_tag || tag = Obj.infix_tag); 
            or ??? what is 1002*)
         Vfun v
 
-
-
 (*** Operations pour les entiers **)
 
 let is_int (x:t) =
   let o = Obj.repr x in
-  Obj.is_int o || Obj.tag o = Obj.custom_tag
+  Obj.is_int o (*|| Obj.tag o = Obj.custom_tag *)
 
 let to_uint (x:t) = (Obj.magic x : Uint63.t)
 
