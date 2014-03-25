@@ -205,6 +205,11 @@ let caml_prim_call op =
   | ArrayInit -> opISARRAY_INT_CAML_CALL3
   | ArrayGetdefault | ArrayCopy | ArrayReroot | ArrayLength -> 
       opISARRAY_CAML_CALL1
+  (* FIXME *)
+  | ResourceMake -> opCHECKCOMPAREINT31
+  | ResourceGetc -> opCHECKCOMPAREINT31
+  | ResourceGeti32 -> opCHECKCOMPAREINT31
+
 
 
 
