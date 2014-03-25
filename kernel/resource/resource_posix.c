@@ -1,6 +1,7 @@
 /* -------------------------------------------------------------------- */
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <sys/types.h>
@@ -16,6 +17,8 @@
 #include <caml/custom.h>
 #include <caml/fail.h>
 #include <caml/callback.h>
+
+#define DEBUG 1
 
 /* -------------------------------------------------------------------- */
 #define NEW(T)  ((T*) malloc(sizeof (T)))
@@ -145,6 +148,13 @@ CAMLprim value caml_resource_from_filename(value filename) {
   }
 
   Resource_val(mlresource) = resource;
+
+#if DEBUG
+  (void) fprintf(stderr, "resource [%lx] created from %s\n",
+                 (size_t) resource->contents,
+                 String_val(filename));
+#endif
+
   CAMLreturn(mlresource);
 }
 
@@ -177,15 +187,30 @@ CAMLprim value caml_resource_get1(value mlresource, value mloffset) {
   resource_t *resource = NULL;
   size_t offset = 0u;
 
+#if DEBUG
+  (void) fprintf(stderr, "entering [caml_resource_get1]\n");
+#endif
+
   if ((resource = Resource_val(mlresource)) == NULL)
     caml_raise_invalid_resource(); /* no-return */
 
   offset = Int_val(mloffset);
 
+#if DEBUG
+  (void) fprintf(stderr, "caml_resource_get1[%lx/%lu]\n",
+                 (size_t) resource->contents, offset);
+#endif
+
   if (offset < 0 || offset >= resource->size) {
     /* no-return */
     caml_invalid_argument("resource.get1: invalid offset");
   }
+
+#if DEBUG
+  (void) fprintf(stderr, "caml_resource_get1[%lx/%lu] = %x\n",
+                 (size_t) resource->contents, offset,
+                 (uint8_t) resource->contents[offset]);
+#endif
 
   CAMLreturn(Int_val(resource->contents[offset]));
 }
