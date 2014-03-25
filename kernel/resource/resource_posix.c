@@ -115,7 +115,7 @@ static struct custom_operations resource_ops = {
 static value caml_alloc_resource(void) {
   value resource;
 
-  resource = alloc_custom(&resource_ops, sizeof (resource_t*), 0, 1);
+  resource = caml_alloc_custom(&resource_ops, sizeof (resource_t*), 0, 1);
   Resource_val(resource) = NULL;
 
   return resource;
