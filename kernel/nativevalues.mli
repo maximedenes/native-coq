@@ -190,6 +190,9 @@ val parray_of_array : t array -> t
 val is_parray : t -> bool
 val no_check_arrayget : t -> t -> t
 val no_check_arrayset : t -> t -> t -> t
+val resourcegeti : t -> t -> t -> t
+val resourcegetc : t -> t -> t -> t
+val resourcemake : t -> t -> t
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a

@@ -567,8 +567,6 @@ let arraymap accu vA vB f t =
     of_parray (Parray.map f (to_parray t))
   else accu vA vB f t
 
-
-
 let lt_b x y =
   Uint63.lt (to_uint x) (to_uint y)
  
@@ -576,18 +574,35 @@ let le_b x y =
   Uint63.le (to_uint x) (to_uint y)
 
 
+let to_resource t = Obj.magic t
 
+let is_resource t = 
+  Obj.tag (Obj.repr t) = Obj.custom_tag 
 
+let resourcegetc accu r n = 
+  if is_resource r && is_int n then
+    mk_uint (Resource.getc (to_resource r) (to_uint n))
+  else accu r n
 
+let resourcegeti accu r n = 
+  if is_resource r && is_int n then
+    mk_uint (Resource.geti32 (to_resource r) (to_uint n))
+  else accu r n
 
+let resourcemake accu t =
+  if is_parray t then
+    try 
+      let t = to_parray t in
+      let len = Parray.length t in
+      let a = 
+        Array.init (Uint63.to_int len) (fun i -> 
+          let ei = Parray.get t (Uint63.of_int i) in
+          if is_int ei then to_uint ei 
+          else raise Not_found) in
+      mk_resource (Resource.make a)
+    with Not_found -> accu t
+  else accu t 
 
-
-
-
-
-
-
- 
 let hobcnv = Array.init 256 (fun i -> Printf.sprintf "%.2x" i)
 let bohcnv = Array.init 256 (fun i -> i -
                                       (if 0x30 <= i then 0x30 else 0) -

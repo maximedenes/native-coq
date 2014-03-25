@@ -10,7 +10,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <endian.h>
+#ifdef __APPLE__
+# include <libkern/OSByteOrder.h>
+
+# define htobe32 OSSwapHostToBigInt32
+# define htole32 OSSwapHostToLittleInt32
+# define be32toh OSSwapBigToHostInt32
+# define le32toh OSSwapLittleToHostInt32
+#else
+# include <endian.h>
+#endif
 
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
@@ -132,7 +141,7 @@ CAMLprim value caml_resource_from_filename(value filename) {
   CAMLparam1(filename);
 
   resource_t *resource = NULL;
-  value mlresource = NULL;
+  value mlresource = 0;
 
   mlresource = caml_alloc_resource();
 
