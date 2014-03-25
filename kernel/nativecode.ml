@@ -210,6 +210,9 @@ type primitive =
   | Carraylength of (string * constant) option
   | Carrayinit of (string * constant) option
   | Carraymap of (string * constant) option
+  | Cresourcemake of (string * constant) option
+  | Cresourcegetc of (string * constant) option
+  | Cresourcegeti of (string * constant) option
   (* Caml primitive *)
   | MLand
   | MLle
@@ -546,6 +549,9 @@ let mlprim_of_cprim p kn =
   | Native.ArrayLength     -> Carraylength (Some kn)
   | Native.ArrayInit       -> Carrayinit (Some kn)
   | Native.ArrayMap        -> Carraymap (Some kn)
+  | Native.ResourceMake    -> Cresourcemake (Some kn)
+  | Native.ResourceGetc    -> Cresourcegetc (Some kn)
+  | Native.ResourceGeti32  -> Cresourcegeti (Some kn)
 
 type prim_aux = 
   | PAprim of (string * constant) option * Native.prim_op * prim_aux array
@@ -591,11 +597,6 @@ let (*rec*) to_int v =
   | _ -> MLapp(MLprimitive Val_to_int, [|v|]) 
 
 let compile_prim decl cond paux =
-  let args_to_int args = 
-    for i = 0 to Array.length args - 1 do
-      args.(i) <- to_int args.(i)
-    done;
-    args in
   let rec opt_prim_aux paux =
     match paux with
     | PAprim(o, op, args) ->
@@ -1133,9 +1134,9 @@ let string_of_mind mind = string_of_kn (user_mind mind)
 
 let string_of_gname g =
   match g with
-  | Gind (prefix, (mind, i as ind)) ->
+  | Gind (prefix, (mind, i)) ->
       Format.sprintf "%sindaccu_%s_%i" prefix (string_of_mind mind) i
-  | Gconstruct (prefix, ((mind, i as ind), j)) ->
+  | Gconstruct (prefix, ((mind, i), j)) ->
       Format.sprintf "%sconstruct_%s_%i_%i" prefix (string_of_mind mind) i (j-1)
   | Gconstant (prefix, c) ->
       Format.sprintf "%sconst_%s" prefix (string_of_con c)
@@ -1168,7 +1169,7 @@ let pp_ldecls fmt ids =
     Format.fprintf fmt " (%a : Nativevalues.t)" pp_lname ids.(i)
   done
 
-let string_of_construct prefix ((mind,i as ind),j) =
+let string_of_construct prefix ((mind,i),j) =
   let id = Format.sprintf "Construct_%s_%i_%i" (string_of_mind mind) i (j-1) in
   prefix ^ id
    
@@ -1235,7 +1236,7 @@ let pp_mllam fmt l =
 
   and pp_blam fmt l =
     match l with
-    | MLprimitive (Mk_prod _ | Mk_sort _) 
+    | MLprimitive (Mk_prod | Mk_sort) 
     | MLlam _ | MLletrec _ | MLlet _ | MLapp _ | MLif _ ->
 	Format.fprintf fmt "(%a)" pp_mllam l
     | MLconstruct(_,_,args) when Array.length args > 0 ->
@@ -1361,6 +1362,9 @@ let pp_mllam fmt l =
     | Carraylength o -> pp_vprim o "arraylength"
     | Carrayinit o -> pp_vprim o "arrayinit"
     | Carraymap o -> pp_vprim o "arraymap"
+    | Cresourcemake o -> pp_vprim o "resourcemake"
+    | Cresourcegetc o -> pp_vprim o "resourcegetc"
+    | Cresourcegeti o -> pp_vprim o "resourcegeti"
 	  (* Caml primitive *)
     | MLand -> Format.fprintf fmt "(&&)"
     | MLle -> Format.fprintf fmt "(<=)"
