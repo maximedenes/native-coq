@@ -10,17 +10,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef __APPLE__
-# include <libkern/OSByteOrder.h>
-
-# define htobe32 OSSwapHostToBigInt32
-# define htole32 OSSwapHostToLittleInt32
-# define be32toh OSSwapBigToHostInt32
-# define le32toh OSSwapLittleToHostInt32
-#else
-# include <endian.h>
-#endif
-
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/alloc.h>
@@ -190,9 +179,10 @@ CAMLprim value caml_resource_get1(value mlresource, value mloffset) {
 
   if ((resource = Resource_val(mlresource)) == NULL)
     caml_raise_invalid_resource(); /* no-return */
-  offset = Int64_val(mloffset);
 
-  if (offset >= resource->size) {
+  offset = Int_val(mloffset);
+
+  if (offset < 0 || offset >= resource->size) {
     /* no-return */
     caml_invalid_argument("resource.get1: invalid offset");
   }
@@ -205,18 +195,27 @@ CAMLprim value caml_resource_le32(value mlresource, value mloffset) {
   CAMLparam1(mlresource);
 
   resource_t *resource = NULL;
-  size_t offset = 0u;
+  int offset = 0u;
 
   if ((resource = Resource_val(mlresource)) == NULL)
     caml_raise_invalid_resource(); /* no-return */
-  offset = Int64_val(mloffset);
+  offset = Int_val(mloffset);
+
+  if (offset < 0) {
+    /* no-return */
+    caml_invalid_argument("resource.le32: negative offset");
+  }
 
   if (!resource_check_offset(resource, offset, sizeof(uint32_t))) {
     /* no-return */
     caml_invalid_argument("resource.le32: invalid offset");
   }
 
-  uint32_t aout = le32toh(&resource->contents[offset]);
+  uint32_t aout =
+      ((uint32_t) resource->contents[offset+3] << 24)
+    | ((uint32_t) resource->contents[offset+2] << 16)
+    | ((uint32_t) resource->contents[offset+1] <<  8)
+    | ((uint32_t) resource->contents[offset+0] <<  0);
 
   if ((aout & 0x80000000))
     caml_failwith("resource.le32: read integer too large");
@@ -240,8 +239,13 @@ CAMLprim value caml_resource_get
   if ((resource = Resource_val(mlresource)) == NULL)
     caml_raise_invalid_resource(); /* no-return */
 
-  offset = Int64_val(mloffset);
-  length = Int64_val(mllength);
+  offset = Int_val(mloffset);
+  length = Int_val(mllength);
+
+  if (offset < 0 || length < 0) {
+    /* no-return */
+    caml_invalid_argument("resource.get: negative offset/length");
+  }
 
   if (!resource_check_offset(resource, offset, length)) {
     /* no-return */

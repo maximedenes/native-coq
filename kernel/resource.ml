@@ -41,24 +41,24 @@ let create (name : string) =
     let mmap = ResourcePosix.create name in
     H.add htable (key, Some mmap); mmap
 
-let make (name:Uint63.t array) = 
+(* -------------------------------------------------------------------- *)
+let make (name:Uint63.t array) =
   let len = Array.length name in
   let sname = String.create len in
   for i = 0 to len - 1 do
     let k = Uint63.to_int name.(i) in
     let kc = k land 0xFF  in
     let kc = if kc = 0 then 1 else kc in
-    sname.[i] <- Char.chr kc 
+    sname.[i] <- Char.chr kc
   done;
   create sname
 
-
 (* -------------------------------------------------------------------- *)
 let getc (mmap : t) (offset : Uint63.t) =
-  Uint63.of_int (ResourcePosix.get1 mmap (Int64.of_int (Uint63.to_int offset)))
+  try  Uint63.of_int (ResourcePosix.get1 mmap (Uint63.to_int offset))
+  with Invalid_argument _ -> Uint63.of_int 0
 
 (* -------------------------------------------------------------------- *)
 let geti32 (mmap : t) (offset : Uint63.t) =
-  Uint63.of_int (ResourcePosix.getle32 mmap (Int64.of_int (Uint63.to_int offset)))
-
-
+  try  Uint63.of_int (ResourcePosix.getle32 mmap (Uint63.to_int offset))
+  with Invalid_argument _ -> Uint63.of_int 0
