@@ -56,7 +56,7 @@ let no_start   = ref false
 let is_ocaml4 = String.sub Coq_config.caml_version 0 2 = "4."
 
 let src_dirs () =
-  [ []; ["kernel";"byterun"]; [ "config" ]; [ "toplevel" ] ]
+  [ []; ["kernel";"byterun"]; ["kernel";"resource"]; [ "config" ]; [ "toplevel" ] ]
 
 let includes () =
   let coqlib = Envars.coqlib Errors.error in
