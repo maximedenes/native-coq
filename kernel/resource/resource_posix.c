@@ -212,7 +212,7 @@ CAMLprim value caml_resource_get1(value mlresource, value mloffset) {
                  (uint8_t) resource->contents[offset]);
 #endif
 
-  CAMLreturn(Int_val(resource->contents[offset]));
+  CAMLreturn(Val_int(resource->contents[offset]));
 }
 
 /* -------------------------------------------------------------------- */
@@ -245,7 +245,7 @@ CAMLprim value caml_resource_le32(value mlresource, value mloffset) {
   if ((aout & 0x80000000))
     caml_failwith("resource.le32: read integer too large");
 
-  CAMLreturn((int32_t) Int_val(aout));
+  CAMLreturn(Val_int(aout));
 }
 
 /* -------------------------------------------------------------------- */
