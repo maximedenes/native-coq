@@ -737,10 +737,10 @@ parsing/grammar.cma: kernel/resource/resource.cma | parsing/grammar.mllib.d
 	@touch test.ml4
 	$(HIDE)\
 	  export CAML_LD_LIBRARY_PATH="$(COQSRC)/kernel/resource"; \
-    $(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) -I kernel/resource $^ -impl" -impl test.ml4 -o test-grammar
+    $(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) unix.cma $^ -impl" -impl test.ml4 -o test-grammar
 	@rm -f test-grammar test.*
 	$(SHOW)'OCAMLC -a $@'   
-	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) unix.cma $^ -linkall -a -o $@
 
 # toplevel/mltop.ml4 (ifdef Byte)
 

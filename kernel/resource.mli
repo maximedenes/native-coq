@@ -8,5 +8,5 @@ val hash    : t -> int
 
 (* -------------------------------------------------------------------- *)
 val create  : string -> t
-val get1    : t -> int
-val getle32 : t -> int
+val get1    : t -> int64 -> int
+val getle32 : t -> int64 -> int

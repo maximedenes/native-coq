@@ -10,5 +10,5 @@ let () =
 type mmap
 
 external create  : string -> mmap = "caml_resource_from_filename"
-external get1    : mmap -> int = "caml_resource_get1"
-external getle32 : mmap -> int = "caml_resource_le32"
+external get1    : mmap -> int64 -> int = "caml_resource_get1"
+external getle32 : mmap -> int64 -> int = "caml_resource_le32"
