@@ -347,6 +347,12 @@ module CNativeEntries =
       | NativeArr(t,p) -> (t,p)
       | _ -> raise Not_found
 
+    let get_resource e =
+      match kind_of_term e with
+      | NativeRes r -> r
+      | _ -> raise Not_found
+
+
     let dummy = mkRel 0
     let current_retro = ref Pre_env.empty_retroknowledge
     let defined_int = ref false
@@ -423,6 +429,11 @@ module CNativeEntries =
 	  crefl := mkConstruct crefl'
       | None -> defined_refl := false
 
+    let defined_resource = ref false 
+
+    let init_resource retro =
+      defined_resource := retro.Pre_env.retro_resource <> None
+ 
     let init env = 
       current_retro := retroknowledge env;
       init_int !current_retro;
@@ -431,7 +442,9 @@ module CNativeEntries =
       init_pair !current_retro;
       init_cmp !current_retro;
       init_array !current_retro;
+      init_resource !current_retro;
       init_refl !current_retro
+
 	  
     let check_env env =
       if not (!current_retro == retroknowledge env) then init env
@@ -459,6 +472,10 @@ module CNativeEntries =
     let check_array env =
       check_env env;
       assert (!defined_array)
+ 
+    let check_resource env =
+      check_env env;
+      assert (!defined_resource)
   
     let check_refl env =
       check_env env;
@@ -507,7 +524,11 @@ module CNativeEntries =
 
     let mkClos id t body s = 
       Term.substl (Array.to_list s) (Term.mkLambda(id,t,body))
-
+        
+    let mkResource env r =
+      check_resource env;
+      mkResource r
+        
   end
 
 module CredNative = RedNative(CNativeEntries)

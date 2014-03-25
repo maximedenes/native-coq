@@ -215,6 +215,7 @@ let build_beq_scheme kn =
         | Meta _  -> raise (EqUnknown "Meta")
         | Evar _  -> raise (EqUnknown "Evar")
 	| NativeInt _ -> raise (EqUnknown "Int")
+        | NativeRes _ -> raise (EqUnknown "Resource")
 	| NativeArr _ -> raise (EqUnknown "Array")
     in
       aux t

@@ -385,6 +385,15 @@ let add_retroknowledge env (pt,c) =
 	| None -> { retro with retro_int31 = Some (cte,c) }
 	| Some(cte',_) -> assert (cte = cte'); retro in
       { env with env_retroknowledge = retro }
+  | Retro_type PT_resource ->
+      let cte = destConst c in
+      let retro = retroknowledge env in
+      let retro = 
+	match retro.retro_resource with
+	| None -> { retro with retro_resource = Some (cte,c) }
+	| Some(cte',_) -> assert (cte = cte'); retro in
+      { env with env_retroknowledge = retro }
+
   | Retro_type PT_array ->
       let cte = destConst c in
       let retro = retroknowledge env in
@@ -494,6 +503,8 @@ module RedNative (E:RedNativeEntries) :
       get_int args 0, get_int args 1, get_int args 2
 
     let get_parray args i = E.get_parray (E.get args i)
+
+    let get_resource args i = E.get_resource (E.get args i)
 
     let red_prim env op args =
       match op with  
@@ -614,7 +625,11 @@ module RedNative (E:RedNativeEntries) :
 	  let (_,p) = get_parray args 1 in
 	  E.mkInt env (E.Parray.length p)
       | ResourceMake    ->
-        let name = get_parray args 0 in
+        let (_, name) = get_parray args 0 in
+        (* FIXME the evaluation should be forced: E.get_int *)
+        let name = 
+          Array.init (Uint63.to_int (E.Parray.length name))
+            (fun i -> E.get_int (E.Parray.get name (Uint63.of_int i))) in
         E.mkResource env (Resource.make name)
         
       | ResourceGetc    ->

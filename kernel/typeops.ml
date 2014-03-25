@@ -523,6 +523,10 @@ let internal_type_of_resource renv env =
 let judge_of_int env i =
   make_judge (mkInt i) (type_of_int env)
 
+let judge_of_resource env i =
+  make_judge (mkResource i) (type_of_resource env)
+
+
 let type_of_array env = 
   match (retroknowledge env).Pre_env.retro_array with
   | Some (_,c) -> c
@@ -801,6 +805,8 @@ let check_primitive_type env op_t t =
 	let (_,dom,codom) = destProd t in
 	(if not (is_Type dom && is_Type codom) then check_primitive_error ())
       else check_primitive_error ()
+  | OT_type PT_resource -> 
+      if not (eq_constr t mkSet) then check_primitive_error ()
   | OT_op op -> 
       match op with
       | Ocaml_prim op -> check_caml_prim_type env op t

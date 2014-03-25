@@ -58,6 +58,7 @@ type cbv_value =
   | CONSTR of constructor * cbv_value array
   | NATIVEINT of Uint63.t
   | NATIVEARR of cbv_value * cbv_value Parray.t
+  | NATIVERES of Resource.t
   | PRIMITIVE of Native.op * constr * cbv_value array
 
                   
@@ -102,6 +103,7 @@ let rec shift_value n = function
   | CONSTR (c,args) ->
       CONSTR (c, Array.map (shift_value n) args)
   | NATIVEINT _ as v -> v
+  | NATIVERES _ as v -> v
   | NATIVEARR(t,p) -> 
       NATIVEARR(shift_value n t, Parray.map (shift_value n) p)
   | PRIMITIVE(op,c,args) ->
@@ -216,6 +218,11 @@ module VNativeEntries =
       | NATIVEARR(t,p) -> (t,p)
       | _ -> raise Not_found
 
+    let get_resource e =
+      match e with
+      | NATIVERES r -> r
+      | _ -> raise Not_found
+
     let dummy = VAL (0,mkRel 0)
 
     let current_retro = ref Pre_env.empty_retroknowledge
@@ -300,6 +307,12 @@ module VNativeEntries =
 	  crefl := crefl'
       | None -> defined_refl := false
 
+    let defined_resource = ref false 
+      
+    let init_resource retro = 
+      defined_resource := retro.Pre_env.retro_resource <> None
+
+
     let init env = 
       current_retro := retroknowledge env;
       init_int !current_retro;
@@ -308,7 +321,9 @@ module VNativeEntries =
       init_pair !current_retro;
       init_cmp !current_retro;
       init_array !current_retro;
+      init_resource !current_retro;
       init_refl !current_retro
+     
 	  
     let check_env env =
       if not (!current_retro == retroknowledge env) then init env
@@ -337,6 +352,10 @@ module VNativeEntries =
       check_env env;
       assert (!defined_array)
  
+    let check_resource env =
+      check_env env;
+      assert (!defined_resource)
+        
     let check_refl env =
       check_env env;
       assert (!defined_refl && !defined_int)
@@ -384,6 +403,10 @@ module VNativeEntries =
 
     let mkClos id t body s =
       LAM(1,[id,t],body, Esubst.subs_cons (s,Esubst.subs_id 0))
+
+    let mkResource env r = 
+      check_resource env;
+      NATIVERES r
 
   end
 
@@ -458,6 +481,7 @@ let rec norm_head info env t stack =
   
   (* Native *)
   | NativeInt i -> (NATIVEINT i,stack)
+  | NativeRes r -> (NATIVERES r,stack)
   | NativeArr(t,p) ->
       let len = Array.length p - 1 in
       let t = cbv_stack_term info TOP env t in
@@ -673,6 +697,7 @@ and cbv_norm_value info = function (* reduction under binders *)
   | CONSTR (c,args) ->
       mkApp(mkConstruct c, Array.map (cbv_norm_value info) args)
   | NATIVEINT i -> mkInt i
+  | NATIVERES r -> mkResource r
   | NATIVEARR(t,p) ->
       let ct = cbv_norm_value info t in
       let len = Uint63.to_int (Parray.length p) in

@@ -55,7 +55,7 @@ let nf_evar sigma ~preserve =
          T.mkFix (ln,(lna,Array.map aux tl,Array.map aux bl))
      | T.CoFix(ln,(lna,tl,bl)) ->
          T.mkCoFix (ln,(lna,Array.map aux tl,Array.map aux bl))
-     | T.NativeInt _ | T.NativeArr _ ->
+     | T.NativeInt _ | T.NativeArr _ | T.NativeRes _ ->
 	 Errors.anomaly "proof2aproof.nf_evar: native not yet implemented"
    in
     aux

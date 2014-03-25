@@ -949,6 +949,11 @@ module FNativeEntries =
       | FNativeArr(t,p) -> (t,p)
       | _ -> raise Not_found
 
+    let get_resource e =
+      match e.term with
+      | FNativeRes r -> r
+      | _ -> raise Not_found
+
     let dummy = {norm = Whnf; term = FRel 0}
 
     let current_retro = ref Pre_env.empty_retroknowledge
@@ -1026,6 +1031,11 @@ module FNativeEntries =
 	  frefl := { norm = Whnf; term = FConstruct crefl }
       | None -> defined_refl := false
 
+    let defined_resource = ref false 
+
+    let init_resource retro = 
+      defined_resource := retro.Pre_env.retro_resource <> None
+
     let init env = 
       current_retro := retroknowledge env;
       init_int !current_retro;
@@ -1034,10 +1044,9 @@ module FNativeEntries =
       init_pair !current_retro;
       init_cmp !current_retro;
       init_array !current_retro;
+      init_resource !current_retro;
       init_refl !current_retro
 	
-
-	  
     let check_env env =
       if not (!current_retro == retroknowledge env) then init env
 
@@ -1064,6 +1073,10 @@ module FNativeEntries =
     let check_array env =
       check_env env;
       assert (!defined_array)
+
+    let check_resource env =
+      check_env env;
+      assert (!defined_resource)
 
     let check_refl env =
       check_env env;
@@ -1116,6 +1129,9 @@ module FNativeEntries =
       { norm = Whnf; 
 	term = FLambda(1,[id,t],body, Esubst.subs_cons(s,Esubst.subs_id 0)) }
 
+    let mkResource env r =
+      check_resource env;
+      { norm = Whnf; term = FNativeRes r }
   end
 
 module FredNative = RedNative(FNativeEntries)

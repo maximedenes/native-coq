@@ -717,7 +717,7 @@ let build_proof
     fun g ->
 (*      observe (str "proving on " ++ Printer.pr_lconstr_env (pf_env g) term);*)
 	match kind_of_term dyn_infos.info with
-	| NativeInt _ | NativeArr _ -> error "primitive values not handled yet"
+	| NativeInt _ | NativeArr _ | NativeRes _ -> error "primitive values not handled yet"
 	  | Case(ci,ct,t,cb) ->
 	      let do_finalize_t dyn_info' =
 		fun g ->
@@ -789,7 +789,7 @@ let build_proof
 	      let f,args = decompose_app dyn_infos.info in
 	      begin
 		match kind_of_term f with
-		| NativeInt _ | NativeArr _ ->
+		| NativeInt _ | NativeArr _ | NativeRes _ ->
 		    error "Native value can not be applied"
 		  | App _ -> assert false (* we have collected all the app in decompose_app *)
 		  | Var _ | Construct _ | Rel _ | Evar _ | Meta _  | Ind _ | Sort _ | Prod _ ->

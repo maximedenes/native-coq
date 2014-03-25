@@ -112,5 +112,6 @@ val type_of_array : env -> types
 val judge_of_int : env -> Uint63.t -> unsafe_judgment 
 val judge_of_array : 
     env -> unsafe_type_judgment -> unsafe_judgment array -> unsafe_judgment
-
+val judge_of_resource : env -> Resource.t -> unsafe_judgment 
+  
 val check_primitive_type : env -> Native.op_or_type -> types -> unit

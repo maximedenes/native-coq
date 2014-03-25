@@ -737,7 +737,7 @@ END
 let rec has_evar x =
   match kind_of_term x with
     | Evar _ -> true
-    | Rel _ | Var _ | Meta _ | Sort _ | Const _ | Ind _ | Construct _ | NativeInt _ ->
+    | Rel _ | Var _ | Meta _ | Sort _ | Const _ | Ind _ | Construct _ | NativeInt _ | NativeRes _ ->
       false
     | Cast (t1, _, t2) | Prod (_, t1, t2) | Lambda (_, t1, t2) ->
       has_evar t1 || has_evar t2

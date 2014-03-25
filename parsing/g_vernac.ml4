@@ -244,7 +244,8 @@ GEXTEND Gram
   
   register_type_token:
     [ [ "int31_type" -> Native.PT_int31  
-      | "array_type" -> Native.PT_array ] ]
+      | "array_type" -> Native.PT_array 
+      | "resource_type" -> Native.PT_resource ] ]
   ;
 
   register_prim_token:
@@ -259,7 +260,10 @@ GEXTEND Gram
       | "array_init" -> Native.Ocaml_prim Native.ArrayInit
       | "array_map" -> Native.Ocaml_prim Native.ArrayMap
 
-     
+      | "resource_make" -> Native.Ocaml_prim Native.ResourceMake
+      | "resource_getc" -> Native.Ocaml_prim Native.ResourceGetc
+      | "resource_geti32" -> Native.Ocaml_prim Native.ResourceGeti32
+
       | "int31_foldi" -> Native.Oiterator Native.Int31foldi
       | "int31_foldi_down" -> Native.Oiterator Native.Int31foldi_down
 

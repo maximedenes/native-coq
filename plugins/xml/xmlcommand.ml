@@ -275,7 +275,7 @@ let find_hyps t =
     | T.CoFix (_,(_,tys,bodies)) ->
        let r = Array.fold_left (fun i x -> aux i x) l tys in
         Array.fold_left (fun i x -> aux i x) r bodies
-    | T.NativeInt _ -> l
+    | T.NativeInt _ | T.NativeRes _ -> l
     | T.NativeArr(t,p) ->
 	Array.fold_left aux (aux l t) p
   and map_and_filter l =

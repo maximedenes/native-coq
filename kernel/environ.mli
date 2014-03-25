@@ -226,6 +226,7 @@ module type RedNativeEntries =
     val get : args -> int -> elem
     val get_int :  elem -> Uint63.t
     val get_parray : elem -> elem * elem Parray.t
+    val get_resource : elem -> Resource.t
     val is_refl : elem -> bool
     val mk_int_refl : env -> elem -> elem
     val mkInt : env -> Uint63.t -> elem
@@ -237,6 +238,7 @@ module type RedNativeEntries =
     val mkGt : env -> elem
     val mkArray : env -> elem -> elem Parray.t -> elem
     val mkClos : name -> constr -> constr -> elem array -> elem
+    val mkResource : env -> Resource.t -> elem
   end
 
 module type RedNative =

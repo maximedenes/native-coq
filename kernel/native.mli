@@ -120,6 +120,7 @@ type prim_ind =
 type prim_type =
   | PT_int31
   | PT_array
+  | PT_resource
 
 type retro_action =
   | Retro_ind of prim_ind

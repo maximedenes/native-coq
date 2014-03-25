@@ -136,7 +136,7 @@ let fresh env n =
 let rec compute_metamap env sigma c = match kind_of_term c with
   (* le terme est directement une preuve *)
   | (Const _ | Evar _ | Ind _ | Construct _ |
-    Sort _ | Var _ | Rel _ | NativeInt _) ->
+    Sort _ | Var _ | Rel _ | NativeInt _ | NativeRes _) ->
       TH (c,[],[])
 
   (* le terme est une mv => un but *)

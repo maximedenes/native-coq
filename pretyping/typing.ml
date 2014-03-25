@@ -245,6 +245,9 @@ let rec execute env evdref cstr =
     | NativeInt i ->
 	judge_of_int env i
 
+    | NativeRes r ->
+	judge_of_resource env r
+
     | NativeArr(t,p) ->
 	let tj = execute env evdref t in
 	let pj = execute_array env evdref p in

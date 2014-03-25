@@ -715,6 +715,7 @@ let constr_ord_int f t1 t2 =
     | Const _, _ | Ind _, _ | Construct _, _
     | Case _, _| Fix _, _ | CoFix _, _ 
     | NativeInt _, _
+    | NativeRes _, _ 
       -> 1
 
 let rec constr_ord m n=
