@@ -1451,19 +1451,7 @@ value coq_interprete
       Instruct (CHECKTAIL0INT63) {
 	print_instr("CHECKTAIL0INT63");
 	CheckInt1();
-	/* TODO: implement
-	int r = 0;
-        uint32 x;
-	x = (((uint32) accu >> 1) | 0x80000000);
-        if (!(x & 0xFFFF)) { x >>= 16; r += 16; }
-        if (!(x & 0x00FF)) { x >>= 8;  r += 8; }
-        if (!(x & 0x000F)) { x >>= 4;  r += 4; }
-        if (!(x & 0x0003)) { x >>= 2;  r += 2; }
-        if (!(x & 0x0001)) { x >>=1;   r += 1; }
-        if (!(x & 0x0001)) {           r += 1; }
-        accu = value_of_uint32(r);
-	*/
-	accu = uint63_zero;
+	accu = uint63_tail0(accu);
         Next;
       }
 
