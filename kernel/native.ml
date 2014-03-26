@@ -210,8 +210,6 @@ module type PARRAY =
 
  end
 
-let max_array_length32 = Parray.max_array_length32
-	    
 module Narray : PARRAY with type 'a t = 'a array =
   struct
     type 'a t = 'a array
@@ -221,30 +219,23 @@ module Narray : PARRAY with type 'a t = 'a array =
     let length p = Uint63.of_int (Array.length p - 1)
 
     let get p i = 
-      let i = Uint63.to_int i in
-      if 0 <= i && i < Array.length p then p.(i)
+      let len = Uint63.of_int (Array.length p) in
+      if Uint63.le Uint63.zero i && Uint63.lt i len then p.(Uint63.to_int i)
       else p.(Array.length p - 1)
 
     let set p i a = 
-      let i = Uint63.to_int i in
-      if 0 <= i && i < Array.length p - 1 then
-	let p' = Array.copy p in p'.(i) <- a; p'
+      let len = Uint63.of_int (Array.length p - 1) in
+      if Uint63.le Uint63.zero i && Uint63.lt i len then
+	let p' = Array.copy p in p'.(Uint63.to_int i) <- a; p'
       else p
 
     let default p = p.(Array.length p - 1)
 
     let make n def = 
-      let n = Uint63.to_int n in
-      let n = 
-	if 0 <= n && n < max_array_length32 then n + 1 
-	else max_array_length32 in
-      Array.make n def
+      Array.make (Parray.trunc_size n) def
 	
     let init n f def =
-      let n = Uint63.to_int n in
-      let n = 
-	if 0 <= n && n < max_array_length32 then n + 1 
-	else max_array_length32 in
+      let n = Parray.trunc_size n in
       let t = Array.make n def in
       for i = 0 to n - 2 do t.(i) <- f i done;
       t

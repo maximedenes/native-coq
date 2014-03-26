@@ -273,8 +273,10 @@ and nf_array env p typ =
   let t, allargs = app_type env typ in 
   assert (Typeops.type_of_array env = t);
   let typ_elem = allargs.(0) in
+  let l = Uint63.to_int (Parray.length p) in
+  (* FIXME: use a combinator from PArray *)
   let p = 
-    Array.init (Uint63.to_int (Parray.length p) + 1)
+    Array.init (l + 1)
       (fun i -> 
 	nf_val env (Parray.get p (Uint63.of_int i)) typ_elem) in
   mkArray(typ_elem, p)

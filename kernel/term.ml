@@ -1388,7 +1388,8 @@ let hcons_term (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | Rel n ->
 	(t, combinesmall 16 n)
       | NativeInt n ->
-        (t, combinesmall 17 (Uint63.to_int n))
+	let (h,l) = Uint63.to_int2 n in
+        (t, combinesmall 17 (combine h l))
       | NativeArr (t,p) ->
         let hp = hash_term_array p in
         let t, ht = sh_rec t in
@@ -1438,7 +1439,9 @@ let rec hash_constr t =
        combinesmall 14 (combine (hash_term_array bl) (hash_term_array tl))
     | Meta n -> combinesmall 15 n
     | Rel n -> combinesmall 16 n
-    | NativeInt n -> combinesmall 17 (Uint63.to_int n)
+    | NativeInt n ->
+       let (h,l) = Uint63.to_int2 n in
+       combinesmall 17 (combine h l)
     | NativeArr (t,p) ->
       let hp = hash_term_array p in
       let ht = hash_constr t in

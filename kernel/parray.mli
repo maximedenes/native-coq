@@ -1,4 +1,4 @@
-val max_array_length32 : int
+val trunc_size : Uint63.t -> int
 type 'a t
 val length  : 'a t -> Uint63.t
 val get     : 'a t -> Uint63.t -> 'a

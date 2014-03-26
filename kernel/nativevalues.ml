@@ -403,10 +403,9 @@ let div21 accu x y z =
 
 let no_check_addMulDiv x y z =
   let p, i, j = to_uint x, to_uint y, to_uint z in
-  let p' = Uint63.to_int p in
   mk_uint (Uint63.l_or 
 	     (Uint63.l_sl i p) 
-	     (Uint63.l_sr j (Uint63.of_int (31 - p'))))
+	     (Uint63.l_sr j (Uint63.sub (Uint63.of_int Uint63.uint_size) p)))
 
 let addMulDiv accu x y z =
   if is_int x && is_int y && is_int z then no_check_addMulDiv x y z

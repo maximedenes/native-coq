@@ -1,4 +1,10 @@
 let max_array_length32 = 4194303 (* Sys.max_array_length on arch32 *) 
+
+let trunc_size n =
+  if Uint63.le Uint63.zero n && Uint63.lt n (Uint63.of_int max_array_length32) then
+    Uint63.to_int n + 1
+  else max_array_length32
+
 type 'a t = ('a kind) ref
 and 'a kind =
   | Array of 'a array 
@@ -24,35 +30,39 @@ let length p =
 let rec get_updated p n =
   match !p with
   | Array t ->
-      let l =  Array.length t in
-      if 0 <= n && n < l then Array.unsafe_get t n
+      let l = Array.length t in
+      if Uint63.le Uint63.zero n && Uint63.lt n (Uint63.of_int l) then
+	Array.unsafe_get t (Uint63.to_int n)
       else (warn "Array.get: out of bound";Array.unsafe_get t (l-1))
-  | Updated (k,e,p) -> if n = k then e else get_updated p n
+  | Updated (k,e,p) ->
+     if Uint63.eq n (Uint63.of_int k) then e
+     else get_updated p n
       
 let get p n =
-  let n = Uint63.to_int n in
   match !p with
   | Array t ->
       let l = Array.length t in
-      if 0 <= n && n < l then Array.unsafe_get t n
+      if Uint63.le Uint63.zero n && Uint63.lt n (Uint63.of_int l) then
+	Array.unsafe_get t (Uint63.to_int n)
       else (warn "Array.get: out of bound";Array.unsafe_get t (l-1))
   | Updated _ -> warn "Array.get";get_updated p n
 	
 let set p n e =
   let kind = !p in
-  let n = Uint63.to_int n in
   match kind with
   | Array t ->
-      if 0 <= n && n < Array.length t - 1 then
+      let l = Uint63.of_int (Array.length t - 1) in
+      if Uint63.le Uint63.zero n && Uint63.lt n l then
 	let res = ref kind in
+        let n = Uint63.to_int n in
 	p := Updated (n, Array.unsafe_get t n, res);
 	Array.unsafe_set t n e;
 	res
       else (warn "Array.set: out of bound"; p)
   | Updated _ ->
       warn "Array.set";
-      if 0 <= n && n < Uint63.to_int (length p) then
-	ref (Updated(n, e, p))   
+      if Uint63.le Uint63.zero n && Uint63.lt n (length p) then
+	ref (Updated((Uint63.to_int n), e, p))   
       else (warn "Array.set: out of bound"; p)
 	  
 let rec default_updated p =
@@ -66,17 +76,10 @@ let default p =
   | Updated (_,_,p) -> warn "Array.default";default_updated p
 	
 let make n def = 
-  let n = Uint63.to_int n in
-  let n = 
-    if 0 <= n && n < max_array_length32 then n + 1 
-    else max_array_length32 in
-  ref (Array (Array.make n def))
+  ref (Array (Array.make (trunc_size n) def))
 	
 let init n f def =
-  let n = Uint63.to_int n in
-  let n = 
-    if 0 <= n && n < max_array_length32 then n + 1 
-    else max_array_length32 in
+  let n = trunc_size n in
   let t = Array.make n def in
   for i = 0 to n - 2 do Array.unsafe_set t i (f i) done;
   ref (Array t)
