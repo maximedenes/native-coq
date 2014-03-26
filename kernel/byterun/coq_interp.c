@@ -1444,19 +1444,7 @@ value coq_interprete
       Instruct (CHECKHEAD0INT31) {
         print_instr("CHECKHEAD0INT31");
 	CheckInt1();
-	/* TODO: implement
-	int r = 0;
-        uint32 x;
-	x = (uint32) accu;
-        if (!(x & 0xFFFF0000)) { x <<= 16; r += 16; }
-        if (!(x & 0xFF000000)) { x <<= 8;  r += 8; }
-        if (!(x & 0xF0000000)) { x <<= 4;  r += 4; }
-        if (!(x & 0xC0000000)) { x <<= 2;  r += 2; }
-        if (!(x & 0x80000000)) { x <<=1;   r += 1; }
-        if (!(x & 0x80000000)) {           r += 1; } 
-        accu = value_of_uint32(r);
-	*/
-	accu = uint63_zero;
+	accu = uint63_head0(accu);
         Next;
       }
         
