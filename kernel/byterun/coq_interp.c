@@ -1413,7 +1413,7 @@ value coq_interprete
 	CheckInt2();
      }
      Instruct (LTINT31) {
-       print_instr(LTINT31);
+       print_instr("LTINT31");
        accu = uint63_lt(accu,*sp++) ? coq_true : coq_false;
        Next;
      }
@@ -1423,7 +1423,7 @@ value coq_interprete
        CheckInt2();
      }
      Instruct (LEINT31) {
-       print_instr(LEINT31);
+       print_instr("LEINT31");
        accu = uint63_leq(accu,*sp++) ? coq_true : coq_false;
        Next;
      }
