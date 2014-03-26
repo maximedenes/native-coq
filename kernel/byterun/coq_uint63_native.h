@@ -32,10 +32,10 @@
 
 /* addmuldiv(p,x,y) = x * 2^p + y / 2 ^ (63 - p) */
 /* (modulo 2^63) for p <= 63 */
-value uint63_addmuldiv(p,x,y) {
+value uint63_addmuldiv(uint64 p, uint64 x, uint64 y) {
   uint64 shiftby = uint63_of_value(p);
-  value r = (value)((x^1) << shiftby);
-  r = (value)(r | (((uint64)y) >> (63-shiftby)) | 1);
+  value r = (value)((uint64)(x^1) << shiftby);
+  r |= ((uint64)y >> (63-shiftby)) | 1;
   return r;
 }
 
