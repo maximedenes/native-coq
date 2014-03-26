@@ -50,9 +50,9 @@ value uint63_head0(uint64 x) {
   return Val_int(r);
 }
 
-value uint63_tail0(uint64 x) {
+value uint63_tail0(value x) {
   int r = 0;
-  x >>= 1;
+  x = (uint64)x >> 1;
   if (!(x & 0xFFFFFFFF)) { x >>= 32; r += 32; }
   if (!(x & 0x0000FFFF)) { x >>= 16; r += 16; }
   if (!(x & 0x000000FF)) { x >>= 8;  r += 8; }
@@ -60,4 +60,27 @@ value uint63_tail0(uint64 x) {
   if (!(x & 0x00000003)) { x >>= 2;  r += 2; }
   if (!(x & 0x00000001)) { x >>=1;   r += 1; }
   return Val_int(r);
+}
+
+value uint63_mulc(value x, value y, value* h) {
+  x = (uint64)x >> 1;
+  y = (uint64)y >> 1;
+  uint64 lx = x & 0xFFFFFFFF;
+  uint64 ly = y & 0xFFFFFFFF;
+  uint64 hx = x >> 32;
+  uint64 hy = y >> 32;
+  uint64 hr = hx * hy;
+  uint64 lr = lx * ly;
+  lx *= hy;
+  ly *= hx;
+  hr += (lx >> 32) + (ly >> 32);
+  lx <<= 32;
+  lr += lx;
+  if (lr < lx) { hr++; }
+  ly <<= 32;
+  lr += ly;
+  if (lr < ly) { hr++; }
+  hr += lr >> 63;
+  *h = Val_int(hr);
+  return Val_int(lr);
 }
