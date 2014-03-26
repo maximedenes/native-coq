@@ -76,9 +76,10 @@ let out_word b1 b2 b3 b4 =
   String.unsafe_set !out_buffer (p+3) (Char.unsafe_chr b4);
   out_position := p + 4
 
-
 let out opcode =
   out_word opcode 0 0 0
+
+let is_immed i = Uint63.le (Uint63.of_int i) Uint63.maxuint31
 
 let out_int n =
   out_word n (n asr 8) (n asr 16) (n asr 24)
@@ -259,10 +260,10 @@ let emit_instr = function
       Array.iter (out_label_with_orig org) lbl_bodies
   | Kgetglobal q ->
       out opGETGLOBAL; slot_for_getglobal q
-  | Kconst((Const_b0 i)) ->
-      if i >= 0 && i <= 3
-          then out (opCONST0 + i)
-          else (out opCONSTINT; out_int i)
+  | Kconst((Const_b0 i)) when is_immed i ->
+     (* let i = Uint63.to_int i in *)
+     if i >= 0 && i <= 3 then out (opCONST0 + i)
+     else (out opCONSTINT; out_int i)
   | Kconst c ->
       out opGETGLOBAL; slot_for_const c
   | Kmakeblock(n, t) ->
@@ -344,11 +345,11 @@ let rec emit = function
       emit c
   | Kpush :: Kgetglobal id :: c ->
       out opPUSHGETGLOBAL; slot_for_getglobal id; emit c
-  | Kpush :: Kconst (Const_b0 i) :: c ->
-      if i >= 0 && i <= 3
-      then out (opPUSHCONST0 + i)
-      else (out opPUSHCONSTINT; out_int i);
-      emit c
+  | Kpush :: Kconst (Const_b0 i) :: c when is_immed i ->
+     (* let i = Uint63.to_int i in *)
+     if i >= 0 && i <= 3 then out (opPUSHCONST0 + i)
+     else (out opPUSHCONSTINT; out_int i);
+     emit c
   | Kpush :: Kconst const :: c ->
       out opPUSHGETGLOBAL; slot_for_const const;
       emit c
