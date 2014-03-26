@@ -52,9 +52,10 @@ and conv_whd pb k whd1 whd2 cu =
       if p1 == p2 then cu
       else
 	let n = Parray.length p1 in
-	if n = Parray.length p2 then
-	  let rcu = ref cu in
+	if Uint63.eq n (Parray.length p2) then
 	  let n = Uint63.to_int n in
+	  (* FIXME: use an iterator *)
+	  let rcu = ref cu in
 	  for i = 0 to n - 1 do
 	    let i = Uint63.of_int i in
 	    rcu := 

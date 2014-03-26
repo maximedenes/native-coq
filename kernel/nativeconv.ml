@@ -43,8 +43,8 @@ let rec conv_val pb lvl v1 v2 cu =
 	aux lvl (n1-1) b1 b2 0 cu
     | Varray t1, Varray t2 ->
 	let len = Parray.length t1 in
-	if len <> Parray.length t2 then raise NotConvertible;
-	let len = Uint63.to_int len in 
+	if not (Uint63.eq len (Parray.length t2)) then raise NotConvertible;
+	let len = Uint63.to_int len in (* FIXME: use an iterator below instead *)
 	let rec aux lvl len t1 t2 i cu =
 	  if i = len then
 	    conv_val CONV lvl

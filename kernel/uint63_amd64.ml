@@ -5,12 +5,13 @@ let _ = assert (Sys.word_size = 64)
 let uint_size = 63
 
 let maxuint63 = Int64.of_string "0x7FFFFFFFFFFFFFFF"
-let maxuint31 = Int64.to_int (Int64.of_string "0x7FFFFFFF")
+let maxuint31 = 0x7FFFFFFF
 
     (* conversion from an int *)
 let to_uint64 i = Int64.logand (Int64.of_int i) maxuint63
 let of_int i = i
 let to_int i = i
+let to_int2 i = (0,i)
 let of_int64 i = assert false
 
     (* conversion of an uint63 to a string *)
@@ -25,6 +26,8 @@ let of_string s =
 
 (* Compiles an unsigned int to OCaml code *)
 let compile i = Printf.sprintf "Uint63.of_int (%i)" i
+
+let zero = 0
 
     (* logical shift *)
 let l_sl x y =
@@ -55,6 +58,7 @@ let rem (x : int) (y : int) =
   if y = 0 then 0 else Int64.to_int (Int64.rem (to_uint64 x) (to_uint64 y))
 
     (* division of two numbers by one *)
+(* TODO *)
 let div21 xh xl y = 0, 0
 
     (* comparison *)

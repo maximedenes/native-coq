@@ -561,12 +561,11 @@ module RedNative (E:RedNativeEntries) :
 	  let q,r = Uint63.div21 i1 i2 i3 in
 	  E.mkPair env (E.mkInt env q) (E.mkInt env r)
       | Int63addMulDiv  ->
-	  let p, i, j = get_int3 args in 
-	  let p' = Uint63.to_int p in
-	  E.mkInt env 
-	    (Uint63.l_or 
-	       (Uint63.l_sl i p) 
-	       (Uint63.l_sr j (Uint63.of_int (31 - p'))))
+	  let p, i, j = get_int3 args in
+	  E.mkInt env
+	    (Uint63.l_or
+	       (Uint63.l_sl i p)
+	       (Uint63.l_sr j (Uint63.sub (Uint63.of_int Uint63.uint_size) p)))
       | Int63eq         ->
 	  let i1, i2 = get_int2 args in 
 	  E.mkBool env (Uint63.eq i1 i2)

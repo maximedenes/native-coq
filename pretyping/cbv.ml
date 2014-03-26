@@ -701,6 +701,7 @@ and cbv_norm_value info = function (* reduction under binders *)
   | NATIVEARR(t,p) ->
       let ct = cbv_norm_value info t in
       let len = Uint63.to_int (Parray.length p) in
+      (* FIXME: use a combinator from PArray *)
       let cdef = cbv_norm_value info (Parray.default p) in
       let cp = Array.create (len + 1) cdef in  
       for i = 0 to len - 1 do

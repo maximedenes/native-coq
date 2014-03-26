@@ -82,8 +82,6 @@ val op_kind : op -> args_red
 val caml_prim_arity : caml_prim -> int * int
 val arity : op -> int * int (* number of parameters, number of arguments *)
 
-val max_array_length32 : int
-
 module type PARRAY = 
   sig 
     type 'a t

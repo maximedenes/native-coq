@@ -12,7 +12,7 @@ let maxuint31 = Int64.of_string "0x7FFFFFFF"
     (* conversion from an int *)
 let mask63 i = Int64.logand i maxuint63
 let of_int i = Int64.of_int i
-let to_int i = Int64.to_int i
+let to_intint i = (Int64.to_int (Int64.shift_right_logical i 31), Int64.to_int i)
 let of_int64 i = i
 
     (* conversion of an uint63 to a string *)
