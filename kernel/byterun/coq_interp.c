@@ -1134,20 +1134,20 @@ value coq_interprete
         Next;
       }
 
-      Instruct(CHECKADDINT31){
-	print_instr("CHECKADDINT31");
+      Instruct(CHECKADDINT63){
+	print_instr("CHECKADDINT63");
 	CheckInt2();
       }
-      Instruct(ADDINT31) {
+      Instruct(ADDINT63) {
         /* Adds the integer in the accumulator with 
            the one ontop of the stack (which is poped)*/
-        print_instr("ADDINT31");
+        print_instr("ADDINT63");
 	accu = uint63_add(accu, *sp++);
         Next;
       }
       
-      Instruct (CHECKADDCINT31) {
-	print_instr("CHECKADDCINT31");
+      Instruct (CHECKADDCINT63) {
+	print_instr("CHECKADDCINT63");
 	CheckInt2();
 	/* returns the sum with a carry */
 	value s;
@@ -1157,8 +1157,8 @@ value coq_interprete
 	Next;
       }
 
-      Instruct (CHECKADDCARRYCINT31) {
-	print_instr("ADDCARRYCINT31");
+      Instruct (CHECKADDCARRYCINT63) {
+	print_instr("ADDCARRYCINT63");
 	CheckInt2();
 	/* returns the sum plus one with a carry */
 	value s;
@@ -1168,19 +1168,19 @@ value coq_interprete
 	Next;
       }
 
-      Instruct (CHECKSUBINT31) {
-	print_instr("CHECKSUBINT31");
+      Instruct (CHECKSUBINT63) {
+	print_instr("CHECKSUBINT63");
 	CheckInt2();
       }
-      Instruct (SUBINT31) {
-	print_instr("SUBINT31");
+      Instruct (SUBINT63) {
+	print_instr("SUBINT63");
 	/* returns the subtraction */
 	accu = uint63_sub(accu, *sp++);
         Next;
       }
 
-      Instruct (CHECKSUBCINT31) {
-	print_instr("SUBCINT31");
+      Instruct (CHECKSUBCINT63) {
+	print_instr("SUBCINT63");
 	CheckInt2();
 	/* returns the subtraction with a carry */
 	value b;
@@ -1192,8 +1192,8 @@ value coq_interprete
 	Next;
       }
 
-      Instruct (CHECKSUBCARRYCINT31) {
-	print_instr("SUBCARRYCINT31");
+      Instruct (CHECKSUBCARRYCINT63) {
+	print_instr("SUBCARRYCINT63");
 	CheckInt2();
 	/* returns the subtraction minus one with a carry */
 	value b;
@@ -1205,17 +1205,17 @@ value coq_interprete
 	Next;
       }
 
-      Instruct (CHECKMULINT31) {
-	print_instr("MULINT31");
+      Instruct (CHECKMULINT63) {
+	print_instr("MULINT63");
 	CheckInt2();
 	/* returns the multiplication */
         accu = uint63_mul(accu,*sp++);
 	Next;
       }
 
-      Instruct (CHECKMULCINT31) {
+      Instruct (CHECKMULCINT63) {
         /*returns the multiplication on a pair */
-        print_instr("MULCINT31");
+        print_instr("MULCINT63");
 	CheckInt2();
 	value p;
         /*accu = 2v+1, *sp=2w+1 ==> p = 2v*w */
@@ -1231,8 +1231,8 @@ value coq_interprete
 	Next;
       }
 
-      Instruct(CHECKDIVINT31) {
-        print_instr("CHEKDIVINT31");
+      Instruct(CHECKDIVINT63) {
+        print_instr("CHEKDIVINT63");
 	CheckInt2();
         /* spiwack: a priori no need of the NON_STANDARD_DIV_MOD flag
                     since it probably only concerns negative number.
@@ -1248,8 +1248,8 @@ value coq_interprete
 	Next;
       }
 
-      Instruct(CHECKMODINT31) {
-        print_instr("CHEKMODINT31");
+      Instruct(CHECKMODINT63) {
+        print_instr("CHEKMODINT63");
 	CheckInt2();
         value divisor;
         divisor = *sp++;
@@ -1262,8 +1262,8 @@ value coq_interprete
 	Next;
       }
  
-      Instruct (CHECKDIVEUCLINT31) {
-	print_instr("DIVEUCLINT31");
+      Instruct (CHECKDIVEUCLINT63) {
+	print_instr("DIVEUCLINT63");
 	CheckInt2();	
         /* spiwack: a priori no need of the NON_STANDARD_DIV_MOD flag
                     since it probably only concerns negative number.
@@ -1285,8 +1285,8 @@ value coq_interprete
 	Next;
       }
   
-      Instruct (CHECKDIV21INT31) {
-	print_instr("DIV21INT31");
+      Instruct (CHECKDIV21INT63) {
+	print_instr("DIV21INT63");
 	CheckInt3();
 	/* spiwack: takes three int31 (the two first ones represent an
                     int62) and performs the euclidian division of the
@@ -1325,45 +1325,45 @@ value coq_interprete
 	Next;
       }
  
-      Instruct(CHECKLXORINT31) {
-        print_instr("CHECKLXORINT31");
+      Instruct(CHECKLXORINT63) {
+        print_instr("CHECKLXORINT63");
 	CheckInt2();
 	accu = uint63_lxor(accu,*sp++);
 	Next;
       }
 
-      Instruct(CHECKLORINT31) {
-        print_instr("CHECKLORINT31");
+      Instruct(CHECKLORINT63) {
+        print_instr("CHECKLORINT63");
 	CheckInt2();
 	accu = uint63_lor(accu,*sp++);
 	Next;
       }
 
-      Instruct(CHECKLANDINT31) {
-        print_instr("CHECKLANDINT31");
+      Instruct(CHECKLANDINT63) {
+        print_instr("CHECKLANDINT63");
 	CheckInt2();
 	accu = uint63_land(accu,*sp++);
 	Next;
       }
 
-      Instruct(CHECKLSLINT31) {
-        print_instr("CHECKLSLINT31");
+      Instruct(CHECKLSLINT63) {
+        print_instr("CHECKLSLINT63");
 	CheckInt2();
 	value p = *sp++;
 	accu = uint63_lsl(accu,p);
 	Next;
       }
  
-      Instruct(CHECKLSRINT31) {
-        print_instr("CHECKLSRINT31");
+      Instruct(CHECKLSRINT63) {
+        print_instr("CHECKLSRINT63");
 	CheckInt2();
 	value p = *sp++;
 	accu = uint63_lsr(accu,p);
 	Next;
       }
 
-      Instruct(CHECKLSLINT31CONST1) {
-	print_instr("CHECKLSLINT31CONST1");
+      Instruct(CHECKLSLINT63CONST1) {
+	print_instr("CHECKLSLINT63CONST1");
 	if (Is_uint63(accu)) {
 	  pc++;
 	  accu = uint63_lsl1(accu);
@@ -1376,8 +1376,8 @@ value coq_interprete
 	}
       }
 
-      Instruct(CHECKLSRINT31CONST1) {
-	print_instr("CHECKLSLINT31CONST1");
+      Instruct(CHECKLSRINT63CONST1) {
+	print_instr("CHECKLSLINT63CONST1");
 	if (Is_uint63(accu)) {
 	  pc++;
 	  accu = uint63_lsr1(accu);
@@ -1390,8 +1390,8 @@ value coq_interprete
 	}
       }
 
-      Instruct (CHECKADDMULDIVINT31) {
-        print_instr("CHECKADDMULDIVINT31");
+      Instruct (CHECKADDMULDIVINT63) {
+        print_instr("CHECKADDMULDIVINT63");
 	CheckInt3();
 	value x;
 	value y;
@@ -1401,37 +1401,37 @@ value coq_interprete
         Next;
       }
 
-      Instruct (CHECKEQINT31) {
-	print_instr("CHECKEQINT31");
+      Instruct (CHECKEQINT63) {
+	print_instr("CHECKEQINT63");
 	CheckInt2();
 	accu = uint63_eq(accu,*sp++) ? coq_true : coq_false;
 	Next;
       }
       
-     Instruct (CHECKLTINT31) {
-	print_instr("CHECKLTINT31");
+     Instruct (CHECKLTINT63) {
+	print_instr("CHECKLTINT63");
 	CheckInt2();
      }
-     Instruct (LTINT31) {
-       print_instr("LTINT31");
+     Instruct (LTINT63) {
+       print_instr("LTINT63");
        accu = uint63_lt(accu,*sp++) ? coq_true : coq_false;
        Next;
      }
 
-     Instruct (CHECKLEINT31) {
-       print_instr("CHECKLEINT31");
+     Instruct (CHECKLEINT63) {
+       print_instr("CHECKLEINT63");
        CheckInt2();
      }
-     Instruct (LEINT31) {
-       print_instr("LEINT31");
+     Instruct (LEINT63) {
+       print_instr("LEINT63");
        accu = uint63_leq(accu,*sp++) ? coq_true : coq_false;
        Next;
      }
    
-     Instruct (CHECKCOMPAREINT31) {
+     Instruct (CHECKCOMPAREINT63) {
 	/* returns Eq if equal, Lt if accu is less than *sp, Gt otherwise */
 	/* assumes Inductive _ : _ := Eq | Lt | Gt */
-	print_instr("CHECKCOMPAREINT31");
+	print_instr("CHECKCOMPAREINT63");
 	CheckInt2();
 	if (uint63_eq(accu,*sp)) {
 	  accu = coq_Eq;
@@ -1441,15 +1441,15 @@ value coq_interprete
         Next;
       }
  
-      Instruct (CHECKHEAD0INT31) {
-        print_instr("CHECKHEAD0INT31");
+      Instruct (CHECKHEAD0INT63) {
+        print_instr("CHECKHEAD0INT63");
 	CheckInt1();
 	accu = uint63_head0(accu);
         Next;
       }
         
-      Instruct (CHECKTAIL0INT31) {
-	print_instr("CHECKTAIL0INT31");
+      Instruct (CHECKTAIL0INT63) {
+	print_instr("CHECKTAIL0INT63");
 	CheckInt1();
 	/* TODO: implement
 	int r = 0;
