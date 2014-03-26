@@ -1217,17 +1217,15 @@ value coq_interprete
         /*returns the multiplication on a pair */
         print_instr("MULCINT63");
 	CheckInt2();
-	value p;
         /*accu = 2v+1, *sp=2w+1 ==> p = 2v*w */
 	/* TODO: implement 
         p = I64_mul (UI64_of_value (accu), UI64_of_uint32 ((*sp++)^1));
 	AllocPair(); */
 	/* Field(accu, 0) = (value)(I64_lsr(p,31)|1) ; */ /*higher part*/
 	/* Field(accu, 1) = (value)(I64_to_int32(p)|1); */ /*lower part*/
-	p = uint63_mul(accu, *sp++);
+	value x = accu;
 	AllocPair();
-	Field(accu, 0) = p; /* FIXME */
-	Field(accu, 1) = p;
+	Field(accu, 1) = uint63_mulc(x, *sp++, &Field(accu, 0));
 	Next;
       }
 
