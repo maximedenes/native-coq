@@ -49,3 +49,15 @@ value uint63_head0(uint64 x) {
   if (!(x & 0x8000000000000000)) { x <<=1;   r += 1; }
   return Val_int(r);
 }
+
+value uint63_tail0(uint64 x) {
+  int r = 0;
+  x >>= 1;
+  if (!(x & 0xFFFFFFFF)) { x >>= 32; r += 32; }
+  if (!(x & 0x0000FFFF)) { x >>= 16; r += 16; }
+  if (!(x & 0x000000FF)) { x >>= 8;  r += 8; }
+  if (!(x & 0x0000000F)) { x >>= 4;  r += 4; }
+  if (!(x & 0x00000003)) { x >>= 2;  r += 2; }
+  if (!(x & 0x00000001)) { x >>=1;   r += 1; }
+  return Val_int(r);
+}
