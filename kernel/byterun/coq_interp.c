@@ -1349,14 +1349,16 @@ value coq_interprete
       Instruct(CHECKLSLINT31) {
         print_instr("CHECKLSLINT31");
 	CheckInt2();
-	accu = uint63_lsl(accu,*sp++);
+	value p = *sp++;
+	accu = uint63_lsl(accu,p);
 	Next;
       }
  
       Instruct(CHECKLSRINT31) {
         print_instr("CHECKLSRINT31");
 	CheckInt2();
-	accu = uint63_lsr(accu,*sp++);
+	value p = *sp++;
+	accu = uint63_lsr(accu,p);
 	Next;
       }
 
