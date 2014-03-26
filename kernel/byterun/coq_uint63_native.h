@@ -20,8 +20,8 @@
 
 /* TODO: is + or | better? */
 /* TODO: is - or ^ better? */
-#define uint63_lsl(x,y) ((y) < 127 ? ((value)((((uint64)(x)-1) << (y)) +1)) : uint63_zero)
-#define uint63_lsr(x,y) ((y) < 127 ? ((value)(((uint64)(x) >> (y)) | 1)) : uint63_zero)
+#define uint63_lsl(x,y) ((y) < (uint64) 127 ? ((value)((((uint64)(x)-1) << (uint63_of_value(y))) | 1)) : uint63_zero)
+#define uint63_lsr(x,y) ((y) < (uint64) 127 ? ((value)(((uint64)(x) >> (uint63_of_value(y))) | 1)) : uint63_zero)
 #define uint63_lsl1(x) ((value)((((uint64)(x)-1) << 1) +1))
 #define uint63_lsr1(x) ((value)(((uint64)(x) >> 1) |1))
 
