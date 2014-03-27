@@ -146,6 +146,7 @@ type ('constr,'pat,'cst,'ind,'ref,'id,'tac,'lev) gen_atomic_tactic_expr =
   | TacExact of 'constr
   | TacExactNoCheck of 'constr
   | TacVmCastNoCheck of 'constr
+  | TacNativeCastNoCheck of 'constr
   | TacApply of advanced_flag * evars_flag * 'constr with_bindings list *
       ('id * intro_pattern_expr located option) option
   | TacElim of evars_flag * 'constr with_bindings *

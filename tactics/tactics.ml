@@ -1087,6 +1087,10 @@ let vm_cast_no_check c gl =
   let concl = pf_concl gl in
   refine_no_check (Term.mkCast(c,Term.VMcast,concl)) gl
 
+let native_cast_no_check c gl =
+  let concl = pf_concl gl in
+  refine_no_check (Term.mkCast(c,Term.NATIVEcast,concl)) gl
+
 
 let exact_proof c gl =
   (* on experimente la synthese d'ise dans exact *)

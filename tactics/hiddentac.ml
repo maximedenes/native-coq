@@ -28,6 +28,8 @@ let h_exact_no_check c =
   abstract_tactic (TacExactNoCheck c) (exact_no_check c)
 let h_vm_cast_no_check c =
   abstract_tactic (TacVmCastNoCheck c) (vm_cast_no_check c)
+let h_native_cast_no_check c =
+  abstract_tactic (TacNativeCastNoCheck c) (native_cast_no_check c)
 let h_apply simple ev cb =
   abstract_tactic (TacApply (simple,ev,List.map snd cb,None))
     (apply_with_bindings_gen simple ev cb)

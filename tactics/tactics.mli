@@ -115,6 +115,7 @@ val intros_pattern :
 val assumption       : tactic
 val exact_no_check   : constr -> tactic
 val vm_cast_no_check : constr -> tactic
+val native_cast_no_check : constr -> tactic
 val exact_check      : constr -> tactic
 val exact_proof      : Topconstr.constr_expr -> tactic
 

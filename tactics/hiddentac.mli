@@ -31,6 +31,7 @@ val h_assumption      : tactic
 val h_exact           : constr -> tactic
 val h_exact_no_check  : constr -> tactic
 val h_vm_cast_no_check  : constr -> tactic
+val h_native_cast_no_check  : constr -> tactic
 
 val h_apply           : advanced_flag -> evars_flag ->
   constr with_bindings located list -> tactic
