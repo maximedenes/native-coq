@@ -47,6 +47,8 @@ static int resource_create_from_fd(int fd, resource_t *out) {
   if (out->contents == MAP_FAILED)
     goto bailout;
 
+  (void) madvise(out->contents, out->size, MADV_SEQUENTIAL);
+
   return 0;
 
  bailout:
@@ -88,8 +90,8 @@ static int resource_check_offset(const resource_t *the   ,
                                  /*-*/ size_t      length)
 {
   return
-    (   length < the->size
-     && offset < the->size - length);
+    (   length <= the->size
+     && offset <= the->size - length);
 }
 
 /* -------------------------------------------------------------------- */
