@@ -521,6 +521,7 @@ GEXTEND Gram
       | IDENT "exact"; c = constr -> TacExact c
       | IDENT "exact_no_check"; c = constr -> TacExactNoCheck c
       | IDENT "vm_cast_no_check"; c = constr -> TacVmCastNoCheck c
+      | IDENT "native_cast_no_check"; c = constr -> TacNativeCastNoCheck c
 
       | IDENT "apply"; cl = LIST1 constr_with_bindings SEP ",";
           inhyp = in_hyp_as -> TacApply (true,false,cl,inhyp)

@@ -682,6 +682,7 @@ let rec intern_atomic lf ist x =
   | TacExact c -> TacExact (intern_constr ist c)
   | TacExactNoCheck c -> TacExactNoCheck (intern_constr ist c)
   | TacVmCastNoCheck c -> TacVmCastNoCheck (intern_constr ist c)
+  | TacNativeCastNoCheck c -> TacNativeCastNoCheck (intern_constr ist c)
   | TacApply (a,ev,cb,inhyp) ->
       TacApply (a,ev,List.map (intern_constr_with_bindings ist) cb,
                 Option.map (intern_in_hyp_as ist lf) inhyp)
@@ -2317,6 +2318,11 @@ and interp_atomic ist gl tac =
       tclTHEN
 	(tclEVARS sigma)
 	(h_vm_cast_no_check c_interp)
+  | TacNativeCastNoCheck c ->
+      let (sigma,c_interp) = pf_interp_constr ist gl c in
+      tclTHEN
+	(tclEVARS sigma)
+	(h_native_cast_no_check c_interp)
   | TacApply (a,ev,cb,cl) ->
       let sigma, l =
         list_fold_map (interp_open_constr_with_bindings_loc ist env) sigma cb
@@ -2828,6 +2834,7 @@ let rec subst_atomic subst (t:glob_atomic_tactic_expr) = match t with
   | TacExact c -> TacExact (subst_glob_constr subst c)
   | TacExactNoCheck c -> TacExactNoCheck (subst_glob_constr subst c)
   | TacVmCastNoCheck c -> TacVmCastNoCheck (subst_glob_constr subst c)
+  | TacNativeCastNoCheck c -> TacNativeCastNoCheck (subst_glob_constr subst c)
   | TacApply (a,ev,cb,cl) ->
       TacApply (a,ev,List.map (subst_glob_with_bindings subst) cb,cl)
   | TacElim (ev,cb,cbo) ->
