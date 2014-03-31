@@ -37,6 +37,7 @@ val rem     : t -> t -> t
       
       (* Specific arithmetic operations *)
 val mulc    : t -> t -> t * t
+val addmuldiv : t -> t -> t -> t
 val div21   : t -> t -> t -> t * t
       
       (* comparison *)
