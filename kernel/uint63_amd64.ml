@@ -57,16 +57,55 @@ let div (x : int) (y : int) =
 let rem (x : int) (y : int) =
   if y = 0 then 0 else Int64.to_int (Int64.rem (to_uint64 x) (to_uint64 y))
 
-    (* division of two numbers by one *)
-(* TODO *)
-let div21 xh xl y = 0, 0
+let addmuldiv x y p =
+  l_or (l_sl x p) (l_sr y (uint_size - p))
 
     (* comparison *)
-let lt x y =
+let lt (x : int) (y : int) =
   (x lxor 0x4000000000000000) < (y lxor 0x4000000000000000)
 
-let le x y =
+let le (x : int) (y : int) =
   (x lxor 0x4000000000000000) <= (y lxor 0x4000000000000000)
+
+(* A few helper functions on 128 bits *)
+let lt128 xh xl yh yl =
+  lt xh yh || (xh = yh && lt xl yl)
+
+let le128 xh xl yh yl =
+  lt xh yh || (xh = yh && le xl yl)
+
+    (* division of two numbers by one *)
+let div21 xh xl y =
+  let maskh = ref 0 in
+  let maskl = ref 1 in
+  let dh = ref 0 in
+  let dl = ref y in
+  let cmp = ref true in
+  while !dh >= 0 && !cmp do
+    cmp := lt128 !dh !dl xh xl;
+    (* We don't use addmuldiv below to avoid checks on 1 *)
+    dh := (!dh lsl 1) lor (!dl lsr (uint_size - 1));
+    dl := !dl lsl 1;
+    maskh := (!maskh lsl 1) lor (!maskl lsr (uint_size - 1));
+    maskl := !maskl lsl 1
+  done; (* mask = 2^N, d = 2^N * d, d >= x *)
+  let remh = ref xh in
+  let reml = ref xl in
+  let quotient = ref 0 in
+  while !maskh lor !maskl <> 0 do
+    Printf.printf "maskh=%u,maskl=%u,dh=%u,dl=%u,remh=%u,reml=%u\n" !maskh !maskl !dh !dl !remh !reml;
+    if le128 !dh !dl !remh !reml then begin (* if rem >= d, add one bit and subtract d *)
+      quotient := !quotient lor !maskl;
+      Printf.printf "quotient=%u\n" !quotient;
+      remh := if lt !reml !dl then !remh - !dh - 1 else !remh - !dh;
+      reml := !reml - !dl;
+    end;
+    maskl := (!maskl lsr 1) lor (!maskh lsl (uint_size - 1));
+    maskh := !maskh lsr 1;
+    dl := (!dl lsr 1) lor (!dh lsl (uint_size - 1));
+    dh := !dh lsr 1;
+  done;
+  !quotient, !reml
 
      (* exact multiplication *)
 (* TODO: check that none of these additions could be a logical or *)
