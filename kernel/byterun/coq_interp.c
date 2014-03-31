@@ -41,7 +41,7 @@
 #define value_of_uint32(i)   ((value)(((uint32)(i) << 1) | 1))
 #define UI64_of_uint32(lo)  ((uint64)(I64_literal(0,(uint32)(lo))))
 */
-#define uint64_of_value(val) ((uint64)I64_lsr(val,1))
+
 /* /spiwack */
 
 
@@ -1310,13 +1310,14 @@ value coq_interprete
 	value divisor;
 	divisor = *sp++;
 	if (uint63_eq0(divisor)) {
+	  Alloc_small(accu, 2, 1);
           Field(accu, 0) = uint63_zero;
           Field(accu, 1) = uint63_zero;
 	}
 	else {
 	  value quo, mod;
-	  quo = uint63_div(bigint, divisor);
-	  mod = uint63_mod(bigint, divisor); /* TODO */
+	  mod = uint63_div21(accu, bigint, divisor, &quo);
+	  Alloc_small(accu, 2, 1);
           Field(accu, 0) = quo;
 	  Field(accu, 1) = mod;
 	}
@@ -1392,7 +1393,7 @@ value coq_interprete
         print_instr("CHECKADDMULDIVINT63");
 	CheckInt3();
 	value x;
-	value y;
+        value y;
 	x = *sp++;
 	y = *sp++;
 	accu = uint63_addmuldiv(accu,x,y);

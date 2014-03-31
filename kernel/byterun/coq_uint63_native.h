@@ -1,7 +1,7 @@
 #define uint63_of_value(val) ((uint64)(val) >> 1)
 
 /* 2^63 * y + x as a value */
-#define Val_intint(x,y) ((value)(((uint64)(x)) << 1 + ((uint64)(y) << 64)))
+//#define Val_intint(x,y) ((value)(((uint64)(x)) << 1 + ((uint64)(y) << 64)))
 
 #define uint63_zero ((value) 1) /* 2*0 + 1 */
 #define uint63_one ((value) 3) /* 2*1 + 1 */
@@ -83,4 +83,41 @@ value uint63_mulc(value x, value y, value* h) {
   hr += lr >> 63;
   *h = Val_int(hr);
   return Val_int(lr);
+}
+
+#define lt128(xh,xl,yh,yl) (uint63_lt(xh,yh) || (uint63_eq(xh,yh) && uint63_lt(xl,yl)))
+#define le128(xh,xl,yh,yl) (uint63_lt(xh,yh) || (uint63_eq(xh,yh) && uint63_leq(xl,yl)))
+
+value uint63_div21(value xh, value xl, value y, value* q) {
+  xh = (uint64)xh >> 1;
+  xl = ((uint64)xl >> 1) | ((uint64)xh << 63);
+  xh = (uint64)xh >> 1;
+  uint64 maskh = 0;
+  uint64 maskl = 1;
+  uint64 dh = 0;
+  uint64 dl = (uint64)y >> 1;
+  int cmp = 1;
+  while (dh >= 0 && cmp) {
+    cmp = lt128(dh,dl,xh,xl);
+    dh = (dh << 1) | (dl >> 63);
+    dl = dl << 1;
+    maskh = (maskh << 1) | (maskl >> 63);
+    maskl = maskl << 1;
+  }
+  uint64 remh = xh;
+  uint64 reml = xl;
+  uint64 quotient = 0;
+  while (maskh | maskl) {
+    if (le128(dh,dl,remh,reml)) {
+      quotient = quotient | maskl;
+      if (uint63_lt(reml,dl)) {remh = remh - dh - 1;} else {remh = remh - dh;}
+      reml = reml - dl;
+    }
+    maskl = (maskl >> 1) | (maskh << 63);
+    maskh = maskh >> 1;
+    dl = (dl >> 1) | (dh << 63);
+    dh = dh >> 1;
+  }
+  *q = Val_int(quotient);
+  return Val_int(reml);
 }
