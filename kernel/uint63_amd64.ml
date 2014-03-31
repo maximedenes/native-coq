@@ -57,7 +57,7 @@ let div (x : int) (y : int) =
 let rem (x : int) (y : int) =
   if y = 0 then 0 else Int64.to_int (Int64.rem (to_uint64 x) (to_uint64 y))
 
-let addmuldiv x y p =
+let addmuldiv p x y =
   l_or (l_sl x p) (l_sr y (uint_size - p))
 
     (* comparison *)
