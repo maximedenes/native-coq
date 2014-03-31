@@ -93,10 +93,8 @@ let div21 xh xl y =
   let reml = ref xl in
   let quotient = ref 0 in
   while !maskh lor !maskl <> 0 do
-    Printf.printf "maskh=%u,maskl=%u,dh=%u,dl=%u,remh=%u,reml=%u\n" !maskh !maskl !dh !dl !remh !reml;
     if le128 !dh !dl !remh !reml then begin (* if rem >= d, add one bit and subtract d *)
       quotient := !quotient lor !maskl;
-      Printf.printf "quotient=%u\n" !quotient;
       remh := if lt !reml !dl then !remh - !dh - 1 else !remh - !dh;
       reml := !reml - !dl;
     end;
