@@ -608,5 +608,6 @@ through the <tt>Require Import</tt> command.</p>
   <dd>
     theories/Array/ExtractNative.v
     theories/Array/PArray.v
+    theories/Array/Resource.v
   </dd>
 </dl>
