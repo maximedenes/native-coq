@@ -1,8 +1,8 @@
-Require Import Int31Native.
+Require Import Int63Native.
 Require Import PArray.
 Require Import String.
 Require Import Ascii.
-Local Open Scope int31_scope.
+Local Open Scope int63_scope.
 
 
 Register resource : Set as resource_type.
