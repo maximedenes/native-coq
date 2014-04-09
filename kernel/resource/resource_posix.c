@@ -18,7 +18,7 @@
 #include <caml/fail.h>
 #include <caml/callback.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* -------------------------------------------------------------------- */
 #define NEW(T)  ((T*) malloc(sizeof (T)))

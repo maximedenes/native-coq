@@ -107,7 +107,47 @@ let div21 xh xl y =
 
      (* exact multiplication *)
 (* TODO: check that none of these additions could be a logical or *)
-let mulc x y =
+
+
+(* size = 32 + 31 
+   (hx << 31 + lx) * (hy << 31 + ly) =
+   hxhy << 62 + (hxly + lxhy) << 31 + lxly
+*)
+
+(* precondition : (x lsr 62 = 0 || y lsr 62 = 0) *)
+let mulc_aux x y = 
+  let lx = x land maxuint31 in
+  let ly = y land maxuint31 in
+  let hx = x lsr 31  in
+  let hy = y lsr 31 in
+    (* hx and hy are 32 bits value but at most one is 32 *)
+  let hxy  = hx * hy in (* 63 bits *)
+  let hxly = hx * ly in (* 63 bits *)
+  let lxhy = lx * hy in (* 63 bits *)
+  let lxy  = lx * ly in (* 62 bits *)
+  let l  = lxy lor (hxy lsl 62) (* 63 bits *) in
+  let h  = hxy lsr 1 in (* 62 bits *) 
+  let hl = hxly + lxhy in (* We can have a carry *)
+  let h  = if lt hl hxly then h + (1 lsl 31) else h in
+  let hl'= hl lsl 31 in
+  let l  = l + hl' in
+  let h  = if lt l hl' then h + 1 else h in
+  let h  = h + (hl lsr 32) in
+  (h,l)
+
+let mulc x y = 
+  if (x lsr 62 = 0 || y lsr 62 = 0) then mulc_aux x y
+  else
+    let yl = y lxor (1 lsl 62) in
+    let (h,l) = mulc_aux x yl in
+    (* h << 63 + l = x * yl 
+       x * y = x * (1 << 62 + yl)  =
+       x << 62 + x*yl = x << 62 + h << 63 + l *)
+    let l' = l + (x lsl 62) in
+    let h = if lt l' l then h + 1 else h in
+    (h + (x lsr 1), l')
+
+(*
   let lx = ref (x land maxuint31) in
   let ly = ref (y land maxuint31) in
   let hx = x lsr 31 in
@@ -125,7 +165,7 @@ let mulc x y =
   lr := !lr + !ly;
   if lt !lr !ly then incr hr;
   (!hr, !lr)
-
+*)
 let eq (x : int) (y : int) = x = y
 
 let compare (x:int) (y:int) =
