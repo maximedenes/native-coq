@@ -469,7 +469,7 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
   in
   section "Files dispatching.";
   decl_var "VFILES" vfiles;
-  print "vo_to_obj = $(foreach vo,$(1),$(shell $(COQBIN)/coqtop -batch -quiet";
+  print "vo_to_obj = $(foreach vo,$(1),$(shell $(COQBIN)coqtop -batch -quiet";
   print " -print-mod-uid $(vo:.vo=)).o)\n";
   begin match vfiles with
     |[] -> ()
