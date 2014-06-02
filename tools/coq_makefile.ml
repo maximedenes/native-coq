@@ -157,7 +157,9 @@ let install_include_by_root ?(add_obj=false) files_var files (inc_i,inc_r) =
       List.exists (fun (_,a) -> List.mem a absdir_of_files) inc_i in
     let install_inc_i d =
       printf "\tinstall -d $(DSTROOT)$(COQLIBINSTALL)/%s; \\\n" d;
-      printf "\tfor i in $(%sINC); do \\\n" files_var;
+      if add_obj then
+        printf "\tfor i in $(%sINC) $(OBJFILESINC) $(OBJFILESINC:.o=.cm*); do \\\n" files_var
+      else printf "\tfor i in $(%sINC); do \\\n" files_var;
       printf "\t install -m 0644 $$i $(DSTROOT)$(COQLIBINSTALL)/%s/`basename $$i`; \\\n" d;
       printf "\tdone\n"
     in
@@ -174,7 +176,9 @@ let install_include_by_root ?(add_obj=false) files_var files (inc_i,inc_r) =
 		       let pdir' = physical_dir_of_logical_dir ldir in
 			 if has_inc_r_files then
 			   begin
-			     printf "\tcd %s; for i in $(%s%d); do \\\n" pdir files_var i;
+			     if add_obj then
+			       printf "\tcd %s; for i in $(%s%d) $(OBJFILES%d) $(OBJFILES%d:.o=.cm*); do \\\n" pdir files_var i i i
+			     else printf "\tcd %s; for i in $(%s%d); do \\\n" pdir files_var i;
 			     printf "\t install -d `dirname $(DSTROOT)$(COQLIBINSTALL)/%s/$$i`; \\\n" pdir';
 			     printf "\t install -m 0644 $$i $(DSTROOT)$(COQLIBINSTALL)/%s/$$i; \\\n" pdir';
 			     printf "\tdone\n";
@@ -259,6 +263,9 @@ let clean sds sps =
     print "\trm -f $(addsuffix .d,$(MLFILES) $(MLIFILES) $(ML4FILES) $(MLLIBFILES) $(MLPACKFILES))\n";
   end;
   if !some_vfile then
+    print "\trm -f $(OBJFILES) $(OBJFILES:.o=.native)\n";
+    print "\trm -f $(OBJFILES:.o=.cmi) $(OBJFILES:.o=.cmo)\n";
+    print "\trm -f $(OBJFILES:.o=.cmx) $(OBJFILES:.o=.cmxs)\n";
     print "\trm -f $(VOFILES) $(VIFILES) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)\n";
   print "\trm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob $(VFILES:.v=.glob) $(VFILES:.v=.tex) $(VFILES:.v=.g.tex) all-mli.tex\n";
   print "\t- rm -rf html mlihtml\n";
@@ -469,8 +476,10 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
   in
   section "Files dispatching.";
   decl_var "VFILES" vfiles;
-  print "vo_to_obj = $(foreach vo,$(1),$(shell $(COQBIN)coqtop -batch -quiet";
-  print " -print-mod-uid $(vo:.vo=)).o)\n";
+  print "vo_to_obj = $(addsuffix .o,$(foreach vo,$(1),";
+    print "$(addprefix $(dir $(vo)),$(filter-out Warning: Error:,$(firstword ";
+    print "$(shell $(COQBIN)coqtop -batch -quiet";
+  print " -print-mod-uid $(vo:.vo=)))))))\n";
   begin match vfiles with
     |[] -> ()
     |l ->
@@ -481,7 +490,8 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
       print "GFILES:=$(VFILES:.v=.g)\n";
       print "HTMLFILES:=$(VFILES:.v=.html)\n";
       print "GHTMLFILES:=$(VFILES:.v=.g.html)\n";
-      print "OBJFILES:=$(call vo_to_obj,$(VOFILES))\n"
+      print "OBJFILES:=$(call vo_to_obj,$(VOFILES))\n";
+      classify_files_by_root "OBJFILES" l inc
   end;
   decl_var "ML4FILES" ml4files;
   decl_var "MLFILES" mlfiles;
@@ -515,7 +525,7 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
   print "CMOFILES=$(filter-out $(addsuffix .cmo,$(foreach lib,$(MLLIBFILES:.mllib=_MLLIB_DEPENDENCIES) $(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(ALLCMOFILES))\n";
       classify_files_by_root "CMOFILES" l inc;
       print "CMXFILES=$(CMOFILES:.cmo=.cmx)\n";
-      print "OFILES=$(CMXFILES:.cmx=.o)\n";
+      (* print "OFILES=$(CMXFILES:.cmx=.o)\n"; (* this variable is unused *) *)
   end;
   begin match mllibfiles with
     |[] -> ()
