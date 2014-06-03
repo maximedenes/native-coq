@@ -483,7 +483,7 @@ let main_targets vfiles (mlifiles,ml4files,mlfiles,mllibfiles,mlpackfiles) other
   begin match vfiles with
     |[] -> ()
     |l ->
-      print "VOFILES:=$(VFILES:.v=.vo)\n";
+      print "VOFILES:=$(foreach vo,$(VFILES:.v=.vo),$(dir $(vo))$(notdir $(vo)))\n";
       classify_files_by_root "VOFILES" l inc;
       print "GLOBFILES:=$(VFILES:.v=.glob)\n";
       print "VIFILES:=$(VFILES:.v=.vi)\n";
