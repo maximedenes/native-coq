@@ -564,6 +564,7 @@ type prim_aux =
 let add_check cond args =
   let aux cond a = 
     match a with
+    | PAml(MLapp(MLprimitive Mk_uint, [|MLuint _|])) -> cond
     | PAml (MLuint _) -> cond
     | PAml ml -> if List.mem ml cond then cond else ml::cond 
     | _ -> cond
@@ -606,13 +607,13 @@ let compile_prim decl cond paux =
 	let args = Array.map opt_prim_aux args in
 	begin match o, op with
 	| None, Native.Int63lt -> app_prim Clt_b args
-    | Some _, Native.Int63lt -> 
-      app_prim (Clt None) args
+        | Some _, Native.Int63lt -> 
+          app_prim (Clt None) args
 	| None, Native.Int63le ->
-      app_prim Cle_b args
-    | Some _, Native.Int63le ->
-      app_prim (Cle None) args
-(*	| _, Native.Int63eq -> mk_inteq (args_to_int args) *)
+          app_prim Cle_b args
+        | Some _, Native.Int63le ->
+          app_prim (Cle None) args
+        (*	| _, Native.Int63eq -> mk_inteq (args_to_int args) *)
 	| _, _ -> app_prim (mlprim_of_prim op None) args
 	end
     | PAml ml -> ml 
@@ -969,6 +970,7 @@ let mllambda_of_lambda auxdefs l t =
 
 let can_subst l = 
   match l with
+  | MLapp(MLprimitive Mk_uint, [|MLuint _|]) -> true
   | MLlocal _ | MLint _ | MLuint _ | MLglobal _ -> true
   | _ -> false
 
