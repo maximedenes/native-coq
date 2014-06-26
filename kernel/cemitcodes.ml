@@ -202,6 +202,7 @@ let caml_prim_call op =
   | ArrayMake -> opISINT_CAML_CALL2
   | ArrayGet -> opISARRAY_INT_CAML_CALL2
   | ArraySet ->  opISARRAY_INT_CAML_CALL3
+  | ArrayDestrSet ->  opISARRAY_INT_CAML_CALL3
   | ArrayMap -> opISARRAY_INT_CAML_CALL3
   | ArrayInit -> opISARRAY_INT_CAML_CALL3
   | ArrayGetdefault | ArrayCopy | ArrayReroot | ArrayLength -> 

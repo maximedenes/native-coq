@@ -14,6 +14,7 @@ type caml_prim =
   | ArrayGet
   | ArrayGetdefault
   | ArraySet
+  | ArrayDestrSet
   | ArrayCopy
   | ArrayReroot
   | ArrayLength
@@ -28,7 +29,8 @@ type caml_prim =
 type iterator =
   | Int63foldi
   | Int63foldi_down
- 
+  | ArrayCreate
+
 type prim_op = 
   | Int63head0
   | Int63tail0
@@ -75,6 +77,7 @@ let caml_prim_to_string = function
   | ArrayGet -> "get"
   | ArrayGetdefault -> "default"
   | ArraySet -> "set"
+  | ArrayDestrSet -> "destr_set"
   | ArrayCopy -> "copy"
   | ArrayReroot -> "reroot"
   | ArrayLength -> "length"
@@ -87,6 +90,7 @@ let caml_prim_to_string = function
 let iterator_to_string = function
   | Int63foldi -> "foldi"
   | Int63foldi_down -> "foldi_down"
+  | ArrayCreate -> "create"
 
 let prim_to_string = function 
   | Int63head0     -> "head0"
@@ -139,7 +143,7 @@ let caml_prim_kind = function
   | Int63print  -> [Kwhnf] 
   | ArrayMake   -> [Kparam;Kwhnf;Karg]
   | ArrayGet    -> [Kparam;Kwhnf;Kwhnf]
-  | ArraySet    -> [Kparam;Kwhnf;Kwhnf;Karg]
+  | ArraySet | ArrayDestrSet -> [Kparam;Kwhnf;Kwhnf;Karg]
   | ArrayGetdefault | ArrayCopy | ArrayReroot 
   | ArrayLength -> [Kparam;Kwhnf]
   | ArrayInit -> [Kparam;Kwhnf;Karg;Karg]
@@ -148,7 +152,9 @@ let caml_prim_kind = function
   | ResourceGetc -> [Kwhnf;Kwhnf]
   | ResourceGeti32 -> [Kwhnf;Kwhnf]
 	
-let iterator_kind _ = [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
+let iterator_kind = function
+ | ArrayCreate -> [Kparam;Kparam;Karg;Karg;Karg]
+ | Int63foldi_down | Int63foldi -> [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
     
 let prim_kind = function
   | Int63head0 | Int63tail0 -> [Kwhnf]
@@ -174,7 +180,7 @@ let caml_prim_arity = function
   | ArrayMake -> (1,2)
   | ArrayGet -> (1,2)
   | ArrayGetdefault -> (1,1)
-  | ArraySet -> (1,3)
+  | ArraySet | ArrayDestrSet -> (1,3)
   | ArrayCopy | ArrayReroot -> (1,1)
   | ArrayLength -> (1,1)
   | Int63print -> (0,1)
@@ -184,7 +190,9 @@ let caml_prim_arity = function
   | ResourceGetc -> (0,2)
   | ResourceGeti32 -> (0,2)
 	
-let iterator_arity _ = (2, 4)
+let iterator_arity = function 
+  | ArrayCreate -> (2,3)
+  | Int63foldi | Int63foldi_down -> (2, 4)
     
 let prim_arity = function
   | Int63head0 | Int63tail0 -> (0,1)
@@ -280,6 +288,7 @@ type retro_action =
   | Retro_ind of prim_ind
   | Retro_type of prim_type
   | Retro_inline 
+  | Retro_op of op
 
 type op_or_type = 
   | OT_op of op

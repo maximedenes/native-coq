@@ -449,6 +449,33 @@ let add_retroknowledge env (pt,c) =
 	{ env.env_globals with
 	  env_constants = new_constants } in
       { env with env_globals = new_globals }
+  | Retro_op op ->
+    match op with
+    | Native.Ocaml_prim Native.ArraySet  ->
+      let kn = destConst c in
+      let retro = retroknowledge env in
+      let retro = 
+        match retro.retro_set with
+        | None -> {retro with retro_set = Some kn}
+        | Some kn' -> assert (kn = kn'); retro in
+      {env with env_retroknowledge = retro }
+    | Native.Ocaml_prim Native.ArrayGet  ->
+      let kn = destConst c in
+      let retro = retroknowledge env in
+      let retro = 
+        match retro.retro_get with
+        | None -> {retro with retro_get = Some kn}
+        | Some kn' -> assert (kn = kn'); retro in
+      {env with env_retroknowledge = retro }
+    | Native.Ocaml_prim Native.ArrayMake ->
+      let kn = destConst c in
+      let retro = retroknowledge env in
+      let retro = 
+        match retro.retro_make with
+        | None -> {retro with retro_make = Some kn}
+        | Some kn' -> assert (kn = kn'); retro in
+      {env with env_retroknowledge = retro }
+    | _ -> env
 
 module type RedNativeEntries =
   sig

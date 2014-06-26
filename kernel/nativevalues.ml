@@ -530,9 +530,17 @@ let arraydefault accu vA t =
 let no_check_arrayset t n v =
   of_parray (Parray.set (to_parray t) (to_uint n) v)
 
+let no_check_arraydestrset t n v =
+  of_parray (Parray.destr_set (to_parray t) (to_uint n) v)
+
 let arrayset accu vA t n v =
   if is_parray t && is_int n then
     of_parray (Parray.set (to_parray t) (to_uint n) v)
+  else accu vA t n v
+
+let arraydestrset accu vA t n v =
+   if is_parray t && is_int n then
+    of_parray (Parray.destr_set (to_parray t) (to_uint n) v)
   else accu vA t n v
 
 let arraycopy accu vA t = 

@@ -10,6 +10,7 @@ Register make : array int -> resource as resource_make.
 Register getc : resource -> int -> int as resource_getc.
 Register geti : resource -> int -> int as resource_geti32.
 
+(* To simplify the openning of resource *)
 Definition int_of_bool (b:bool) := if b then 1 else 0.
 
 Definition int_of_char (c:ascii) :=

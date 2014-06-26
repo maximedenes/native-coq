@@ -29,16 +29,18 @@ type key = int option ref
 type constant_key = constant_body * key
 
 type retroknowledge = {
-    retro_int63  : (constant * constr) option;
-    retro_array  : (constant * constr) option;
-    retro_bool   : (constructor * constructor) option; (* true, false *)
-    retro_carry  : (constructor * constructor) option; (* C0, C1 *)
-    retro_pair   : constructor option;
-    retro_cmp    : (constructor * constructor * constructor) option;
-                    (* Eq, Lt, Gt *) 
-    retro_refl   : constructor option;
+    retro_int63 : (constant * constr) option;
+    retro_array : (constant * constr) option;
+    retro_set   : constant option;
+    retro_get   : constant option;  
+    retro_make  : constant option;
+    retro_bool  : (constructor * constructor) option; (* true, false *)
+    retro_carry : (constructor * constructor) option; (* C0, C1 *)
+    retro_pair  : constructor option;
+    retro_cmp   : (constructor * constructor * constructor) option;
+                    (* Eq, Lt, Gt *)
+    retro_refl  : constructor option;
     retro_resource: (constant * constr) option;
-
 }
 
 type globals = {
@@ -88,6 +90,9 @@ let empty_named_context_val = [],[],[]
 let empty_retroknowledge = {
     retro_int63 = None;
     retro_array = None;
+    retro_set   = None;
+    retro_get   = None;
+    retro_make  = None;
     retro_bool  = None;
     retro_carry = None;
     retro_pair  = None;

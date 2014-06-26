@@ -143,6 +143,7 @@ val arraymake    : t -> t -> t -> t -> t      (* accu A n def *)
 val arrayget     : t -> t -> t -> t -> t      (* accu A t n *)
 val arraydefault : t -> t -> t -> t           (* accu A t *)
 val arrayset     : t -> t -> t -> t -> t -> t (* accu A t n v *)
+val arraydestrset : t -> t -> t -> t -> t -> t (* accu A t n v *)
 val arraycopy    : t -> t -> t -> t           (* accu A t *)
 val arrayreroot  : t -> t -> t -> t           (* accu A t *)
 val arraylength  : t -> t -> t -> t           (* accu A t *)
@@ -190,6 +191,7 @@ val parray_of_array : t array -> t
 val is_parray : t -> bool
 val no_check_arrayget : t -> t -> t
 val no_check_arrayset : t -> t -> t -> t
+val no_check_arraydestrset : t -> t -> t -> t
 val resourcegeti : t -> t -> t -> t
 val resourcegetc : t -> t -> t -> t
 val resourcemake : t -> t -> t

@@ -24,6 +24,9 @@ type constant_key = constant_body * key
 type retroknowledge = {
     retro_int63 : (constant * constr) option;
     retro_array : (constant * constr) option;
+    retro_set   : constant option;
+    retro_get   : constant option;  
+    retro_make  : constant option;  
     retro_bool  : (constructor * constructor) option; (* true, false *)
     retro_carry : (constructor * constructor) option; (* C0, C1 *)
     retro_pair  : constructor option;

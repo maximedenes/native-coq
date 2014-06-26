@@ -262,7 +262,10 @@ let add_constant dir l decl senv =
   let senv' = 
     match decl with
     | ConstantEntry (PrimitiveEntry (_,Native.OT_type t)) ->
-	  let pttc = Native.Retro_type t, mkConst kn in
+      let pttc = Native.Retro_type t, mkConst kn in
+      add_retroknowledge pttc senv'
+    | ConstantEntry (PrimitiveEntry (_, Native.OT_op op)) ->
+      let pttc = Native.Retro_op op, mkConst kn in
       add_retroknowledge pttc senv'
     | _ -> senv'
   in
@@ -978,6 +981,7 @@ let register c r senv =
 			Pp.str "Register inductive: an indutive is expected");
 	check_register_ind c i senv.env
     | Native.Retro_type _ -> assert false
+    | Native.Retro_op _ -> assert false
     | Native.Retro_inline ->
 	if not (isConst c) then
 	  user_err_loc (dummy_loc, "",

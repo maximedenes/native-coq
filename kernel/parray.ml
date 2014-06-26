@@ -1,4 +1,5 @@
-let max_array_length32 = 4194303 (* Sys.max_array_length on arch32 *) 
+let max_array_length32 = 18014398509481983
+(* 4194303 Sys.max_array_length on arch32 *) 
 
 let trunc_size n =
   if Uint63.le Uint63.zero n && Uint63.lt n (Uint63.of_int max_array_length32) then
@@ -64,6 +65,18 @@ let set p n e =
       if Uint63.le Uint63.zero n && Uint63.lt n (length p) then
 	ref (Updated((Uint63.to_int n), e, p))   
       else (warn "Array.set: out of bound"; p)
+
+let destr_set p n e =
+  let kind = !p in
+  match kind with
+  | Array t ->
+      let l = Uint63.of_int (Array.length t - 1) in
+      if Uint63.le Uint63.zero n && Uint63.lt n l then
+        let n = Uint63.to_int n in
+	Array.unsafe_set t n e;
+	p
+      else (warn "Array.set: out of bound"; p)
+  | Updated _ -> set p n e
 	  
 let rec default_updated p =
   match !p with

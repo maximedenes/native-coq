@@ -27,7 +27,7 @@ type lambda =
   | Lcprim        of string * constant * Native.caml_prim * lambda array
                   (* prefix, constant name, primitive, arguments *)
   | Lcase         of annot_sw * lambda * lambda * lam_branches 
-                  (* annotations, term being matched, accu, branches *)
+                  (* annotations, return type, term being matched, branches *)
   | Lareint       of lambda array 
   | Lif           of lambda * lambda * lambda
   | Lfix          of (int array * int) * fix_decl 
@@ -70,6 +70,18 @@ let decompose_Llam lam =
   | Llam(ids,body) -> ids, body
   | _ -> [||], lam
 
+let rec decompose_Llet lam = 
+  match lam with
+  | Llet(id,t1,t2) -> 
+    let (bd,body) = decompose_Llet t2 in 
+    (id,t1)::bd, body
+  | _ -> [], lam
+  
+let rec mkLlets bd body = 
+  match bd with
+  | [] -> body
+  | (id,t1)::bd -> Llet(id,t1,mkLlets bd body)
+
 (*s Operators on substitution *)
 let subst_id = subs_id 0
 let lift = subs_lift 
@@ -93,7 +105,18 @@ let get_const_prefix env c =
    | LinkedLazy s -> s
     
 (* A generic map function *)
-
+let map_case g f n lam annot t a a' br = 
+  let t' = f n t in
+  let on_b b = 
+    let (cn,ids,body) = b in
+    let body' = 
+      let len = Array.length ids in
+      if len = 0 then f n body 
+      else f (g (Array.length ids) n) body in
+    if body == body' then b else (cn,ids,body') in
+  let br' = array_smartmap on_b br in
+  if t == t' && a == a' && br == br' then lam else Lcase(annot,t',a',br')
+  
 let map_lam_with_binders g f n lam =
   match lam with
   | Lrel _ | Lvar _  | Lconst _ | Lint _ | Lval _
@@ -123,17 +146,7 @@ let map_lam_with_binders g f n lam =
       let args' = array_smartmap (f n) args in
       if args == args' then lam else Lcprim(prefix,kn,op,args')
   | Lcase(annot,t,a,br) ->
-      let t' = f n t in
-      let a' = f n a in
-      let on_b b = 
-	let (cn,ids,body) = b in
-	let body' = 
-	  let len = Array.length ids in
-	  if len = 0 then f n body 
-	  else f (g (Array.length ids) n) body in
-	if body == body' then b else (cn,ids,body') in
-      let br' = array_smartmap on_b br in
-      if t == t' && a == a' && br == br' then lam else Lcase(annot,t',a',br')
+      map_case g f n lam annot t a (f n a) br
   | Lareint a ->
       let a' = array_smartmap (f n) a in
       if a == a' then lam else Lareint a' 
@@ -171,6 +184,12 @@ let rec lam_exlift el lam =
 let lam_lift k lam =
   if k = 0 then lam
   else lam_exlift (el_shft k el_id) lam
+
+let lam_liftn n k lam = 
+  if k = 0 then lam
+  else lam_exlift (el_liftn n (el_shft k el_id)) lam
+
+
 
 let lam_subst_rel lam id n subst =
   match expand_rel n subst with
@@ -241,7 +260,11 @@ let rec simplify subst lam =
       if can_subst def' then simplify (cons def' subst) body
       else 
 	let body' = simplify (lift subst) body in
-	if def == def' && body == body' then lam
+        let bd,def'' = decompose_Llet def' in
+        if bd <> [] && can_subst def'' then
+          mkLlets bd (simplify (cons def'' subst_id)
+                        (lam_liftn 1 (List.length bd) body'))
+        else if def == def' && body == body' then lam
 	else Llet(id,def',body')
 
   | Lapp(f,args) ->
@@ -258,6 +281,17 @@ let rec simplify subst lam =
       else 
 	if t == t' && bt == bt' && bf == bf' then lam
 	else Lif(t',bt',bf')
+  | Lcase(annot, t, a, br) ->
+    let a' = simplify subst a in
+    (* FIXME add case for Lval *)
+    begin match a' with
+    | Lmakeblock(_,c,_, args) ->
+      let brc = Util.array_find_i (fun i (c', _, _) -> c = c') br in
+      let (_,bd,body) = br.(Option.get brc) in
+      let f = mkLlam bd body in
+      simplify_app subst f subst_id args
+    | _ -> map_case liftn simplify subst lam annot t a a' br
+    end 
   | _ -> map_lam_with_binders liftn simplify subst lam
 
 and simplify_app substf f substa args =
@@ -445,6 +479,23 @@ let r_i = mkLrel _i
 let r_i' = mkLrel _i'
 let r_a = mkLrel _a
 
+let _U = Name(id_of_string "U")
+let _V = Name(id_of_string "V")
+let _u = Name(id_of_string "u")
+let _t = Name(id_of_string "t") 
+let _t0 = Name(id_of_string "t'") 
+let _m = Name(id_of_string "m")
+let _k = Name(id_of_string "k")
+let _n = Name (id_of_string "n") 
+let r_U = mkLrel _U
+let r_u = mkLrel _u
+let r_t = mkLrel _t
+let r_t0 = mkLrel _t0
+let r_m = mkLrel _m
+let r_k = mkLrel _k 
+let r_n = mkLrel _n
+
+
 let lambda_of_iterator env kn op args =
   match op with
   | Native.Int63foldi ->
@@ -538,9 +589,81 @@ let lambda_of_iterator env kn op args =
 		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
 		   r_f 1; r_max 3; r_min 2; r_cont 4|]
 		 extra4))))))
+   | Native.ArrayCreate -> 
+     (* args = [|A;B;f;n;dft] *)
+     (* f st uni bind read write (make n dft) *)
+     let fA, ff, fn, fdft = args.(0), args.(2), args.(3), args.(4) in
+
+     let retro = env.env_retroknowledge in
+     let oget = Option.get in 
+     let carray = fst (oget retro.retro_array) in
+     let parray = get_const_prefix env carray in
+     let larray n = mkLapp (Lconst(parray,carray)) [|lam_lift n fA|] in
+     let cpair = oget retro.retro_pair in
+     let ipair = fst cpair in
+     let ppair = get_mind_prefix env (fst ipair) in
+     let lpair = Lind(ppair, ipair) in
+     let mkLpair l1 l2 = Lmakeblock(ppair, cpair, 1,[| l1; l2 |]) in
+     let cget = oget retro.retro_get in
+     let pget = get_const_prefix env cget in
+     let prget args = Lcprim (pget,cget,Native.ArrayGet, args) in
+     let cset = oget retro.retro_set in
+     let pset = get_const_prefix env cset in
+     let prset args = Lcprim (pset,cset,Native.ArrayDestrSet, args) in
+     let tt = Lval (Nativevalues.mk_int 0) in
+     let cmake = oget retro.retro_make in
+     let pmake = get_const_prefix env cmake in
+     let prmake args = Lcprim (pmake,cmake,Native.ArrayMake, args) in
+     let st = (* fun U -> array A -> (array A * U) *)
+       Llam
+         ([|_U|], 
+          Lprod 
+            (larray 1, 
+             Llam ([|Anonymous|], mkLapp lpair [|larray 2; r_U 1|]))) in
+     let uni = (* fun U (u:U) t -> (t,u) *)
+       Llam([|_U;_u;_t|], mkLpair (r_t 1) (r_u 2)) in
+     let bind = (* fun U V m k t -> let (t0,u) = m t in k u t0 *)
+       let mib = lookup_mind (fst ipair) env in
+       let oib = mib.mind_packets.(snd ipair) in
+       let tbl = oib.mind_reloc_tbl in
+       let ci = {
+         ci_ind = ipair;
+         ci_npar = 2;
+         ci_cstr_ndecls = [| 2 |];
+         ci_pp_info = {ind_nargs = 4; style = LetPatternStyle }
+       } in
+       let annot = 
+         { asw_ind = ipair;
+           asw_ci = ci;
+           asw_reloc = tbl; 
+           asw_finite = mib.mind_finite;
+           asw_prefix = ppair} in
+       Llam 
+         ([|_U;_V;_m;_k;_t|], 
+          Lcase
+            (annot,
+             Llam([|Anonymous|], mkLapp lpair [|larray 6; r_U 6|]),
+             mkLapp (r_m 3) [| r_t 1 |],
+             [| cpair, [|_t0; _u|], mkLapp (r_k 4) [| r_u 1; r_t0 2 |] |]
+            )
+         ) in
+     let read = (* fun n t -> (t, get t n) *)
+       Llam 
+         ([|_n; _t|],
+          mkLpair (r_t 1) (prget [|lam_lift 2 fA; r_t 1; r_n 2|])) in
+     let write = (* fun n a t -> (set t n a, tt) *)
+       Llam 
+         ([|_n;_a; _t|],
+          mkLpair (prset [| lam_lift 3 fA; r_t 1; r_n 3; r_a 2|]) tt) in
+     let t = prmake [| fA; fn; fdft |] in (* make n dft *) 
+     let res = 
+       mkLapp ff [| st; uni; bind; read; write; t |] in
+     (* TODO optimize res *)
+     res
+
 
 (* Compilation of primitive *)
-let _h =  Name(id_of_string "f")
+let _h =  Name(id_of_string "h")
 
 let prim env kn op args =
   match op with
@@ -654,7 +777,6 @@ module Renv =
 
        }
 
-
     let make () = {
       name_rel = Vect.make 16 Anonymous;
       construct_tbl = Hashtbl.create 111
@@ -744,7 +866,7 @@ let rec lambda_of_constr env c =
       (* Building info *)
       let prefix = get_mind_prefix !global_env mind in
       let annot_sw = 
-	    { asw_ind = ind;
+	{ asw_ind = ind;
           asw_ci = ci;
           asw_reloc = tbl; 
           asw_finite = mib.mind_finite;

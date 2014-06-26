@@ -669,7 +669,23 @@ let r_i = mkLrel _i
 let r_i' = mkLrel _i'
 let r_a = mkLrel _a
 
-let lambda_of_iterator kn op args =
+let _U = Name(id_of_string "U")
+let _V = Name(id_of_string "V")
+let _u = Name(id_of_string "u")
+let _t = Name(id_of_string "t") 
+let _t0 = Name(id_of_string "t'") 
+let _m = Name(id_of_string "m")
+let _k = Name(id_of_string "k")
+let _n = Name (id_of_string "n") 
+let r_U = mkLrel _U
+let r_u = mkLrel _u
+let r_t = mkLrel _t
+let r_t0 = mkLrel _t0
+let r_m = mkLrel _m
+let r_k = mkLrel _k 
+let r_n = mkLrel _n
+
+let lambda_of_iterator env kn op args =
   match op with
   | Native.Int63foldi ->
       (* args = [|A;B;f;min;max;cont;extra|] *)
@@ -761,7 +777,71 @@ let lambda_of_iterator kn op args =
 		   r_f 1; r_max 3; r_min 2; r_cont 4|]
 		 extra4))))))
 
+   | Native.ArrayCreate -> 
+     (* args = [|A;B;f;n;dft] *)
+     (* f st uni bind read write (make n dft) *)
+     let fA, ff, fn, fdft = args.(0), args.(2), args.(3), args.(4) in
 
+     let retro = env.env_retroknowledge in
+     let oget = Option.get in 
+     let carray = fst (oget retro.retro_array) in
+     let larray n = mkLapp (Lconst(carray)) [|lam_lift n fA|] in
+     let cpair = oget retro.retro_pair in
+     let ipair = fst cpair in
+     let lpair = Lind(ipair) in
+     let mkLpair l1 l2 = Lmakeblock(1,[| l1; l2 |]) in
+     let cget = oget retro.retro_get in
+     let prget args = Lcprim (cget,Native.ArrayGet, args) in
+     let cset = oget retro.retro_set in
+     let prset args = Lcprim (cset,Native.ArrayDestrSet, args) in
+     let tt = Lint 0 in
+     let cmake = oget retro.retro_make in
+     let prmake args = Lcprim (cmake,Native.ArrayMake, args) in
+     let st = (* fun U -> array A -> (array A * U) *)
+       Llam
+         ([|_U|], 
+          Lprod 
+            (larray 1, 
+             Llam ([|Anonymous|], mkLapp lpair [|larray 2; r_U 1|]))) in
+     let uni = (* fun U (u:U) t -> (t,u) *)
+       Llam([|_U;_u;_t|], mkLpair (r_t 1) (r_u 2)) in
+     let bind = (* fun U V m k t -> let (t0,u) = m t in k u t0 *)
+       let mib = lookup_mind (fst ipair) env in
+       let oib = mib.mind_packets.(snd ipair) in
+       let tbl = oib.mind_reloc_tbl in
+       let ci = {
+         ci_ind = ipair;
+         ci_npar = 2;
+         ci_cstr_ndecls = [| 2 |];
+         ci_pp_info = {ind_nargs = 4; style = LetPatternStyle }
+       } in
+       let annot = 
+         { asw_ind = ipair;
+           asw_ci = ci;
+           asw_reloc = tbl } in
+       Llam 
+         ([|_U;_V;_m;_k;_t|], 
+          Lcase
+            (annot,
+             Llam([|Anonymous|], mkLapp lpair [|larray 6; r_U 6|]),
+             mkLapp (r_m 3) [| r_t 1 |],
+             ([||],
+              [| [|_t0;_u|], mkLapp (r_k 4) [|r_u 1; r_t0 2|] |])
+            )
+         ) in
+     let read = (* fun n t -> (t, get t n) *)
+       Llam 
+         ([|_n; _t|],
+          mkLpair (r_t 1) (prget [|lam_lift 2 fA; r_t 1; r_n 2|])) in
+     let write = (* fun n a t -> (set t n a, tt) *)
+       Llam 
+         ([|_n;_a; _t|],
+          mkLpair (prset [| lam_lift 3 fA; r_t 1; r_n 3; r_a 2|]) tt) in
+     let t = prmake [| fA; fn; fdft |] in (* make n dft *) 
+     let res = 
+       mkLapp ff [| st; uni; bind; read; write; t |] in
+     (* TODO optimize res *)
+     res
 
 
 
@@ -769,7 +849,7 @@ let lambda_of_iterator kn op args =
   
 let _h =  Name(id_of_string "f")
 
-let prim kn op args =
+let prim env kn op args =
   match op with
   | Native.Oprim Native.Int63eqb_correct ->
       let h = Lrel(_h,1) in
@@ -779,18 +859,18 @@ let prim kn op args =
 	    Lapp(Lconst kn, [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
   | Native.Oprim p      -> Lprim(Some kn, p, args)
   | Native.Ocaml_prim p -> Lcprim(kn, p, args)
-  | Native.Oiterator p  -> lambda_of_iterator kn p args
+  | Native.Oiterator p  -> lambda_of_iterator env kn p args
 
-let expense_prim kn op arity =
+let expense_prim env kn op arity =
   let ids = Array.make arity Anonymous in
   let args = make_args arity 1 in
-  Llam(ids, prim kn op args)
+  Llam(ids, prim env kn op args)
 
-let lambda_of_prim kn op args =
+let lambda_of_prim env kn op args =
   let (nparams, arity) = Native.arity op in
   let expected = nparams + arity in
-  if Array.length args >= expected then prim kn op args
-  else mkLapp (expense_prim kn op expected) args
+  if Array.length args >= expected then prim env kn op args
+  else mkLapp (expense_prim env kn op expected) args
 
  
 
@@ -1015,7 +1095,8 @@ and lambda_of_app env f args =
       let kn = get_allias !global_env kn in
       let cb = lookup_constant kn !global_env in
       begin match cb.const_body with
-      | Primitive op -> lambda_of_prim kn op (lambda_of_args env 0 args)
+      | Primitive op -> 
+        lambda_of_prim !global_env kn op (lambda_of_args env 0 args)
       | Def csubst when cb.const_inline_code ->
 	  lambda_of_app env (force csubst) args
       | Def _ | OpaqueDef _ | Undef _ -> mkLapp (Lconst kn) (lambda_of_args env 0 args)

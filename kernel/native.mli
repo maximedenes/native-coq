@@ -13,6 +13,7 @@ type caml_prim =
   | ArrayGet
   | ArrayGetdefault
   | ArraySet
+  | ArrayDestrSet
   | ArrayCopy
   | ArrayReroot
   | ArrayLength
@@ -26,7 +27,8 @@ type caml_prim =
 type iterator =
   | Int63foldi
   | Int63foldi_down
- 
+  | ArrayCreate
+
 type prim_op = 
   | Int63head0
   | Int63tail0
@@ -124,6 +126,7 @@ type retro_action =
   | Retro_ind of prim_ind
   | Retro_type of prim_type
   | Retro_inline 
+  | Retro_op of op
 
 type op_or_type = 
   | OT_op of op

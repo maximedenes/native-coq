@@ -259,7 +259,7 @@ GEXTEND Gram
       | "array_length" -> Native.Ocaml_prim Native.ArrayLength
       | "array_init" -> Native.Ocaml_prim Native.ArrayInit
       | "array_map" -> Native.Ocaml_prim Native.ArrayMap
-
+      | "array_create" -> Native.Oiterator Native.ArrayCreate
       | "resource_make" -> Native.Ocaml_prim Native.ResourceMake
       | "resource_getc" -> Native.Ocaml_prim Native.ResourceGetc
       | "resource_geti32" -> Native.Ocaml_prim Native.ResourceGeti32

@@ -143,6 +143,7 @@ let slot_for_caml_prim = function
   | ArrayGet        -> prim_Array_get
   | ArrayGetdefault -> prim_Array_get_default
   | ArraySet        -> prim_Array_set
+  | ArrayDestrSet   -> prim_Array_set (* FIXME *)
   | ArrayCopy       -> prim_Array_copy
   | ArrayReroot     -> prim_Array_reroot
   | ArrayLength     -> prim_Array_length

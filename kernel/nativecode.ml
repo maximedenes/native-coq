@@ -205,6 +205,7 @@ type primitive =
   | Carrayget of (string * constant) option
   | Carraydefault of (string * constant) option
   | Carrayset of (string * constant) option
+  | Carraydestrset of (string * constant) option
   | Carraycopy of (string * constant) option
   | Carrayreroot of (string * constant) option
   | Carraylength of (string * constant) option
@@ -544,11 +545,13 @@ let mlprim_of_cprim p kn =
   | Native.ArrayGet        -> Carrayget (Some kn)
   | Native.ArrayGetdefault -> Carraydefault (Some kn)
   | Native.ArraySet        -> Carrayset (Some kn)
+  | Native.ArrayDestrSet   -> Carraydestrset (Some kn)
   | Native.ArrayCopy       -> Carraycopy (Some kn)
   | Native.ArrayReroot     -> Carrayreroot (Some kn)
   | Native.ArrayLength     -> Carraylength (Some kn)
   | Native.ArrayInit       -> Carrayinit (Some kn)
   | Native.ArrayMap        -> Carraymap (Some kn)
+ 
   | Native.ResourceMake    -> Cresourcemake (Some kn)
   | Native.ResourceGetc    -> Cresourcegetc (Some kn)
   | Native.ResourceGeti32  -> Cresourcegeti (Some kn)
@@ -635,6 +638,12 @@ let compile_prim decl cond paux =
     List.fold_left (fun body (x,d) -> MLlet(x,d,body)) body decl in
   add_decl decl (compile_cond cond paux)
 
+let is_uint ml = 
+  match ml with
+  | MLapp(MLprimitive Mk_uint, [|MLuint _|]) -> true
+  | MLuint _ -> true
+  | _ -> false
+
 let compile_cprim prefix kn p args =
   match p with
   | Native.ArrayGet when Array.length args = 3 -> 
@@ -642,12 +651,16 @@ let compile_cprim prefix kn p args =
       let mlt = MLlocal t in
       let i = fresh_lname Anonymous in
       let mli = MLlocal i in
+      let testt = MLapp(MLprimitive Is_array,[|mlt|]) in
+      let test = 
+        if is_uint args.(2) then testt 
+        else
+          MLapp(MLprimitive MLand,
+                [|MLapp(MLprimitive Is_int,[|mli|]); testt |]) in
+
       MLlet(t, args.(1),
       MLlet(i, args.(2),
-      MLif (
-	    MLapp(MLprimitive MLand,
-  		  [|MLapp(MLprimitive Is_int,[|mli|]);
-		    MLapp(MLprimitive Is_array,[|mlt|]) |]),
+      MLif (test,
 	    MLapp(MLprimitive (Carrayget None),[|mlt;mli|]),
 	    MLapp(MLglobal (Gconstant (prefix, kn)),[|args.(0);mlt;mli|]))))
   | Native.ArraySet when Array.length args = 4 -> 
@@ -657,15 +670,37 @@ let compile_cprim prefix kn p args =
       let mli = MLlocal i in
       let v = fresh_lname Anonymous in
       let mlv = MLlocal v in
+      let testt = MLapp(MLprimitive Is_array,[|mlt|]) in
+      let test = 
+        if is_uint args.(2) then testt 
+        else
+          MLapp(MLprimitive MLand,
+                [|MLapp(MLprimitive Is_int,[|mli|]); testt |]) in
       MLlet(t, args.(1),
       MLlet(i, args.(2),
       MLlet(v, args.(3),
-      MLif (
-	    MLapp(MLprimitive MLand,
-  		  [|MLapp(MLprimitive Is_int,[|mli|]);
-		    MLapp(MLprimitive Is_array,[|mlt|]) |]),
+      MLif (test,
 	    MLapp(MLprimitive (Carrayset None),[|mlt;mli;mlv|]),
 	    MLapp(MLglobal (Gconstant (prefix, kn)),[|args.(0);mlt;mli;mlv|])))))
+  | Native.ArrayDestrSet when Array.length args = 4 -> 
+    let t = fresh_lname Anonymous in
+    let mlt = MLlocal t in
+    let i = fresh_lname Anonymous in
+    let mli = MLlocal i in
+    let v = fresh_lname Anonymous in
+    let mlv = MLlocal v in
+    let testt = MLapp(MLprimitive Is_array,[|mlt|]) in
+    let test = 
+      if is_uint args.(2) then testt 
+      else
+        MLapp(MLprimitive MLand,
+              [|MLapp(MLprimitive Is_int,[|mli|]); testt |]) in
+    MLlet(t, args.(1),
+    MLlet(i, args.(2),
+    MLlet(v, args.(3),
+    MLif (test, 
+       MLapp(MLprimitive (Carraydestrset None),[|mlt;mli;mlv|]),
+       MLapp(MLglobal (Gconstant (prefix, kn)),[|args.(0);mlt;mli;mlv|])))))
   | _ ->
       MLapp(MLprimitive (mlprim_of_cprim p (prefix, kn)), args)
 
@@ -1357,6 +1392,7 @@ let pp_mllam fmt l =
     | Carrayget o -> pp_vprim o "arrayget"
     | Carraydefault o -> pp_vprim o "arraydefault"
     | Carrayset o -> pp_vprim o "arrayset"
+    | Carraydestrset o -> pp_vprim o "arraydestrset"
     | Carraycopy o -> pp_vprim o "arraycopy"
     | Carrayreroot o -> pp_vprim o "arrayreroot"
     | Carraylength o -> pp_vprim o "arraylength"

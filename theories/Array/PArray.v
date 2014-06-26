@@ -342,4 +342,40 @@ Proof.
  rewrite <- not_true_iff_false, <- (reflect_iff _ _ (HA _ _)) in H0;apply H0;trivial.
 Qed.
 
+(* The state monad *)
+
+Register create : 
+  forall (A B:Type)
+    (f : forall (ST:Type -> Type)
+          (uni : forall U, U -> ST U)
+          (bind : forall U V (m:ST U) (k:U -> ST V), ST V)
+          (read : int -> ST A)
+          (write : int -> A -> ST unit),
+          ST B),
+    A -> int -> array A * B as array_create.
+
+Definition ST (ρ α : Type) := ρ -> ρ * α.
+Definition bind A U V (m:ST (array A) U) (k:U -> ST (array A) V) :=
+  fun t => 
+    let (t, u) := m t in
+    k u t.
+
+Definition uni A U (u:U) : ST (array A) U :=
+  fun t => (t, u).
+
+Definition read A n : ST (array A) A :=
+  fun t => (t, get t n).
+
+Definition write A n a : ST (array A) unit :=
+  fun t => (set t n a, tt).
+
+Axiom create_spec : forall A B f a n,
+  create A B f a n =
+  f (ST (array A))
+    (uni A)
+    (bind A)
+    (read A)
+    (write A)
+    (PArray.make n a).
+
  
