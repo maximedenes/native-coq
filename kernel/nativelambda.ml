@@ -541,7 +541,6 @@ let expand_iterator prefix kn op args =
     let cont = args.(5) in
     let cont2 = lam_lift 2 cont in
     let f = args.(2) in
-(*    Llet(_cont, args.(5), *)
     Llet(_max, args.(4),
     Llet(_min, lam_lift 1 args.(3),
     Lif(areint (r_min 1) (r_max 2), (*then*)
@@ -573,28 +572,27 @@ let expand_iterator prefix kn op args =
        if Array.length args > 6 then
 	 Array.sub args 6 (Array.length args - 6)
        else [||] in
-     let extra4 = Array.map (lam_lift 4) extra in
-     Llet(_cont, args.(5),
-     Llet(_max, lam_lift 1 args.(3),
-     Llet(_min, lam_lift 2 args.(4),
-     Llet(_f, lam_lift 3 args.(2),
-     (* f->#1;min->#2;max->#3;cont->#4 *)
-     Lif(areint (r_min 2) (r_max 3), (*then*)
-  	 Lif(isle (r_min 2) (r_max 3), (*then*)
-	     Lapp
-               (Lrec(_aux, Llam(Value, [|_i;_a|],
-                  let lcont = 
-                    Lif(islt (r_min 5) (r_i 2),
-                        Lapp(r_aux 3, [| sub63 (r_i 2) one63|]),
-                        r_cont 7) in
-                  Lapp(r_f 4, [| r_i 2; lcont ; r_a 1|]))),
-                Array.append [|r_max 3|] extra4),
-             mkLapp (r_cont 5) extra4),
-	 Lapp(Lconst (prefix, kn),
-	      Array.append
-		[|lam_lift 4 args.(0); lam_lift 4 args.(1);
-		  r_f 1; r_min 2; r_max 3; r_cont 4|]
-		extra4))))))
+     let extra2 = Array.map (lam_lift 2) extra in
+     let cont = args.(5) in
+     let cont2 = lam_lift 2 cont in
+     let f = args.(2) in
+     Llet(_max, args.(3),
+     Llet(_min, lam_lift 1 args.(3),
+     Lif(areint (r_min 1) (r_max 2), (*then*)
+  	Lif(isle (r_min 1) (r_max 2), (*then*)
+	    Lapp
+              (Lrec(_aux, mkLlam Value [|_i;_a|]
+                 (let lcont = 
+                   Lif(islt (r_max 4) (r_i 2) ,
+                       Lapp(r_aux 3, [| add63 (r_i 2) one63|]),
+                       (lam_lift 5 cont)) in
+                 beta_red (lam_lift 5 f) [| r_i 2; lcont ; r_a 1|])),
+               Array.append [|r_max 2|] extra2),
+            mkLapp cont2 extra2),
+	Lapp(Lconst (prefix, kn),
+	     Array.append
+	       [|lam_lift 2 args.(0); lam_lift 2 args.(1);
+		 lam_lift 2 f; r_max 2; r_min 1; cont2|] extra2))))
 
    | Native.ArrayCreate -> assert false
 
