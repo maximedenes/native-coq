@@ -619,7 +619,7 @@ let lambda_of_iterator env kn op args =
          ([|_U|], 
           Lprod 
             (larray 1, 
-             Llam ([|Anonymous|], mkLapp lpair [|larray 2; r_U 1|]))) in
+             Llam ([|Anonymous|], mkLapp lpair [|larray 2; r_U 2|]))) in
      let uni = (* fun U (u:U) t -> (t,u) *)
        Llam([|_U;_u;_t|], mkLpair (r_t 1) (r_u 2)) in
      let bind = (* fun U V m k t -> let (t0,u) = m t in k u t0 *)
