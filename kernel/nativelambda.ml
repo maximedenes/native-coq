@@ -13,11 +13,15 @@ open Declarations
 open Pre_env
 open Nativevalues
       
+type red_kind = 
+  | Named
+  | Value
+
 type lambda =
   | Lrel          of name * int 
   | Lvar          of identifier
   | Lprod         of lambda * lambda 
-  | Llam          of name array * lambda  
+  | Llam          of red_kind * name array * lambda  
   | Lrec          of name * lambda
   | Llet          of name * lambda * lambda
   | Lapp          of lambda * lambda array
@@ -26,6 +30,7 @@ type lambda =
 	(* No check if None *)
   | Lcprim        of string * constant * Native.caml_prim * lambda array
                   (* prefix, constant name, primitive, arguments *)
+  | Liprim        of string * constant * Native.iterator * lambda array
   | Lcase         of annot_sw * lambda * lambda * lam_branches 
                   (* annotations, return type, term being matched, branches *)
   | Lareint       of lambda array 
@@ -58,17 +63,18 @@ let mkLapp f args =
     | Lapp(f', args') -> Lapp (f', Array.append args' args)
     | _ -> Lapp(f, args)
 	  
-let mkLlam ids body =
+let mkLlam rk ids body =
   if Array.length ids = 0 then body
   else 
     match body with
-    | Llam(ids', body) -> Llam(Array.append ids ids', body)
-    | _ -> Llam(ids, body)
+    | Llam(rk', ids', body) when rk = rk' -> 
+      Llam(rk, Array.append ids ids', body)
+    | _ -> Llam(rk, ids, body)
   
 let decompose_Llam lam =
   match lam with
-  | Llam(ids,body) -> ids, body
-  | _ -> [||], lam
+  | Llam(rk, ids,body) -> rk, ids, body
+  | _ -> Value, [||], lam
 
 let rec decompose_Llet lam = 
   match lam with
@@ -125,9 +131,9 @@ let map_lam_with_binders g f n lam =
       let dom' = f n dom in
       let codom' = f n codom in
       if dom == dom' && codom == codom' then lam else Lprod(dom',codom')
-  | Llam(ids,body) ->
+  | Llam(rk, ids,body) ->
       let body' = f (g (Array.length ids) n) body in
-      if body == body' then lam else mkLlam ids body'
+      if body == body' then lam else mkLlam rk ids body'
   | Lrec(id,body) ->
       let body' = f (g 1 n) body in
       if body == body' then lam else Lrec(id,body')
@@ -145,6 +151,9 @@ let map_lam_with_binders g f n lam =
   | Lcprim(prefix,kn,op,args) ->
       let args' = array_smartmap (f n) args in
       if args == args' then lam else Lcprim(prefix,kn,op,args')
+  | Liprim(prefix,kn,op,args) ->
+      let args' = array_smartmap (f n) args in
+      if args == args' then lam else Liprim(prefix,kn,op,args')
   | Lcase(annot,t,a,br) ->
       map_case g f n lam annot t a (f n a) br
   | Lareint a ->
@@ -210,7 +219,21 @@ let lam_subst subst lam =
 let lam_subst_args subst args =
   if is_subs_id subst then args 
   else array_smartmap (lam_exsubst subst) args
-  
+
+let rec beta_red f args = 
+  if Array.length args = 0 then f 
+  else
+    let rk, bd, body = decompose_Llam f in
+    if Array.length bd = 0 then mkLapp f args 
+    else
+      let rec aux subst bd args = 
+        match bd, args with
+        | id::bd, a::args -> aux (cons a subst) bd args
+        | _, _ ->
+          let f = lam_subst subst (mkLlam rk (Array.of_list bd) body) in
+          beta_red f (Array.of_list args) in
+      aux subst_id (Array.to_list bd) (Array.to_list args)
+    
 (** Simplification of lambda expression *)
       
 (* [simplify subst lam] simplify the expression [lam_subst subst lam] *)
@@ -231,7 +254,7 @@ let can_subst lam =
   | Lval _ | Lsort _ | Lind _ | Llam _ | Lconstruct _ -> true
   | _ -> false
 
-let can_merge_if bt bf =
+(*let can_merge_if bt bf =
   match bt, bf with
   | Llam(idst,_), Llam(idsf,_) -> true
   | _ -> false
@@ -249,7 +272,7 @@ let merge_if t bt bf =
   Llam(common,
        Lif(lam_lift (Array.length common) t, 
 	   mkLlam idst bodyt,
-	   mkLlam idsf bodyf))
+	   mkLlam idsf bodyf)) *)
 
 let rec simplify subst lam =
   match lam with
@@ -263,7 +286,7 @@ let rec simplify subst lam =
         let bd,def'' = decompose_Llet def' in
         if bd <> [] && can_subst def'' then
           mkLlets bd (simplify (cons def'' subst_id)
-                        (lam_liftn 1 (List.length bd) body'))
+                        (lam_liftn 1 (List.length bd) body')) 
         else if def == def' && body == body' then lam
 	else Llet(id,def',body')
 
@@ -273,14 +296,14 @@ let rec simplify subst lam =
       | lam' -> lam'
       end
 
-  | Lif(t,bt,bf) ->
+(*  | Lif(t,bt,bf) ->
       let t' = simplify subst t in
       let bt' = simplify subst bt in
       let bf' = simplify subst bf in
       if can_merge_if bt' bf' then merge_if t' bt' bf'
       else 
 	if t == t' && bt == bt' && bf == bf' then lam
-	else Lif(t',bt',bf')
+	else Lif(t',bt',bf') *)
   | Lcase(annot, t, a, br) ->
     let a' = simplify subst a in
     (* FIXME add case for Lval *)
@@ -288,7 +311,7 @@ let rec simplify subst lam =
     | Lmakeblock(_,c,_, args) ->
       let brc = Util.array_find_i (fun i (c', _, _) -> c = c') br in
       let (_,bd,body) = br.(Option.get brc) in
-      let f = mkLlam bd body in
+      let f = mkLlam Value bd body in
       simplify_app subst f subst_id args
     | _ -> map_case liftn simplify subst lam annot t a a' br
     end 
@@ -297,15 +320,14 @@ let rec simplify subst lam =
 and simplify_app substf f substa args =
   match f with
   | Lrel(id, i) ->
-      begin match lam_subst_rel f id i substf with
-      | Llam(ids, body) ->
-	  reduce_lapp 
-	    subst_id (Array.to_list ids) body  
-	    substa (Array.to_list args)
-      | f' -> mkLapp f' (simplify_args substa args)
-      end
-  | Llam(ids, body) ->
-      reduce_lapp substf (Array.to_list ids) body substa (Array.to_list args)
+    let f = lam_subst_rel f id i substf in
+    begin match f with
+    | Lrel _ -> mkLapp f (simplify_args substa args)
+    | _ -> simplify_app subst_id f substa args 
+    end
+  | Llam(rk, ids, body) ->
+      reduce_lapp rk substf (Array.to_list ids) body substa (Array.to_list args)
+
   | Llet(id, def, body) ->
       let def' = simplify substf def in
       if can_subst def' then
@@ -316,22 +338,25 @@ and simplify_app substf f substa args =
       let args = Array.append 
 	  (lam_subst_args substf args') (lam_subst_args substa args) in
       simplify_app substf f subst_id args
+  | Lif(t1,t2,t3) ->
+    Lif(simplify substf t1, simplify_app substf t2 substa args, 
+        simplify_app substf t3 substa args)
   | _ -> mkLapp (simplify substf f) (simplify_args substa args)
   
 and simplify_args subst args = array_smartmap (simplify subst) args
 
-and reduce_lapp substf lids body substa largs =
+and reduce_lapp rk substf lids body substa largs =
   match lids, largs with
   | id::lids, a::largs ->
       let a = simplify substa a in
-      if can_subst a then
-	reduce_lapp (cons a substf) lids body substa largs
+      if can_subst a || rk = Named then
+	reduce_lapp rk (cons a substf) lids body substa largs
       else
-	let body = reduce_lapp (lift substf) lids body (shift substa) largs in
+	let body = reduce_lapp rk (lift substf) lids body (shift substa) largs in
 	Llet(id, a, body)
   | [], [] -> simplify substf body
   | _::_, _ -> 
-      Llam(Array.of_list lids,  simplify (liftn (List.length lids) substf) body)
+      Llam(rk, Array.of_list lids,  simplify (liftn (List.length lids) substf) body)
   | [], _::_ -> simplify_app substf body substa (Array.of_list largs)
 
 
@@ -353,7 +378,7 @@ let rec occurence k kind lam =
   | Lconstruct _ | Llazy | Lforce -> kind
   | Lprod(dom, codom) ->
       occurence k (occurence k kind dom) codom
-  | Llam(ids,body) ->
+  | Llam(_, ids,body) ->
       let _ = occurence (k+Array.length ids) false body in kind
   | Lrec(id,body) ->
       let _ = occurence (k+1) false body in kind
@@ -361,7 +386,8 @@ let rec occurence k kind lam =
       occurence (k+1) (occurence k kind def) body
   | Lapp(f, args) ->
       occurence_args k (occurence k kind f) args
-  | Lprim(_,_, args) | Lcprim(_,_,_,args) | Lmakeblock(_,_,_,args) ->
+  | Lprim(_,_, args) | Lcprim(_,_,_,args) 
+  | Liprim(_,_,_,args) | Lmakeblock(_,_,_,args) ->
       occurence_args k kind args
   | Lcase(_,t,a,br) ->
       let kind = occurence k (occurence k kind t) a in
@@ -495,101 +521,102 @@ let r_m = mkLrel _m
 let r_k = mkLrel _k 
 let r_n = mkLrel _n
 
-
-let lambda_of_iterator env kn op args =
+let expand_iterator prefix kn op args = 
   match op with
-  | Native.Int63foldi ->
+  | Native.Int63foldi  -> 
       (* args = [|A;B;f;min;max;cont;extra|] *)
       (* 
          if min <= max then
-           (rec aux i a =
-              if i < max then f i (aux (i+1)) a
-              else f i cont a) 
-            min
+           (rec aux i a = f i (if i < max then aux (i+1) else cont) a)
+            min extra
          else
- 	   (fun a => cont a)
+ 	   cont extra
        *)
       
-      let extra =
+    let extra =
 	if Array.length args > 6 then
 	  Array.sub args 6 (Array.length args - 6)
 	else [||] in
-      let prefix = get_const_prefix env kn in
-      let extra4 = Array.map (lam_lift 4) extra in
-      Llet(_cont, args.(5),
-      Llet(_max, lam_lift 1 args.(4),
-      Llet(_min, lam_lift 2 args.(3),
-      Llet(_f, lam_lift 3 args.(2),
-      (* f->#1;min->#2;max->#3;cont->#4 *)
-      Lif(areint (r_min 2) (r_max 3), (*then*)
-  	  Lif(isle (r_min 2) (r_max 3), (*then*)
-	      Lapp(Lrec(_aux,
-			Llam([|_i;_a|],
-			     Lif(islt (r_i 2) (r_max 6),
-				 Lapp(r_f 4,
-				      [| r_i 2;
-					 Llam([|_a|],
-					      Lapp(r_aux 4,
-						   [| add63 (r_i 3) one63; 
-						      r_a 1|]));
-					 r_a 1|]),
-				 Lapp(r_f 4, [|r_i 2; r_cont 7; r_a 1|])))),
-		   Array.append [|r_min 2|] extra4),
-	      mkLapp 
-		(Llam([|_a|],Lapp(r_cont 5,[|r_a 1|])))
-		extra4),
-	  Lapp(Lconst (prefix, kn),
-	       Array.append
-		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
-		   r_f 1; r_min 2; r_max 3; r_cont 4|]
-		 extra4))))))
+    let extra2 = Array.map (lam_lift 2) extra in
+    let cont = args.(5) in
+    let cont2 = lam_lift 2 cont in
+    let f = args.(2) in
+(*    Llet(_cont, args.(5), *)
+    Llet(_max, args.(4),
+    Llet(_min, lam_lift 1 args.(3),
+    Lif(areint (r_min 1) (r_max 2), (*then*)
+  	Lif(isle (r_min 1) (r_max 2), (*then*)
+	    Lapp
+              (Lrec(_aux, mkLlam Value [|_i;_a|]
+                 (let lcont = 
+                   Lif(islt (r_i 2) (r_max 5),
+                       Lapp(r_aux 3, [| add63 (r_i 2) one63|]),
+                       (lam_lift 5 cont)) in
+                 beta_red (lam_lift 5 f) [| r_i 2; lcont ; r_a 1|])),
+               Array.append [|r_min 1|] extra2),
+            mkLapp cont2 extra2),
+	Lapp(Lconst (prefix, kn),
+	     Array.append
+	       [|lam_lift 2 args.(0); lam_lift 2 args.(1);
+		 lam_lift 2 f; r_min 1; r_max 2; cont2|] extra2))))
 	
    | Native.Int63foldi_down -> 
        (* args = [|A;B;f;max;min;cont;extra|] *)
-      (* 
+       (* 
          if min <= max then
-           (rec aux i a =
-              if min < i then f i (aux (i-1)) a
-              else f i cont a) 
-            max
+           (rec aux i a = f i (if min < i then aux (i-1) else cont) a)
+            min extra
          else
- 	   (fun a => cont a)
+ 	   cont extra
        *)
-      
-      let extra =
-	if Array.length args > 6 then
-	  Array.sub args 6 (Array.length args - 6)
-	else [||] in
-      let prefix = get_const_prefix env kn in
-      let extra4 = Array.map (lam_lift 4) extra in
-      Llet(_cont, args.(5),
-      Llet(_max, lam_lift 1 args.(3),
-      Llet(_min, lam_lift 2 args.(4),
-      Llet(_f, lam_lift 3 args.(2),
-      (* f->#1;min->#2;max->#3;cont->#4 *)
-      Lif(areint (r_min 2) (r_max 3), (*then*)
-  	  Lif(isle (r_min 2) (r_max 3), (*then*)
-	      Lapp(Lrec(_aux,
-			Llam([|_i;_a|],
-			     Lif(islt (r_min 5) (r_i 2),
-				 Lapp(r_f 4,
-				      [| r_i 2;
-					 Llam([|_a|],
-					      Lapp(r_aux 4,
-						   [| sub63 (r_i 3) one63;
-						      r_a 1|]));
-					 r_a 1|]),
-				 Lapp(r_f 4, [|r_i 2; r_cont 7; r_a 1|])))),
-		   Array.append [|r_max 3|] extra4),
-	      mkLapp 
-		(Llam([|_a|],Lapp(r_cont 5,[|r_a 1|])))
-		extra4),
-	  Lapp(Lconst (prefix, kn),
-	       Array.append
-		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
-		   r_f 1; r_max 3; r_min 2; r_cont 4|]
-		 extra4))))))
-   | Native.ArrayCreate -> 
+     let extra =
+       if Array.length args > 6 then
+	 Array.sub args 6 (Array.length args - 6)
+       else [||] in
+     let extra4 = Array.map (lam_lift 4) extra in
+     Llet(_cont, args.(5),
+     Llet(_max, lam_lift 1 args.(3),
+     Llet(_min, lam_lift 2 args.(4),
+     Llet(_f, lam_lift 3 args.(2),
+     (* f->#1;min->#2;max->#3;cont->#4 *)
+     Lif(areint (r_min 2) (r_max 3), (*then*)
+  	 Lif(isle (r_min 2) (r_max 3), (*then*)
+	     Lapp
+               (Lrec(_aux, Llam(Value, [|_i;_a|],
+                  let lcont = 
+                    Lif(islt (r_min 5) (r_i 2),
+                        Lapp(r_aux 3, [| sub63 (r_i 2) one63|]),
+                        r_cont 7) in
+                  Lapp(r_f 4, [| r_i 2; lcont ; r_a 1|]))),
+                Array.append [|r_max 3|] extra4),
+             mkLapp (r_cont 5) extra4),
+	 Lapp(Lconst (prefix, kn),
+	      Array.append
+		[|lam_lift 4 args.(0); lam_lift 4 args.(1);
+		  r_f 1; r_min 2; r_max 3; r_cont 4|]
+		extra4))))))
+
+   | Native.ArrayCreate -> assert false
+
+let rec remove_iterator () lam = 
+  match lam with
+  | Liprim(prefix, kn, op, args) ->
+    let args = Array.map (remove_iterator ()) args in
+    simplify subst_id (expand_iterator prefix kn op args)
+  | _ -> 
+    map_lam_with_binders (fun _ _ -> ()) remove_iterator () lam 
+  
+
+
+
+
+let lambda_of_iterator env kn op args =
+  match op with
+  | Native.Int63foldi   | Native.Int63foldi_down ->  
+    let prefix = get_const_prefix env kn in
+    Liprim(prefix, kn, op, args)
+
+  | Native.ArrayCreate -> 
      (* args = [|A;B;f;n;dft] *)
      (* f st uni bind read write (make n dft) *)
      let fA, ff, fn, fdft = args.(0), args.(2), args.(3), args.(4) in
@@ -616,12 +643,13 @@ let lambda_of_iterator env kn op args =
      let prmake args = Lcprim (pmake,cmake,Native.ArrayMake, args) in
      let st = (* fun U -> array A -> (array A * U) *)
        Llam
-         ([|_U|], 
+         (Named, [|_U|], 
           Lprod 
             (larray 1, 
-             Llam ([|Anonymous|], mkLapp lpair [|larray 2; r_U 2|]))) in
+             Llam (Value,[|Anonymous|], mkLapp lpair [|larray 2; r_U 2|]))) in
      let uni = (* fun U (u:U) t -> (t,u) *)
-       Llam([|_U;_u;_t|], mkLpair (r_t 1) (r_u 2)) in
+       Llam(Named, [|_U;_u|],
+         Llam(Value, [|_t|], mkLpair (r_t 1) (r_u 2))) in
      let bind = (* fun U V m k t -> let (t0,u) = m t in k u t0 *)
        let mib = lookup_mind (fst ipair) env in
        let oib = mib.mind_packets.(snd ipair) in
@@ -638,23 +666,23 @@ let lambda_of_iterator env kn op args =
            asw_reloc = tbl; 
            asw_finite = mib.mind_finite;
            asw_prefix = ppair} in
-       Llam 
-         ([|_U;_V;_m;_k;_t|], 
+       Llam(Named, [|_U;_V;_m;_k|],
+       Llam(Value, [|_t|], 
           Lcase
             (annot,
-             Llam([|Anonymous|], mkLapp lpair [|larray 6; r_U 6|]),
+             Llam(Value, [|Anonymous|], mkLapp lpair [|larray 6; r_U 6|]),
              mkLapp (r_m 3) [| r_t 1 |],
              [| cpair, [|_t0; _u|], mkLapp (r_k 4) [| r_u 1; r_t0 2 |] |]
             )
-         ) in
+       )) in
      let read = (* fun n t -> (t, get t n) *)
-       Llam 
-         ([|_n; _t|],
-          mkLpair (r_t 1) (prget [|lam_lift 2 fA; r_t 1; r_n 2|])) in
+       Llam(Named,[|_n|],
+       Llam(Value,[|_t|],
+          mkLpair (r_t 1) (prget [|lam_lift 2 fA; r_t 1; r_n 2|]))) in
      let write = (* fun n a t -> (set t n a, tt) *)
-       Llam 
-         ([|_n;_a; _t|],
-          mkLpair (prset [| lam_lift 3 fA; r_t 1; r_n 3; r_a 2|]) tt) in
+       Llam(Named, [|_n;_a|],
+       Llam(Value, [|_t|],
+          mkLpair (prset [| lam_lift 3 fA; r_t 1; r_n 3; r_a 2|]) tt)) in
      let t = prmake [| fA; fn; fdft |] in (* make n dft *) 
      let res = 
        mkLapp ff [| st; uni; bind; read; write; t |] in
@@ -685,7 +713,7 @@ let prim env kn op args =
 let expand_prim env kn op arity =
   let ids = Array.make arity Anonymous in
   let args = make_args arity 1 in
-  Llam(ids, prim env kn op args)
+  Llam(Named,ids, prim env kn op args)
 
 let lambda_of_prim env kn op args = 
   let (nparams, arity) = Native.arity op in
@@ -835,7 +863,7 @@ let rec lambda_of_constr env c =
       Renv.push_rel env id;
       let lc = lambda_of_constr env codom in
       Renv.pop env;
-      Lprod(ld,  Llam([|id|], lc))
+      Lprod(ld,  Llam(Value, [|id|], lc))
 
   | Lambda _ ->
       let params, body = decompose_lam c in
@@ -843,7 +871,7 @@ let rec lambda_of_constr env c =
       Renv.push_rels env ids;
       let lb = lambda_of_constr env body in
       Renv.popn env (Array.length ids);
-      mkLlam ids lb
+      mkLlam Value ids lb
 
   | LetIn(id, def, _, body) ->
       let ld = lambda_of_constr env def in
@@ -884,7 +912,7 @@ let rec lambda_of_constr env c =
 	if arity = 0 then (cn, empty_ids, b)
 	else 
 	  match b with
-	  | Llam(ids, body) when Array.length ids = arity -> (cn, ids, body)
+	  | Llam(_, ids, body) when Array.length ids = arity -> (cn, ids, body)
 	  | _ -> 
 	      let ids = Array.make arity Anonymous in
 	      let args = make_args arity 1 in
@@ -972,7 +1000,10 @@ let lambda_of_constr env c =
     (msgerrnl (str "Constr = \n" ++ pr_constr c);flush_all()); 
     (msgerrnl (str "Lambda = \n" ++ pp_lam lam);flush_all()); 
   end; *)
-  optimize lam
+  let lam = optimize lam in
+  let lam = remove_iterator () lam in
+  let lam = optimize lam in
+  lam 
 
 let mk_lazy c =
   mkLapp Llazy [|c|]

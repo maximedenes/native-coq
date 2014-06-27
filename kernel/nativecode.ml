@@ -715,11 +715,11 @@ let compile_cprim prefix kn p args =
       let n = get_prod_name codom in
       let i = push_symbol (SymbName n) in
       MLapp(MLprimitive Mk_prod, [|get_name_code i;dom;codom|])
-  | Llam(ids,body) ->
+  | Llam(_, ids,body) ->
     let lnames,env = push_rels env ids in
     MLlam(lnames, ml_of_lam env l body)
   | Lrec(id,body) ->
-      let ids,body = decompose_Llam body in
+      let _, ids,body = decompose_Llam body in
       let lname, env = push_rel env id in
       let lnames, env = push_rels env ids in
       MLletrec([|lname, lnames, ml_of_lam env l body|], MLlocal lname)
@@ -736,6 +736,7 @@ let compile_cprim prefix kn p args =
       compile_prim decl cond paux
   | Lcprim (prefix,kn,p,args) ->
       compile_cprim prefix kn p (Array.map (ml_of_lam env l) args)
+  | Liprim _ -> assert false
   | Lcase (annot,p,a,bs) ->
       (* let predicate_uid fv_pred = compilation of p 
          let rec case_uid fv a_uid = 
@@ -824,7 +825,7 @@ let compile_cprim prefix kn p args =
       let t_params = Array.make ndef [||] in
       let t_norm_f = Array.make ndef (Gnorm (l,-1)) in
       let ml_of_fix i body =
-	let idsi,bodyi = decompose_Llam body in
+	let _, idsi,bodyi = decompose_Llam body in
 	let paramsi, envi = push_rels env_n idsi in
 	t_norm_f.(i) <- fresh_gnorm l;
 	let bodyi = ml_of_lam envi l bodyi in
@@ -875,7 +876,7 @@ let compile_cprim prefix kn p args =
       let t_params = Array.make ndef [||] in
       let t_norm_f = Array.make ndef (Gnorm (l,-1)) in
       let ml_of_fix i body =
-	let idsi,bodyi = decompose_Llam body in
+	let _,idsi,bodyi = decompose_Llam body in
 	let paramsi, envi = push_rels env_n idsi in
 	t_norm_f.(i) <- fresh_gnorm l;
 	let bodyi = ml_of_lam envi l bodyi in

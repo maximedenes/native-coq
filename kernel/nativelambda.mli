@@ -12,11 +12,14 @@ open Term
 open Declarations
 open Pre_env
 open Nativevalues
+
+type red_kind
+
 type lambda =
   | Lrel          of name * int 
   | Lvar          of identifier
   | Lprod         of lambda * lambda 
-  | Llam          of name array * lambda  
+  | Llam          of red_kind * name array * lambda  
   | Lrec          of name * lambda
   | Llet          of name * lambda * lambda
   | Lapp          of lambda * lambda array
@@ -25,6 +28,7 @@ type lambda =
 	(* No check if None *)
   | Lcprim        of string * constant * Native.caml_prim * lambda array
                   (* prefix, constant name, primitive, arguments *)
+  | Liprim        of string * constant * Native.iterator * lambda array
   | Lcase         of annot_sw * lambda * lambda * lam_branches 
                   (* annotations, term being matched, accu, branches *)
   | Lareint       of lambda array 
@@ -48,7 +52,7 @@ and lam_branches = (constructor * name array * lambda) array
       
 and fix_decl =  name array * lambda array * lambda array
 
-val decompose_Llam : lambda -> Names.name array * lambda
+val decompose_Llam : lambda -> red_kind * Names.name array * lambda
 
 val is_lazy : constr -> bool
 val mk_lazy : lambda -> lambda
