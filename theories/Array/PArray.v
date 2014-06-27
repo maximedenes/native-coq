@@ -352,7 +352,7 @@ Register create :
           (read : int -> ST A)
           (write : int -> A -> ST unit),
           ST B),
-    A -> int -> array A * B as array_create.
+    int -> A -> array A * B as array_create.
 
 Definition ST (ρ α : Type) := ρ -> ρ * α.
 Definition bind A U V (m:ST (array A) U) (k:U -> ST (array A) V) :=
@@ -370,12 +370,12 @@ Definition write A n a : ST (array A) unit :=
   fun t => (set t n a, tt).
 
 Axiom create_spec : forall A B f a n,
-  create A B f a n =
+  create A B f n a =
   f (ST (array A))
     (uni A)
     (bind A)
     (read A)
     (write A)
-    (PArray.make n a).
+    (make n a).
 
  
