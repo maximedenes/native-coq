@@ -16,6 +16,7 @@ open Nativevalues
 type red_kind = 
   | Named
   | Value
+  | StArray
 
 type lambda =
   | Lrel          of name * int 
@@ -55,7 +56,9 @@ and lam_branches = (constructor * name array * lambda) array
 and fix_decl =  name array * lambda array * lambda array
       
 (*s Constructors *)
-  
+
+let mkLrel id i = Lrel(id,i)  
+
 let mkLapp f args =
   if Array.length args = 0 then f
   else
@@ -70,7 +73,7 @@ let mkLlam rk ids body =
     | Llam(rk', ids', body) when rk = rk' -> 
       Llam(rk, Array.append ids ids', body)
     | _ -> Llam(rk, ids, body)
-  
+
 let decompose_Llam lam =
   match lam with
   | Llam(rk, ids,body) -> rk, ids, body
@@ -274,6 +277,40 @@ let merge_if t bt bf =
 	   mkLlam idst bodyt,
 	   mkLlam idsf bodyf)) *)
 
+let is_ST_br (_, _, body) = 
+  match body with
+  | Llam (rk, _, _) -> rk = StArray 
+  | _  -> false
+  
+let get_return_ST lam = 
+  let rk, bd, lam = decompose_Llam lam in
+  match lam with
+  | Lprod (_, f) -> Some(rk, bd, f)
+  | _ -> None 
+
+let commut_STarg lam = 
+  match lam with
+  | Lcase (annot, ty, a, br) when 
+      0 < Array.length br && 
+      Util.array_for_all is_ST_br br -> 
+    begin match get_return_ST ty with 
+    | Some (rk, bd, f) ->
+      let _t = Name(id_of_string "t") in
+      let t = mkLrel _t in
+      let ty =
+        let len = Array.length bd in
+        let f = lam_liftn len 1 f in
+        mkLlam rk bd (beta_red f [|t (len + 1)|]) in
+      let mk_br (c,bdr,body) =
+        let len = Array.length bdr in
+        let body = lam_liftn len 1 body in
+        (c, bdr, beta_red body [| t (len + 1) |]) in
+      Llam(StArray, [|_t|],
+        Lcase(annot, ty, lam_lift 1 a, Array.map mk_br br))
+    | None -> lam
+    end
+  | _ -> lam 
+
 let rec simplify subst lam =
   match lam with
   | Lrel(id,i) -> lam_subst_rel lam id i subst 
@@ -313,7 +350,9 @@ let rec simplify subst lam =
       let (_,bd,body) = br.(Option.get brc) in
       let f = mkLlam Value bd body in
       simplify_app subst f subst_id args
-    | _ -> map_case liftn simplify subst lam annot t a a' br
+    | _ -> 
+      let lam = map_case liftn simplify subst lam annot t a a' br in
+      commut_STarg lam 
     end 
   | _ -> map_lam_with_binders liftn simplify subst lam
 
@@ -347,7 +386,7 @@ and simplify_args subst args = array_smartmap (simplify subst) args
 
 and reduce_lapp rk substf lids body substa largs =
   match lids, largs with
-  | id::lids, a::largs ->
+  | id ::lids, a::largs ->
       let a = simplify substa a in
       if can_subst a || rk = Named then
 	reduce_lapp rk (cons a substf) lids body substa largs
@@ -493,8 +532,6 @@ let _aux = Name (id_of_string "aux")
 let _i = Name (id_of_string "i") 
 let _i' = Name (id_of_string "i'")
 let _a = Name (id_of_string "a")
-
-let mkLrel id i = Lrel(id,i) 
 
 let r_f = mkLrel _f
 let r_min = mkLrel _min
@@ -647,7 +684,7 @@ let lambda_of_iterator env kn op args =
              Llam (Value,[|Anonymous|], mkLapp lpair [|larray 2; r_U 2|]))) in
      let uni = (* fun U (u:U) t -> (t,u) *)
        Llam(Named, [|_U;_u|],
-         Llam(Value, [|_t|], mkLpair (r_t 1) (r_u 2))) in
+         Llam(StArray, [|_t|], mkLpair (r_t 1) (r_u 2))) in
      let bind = (* fun U V m k t -> let (t0,u) = m t in k u t0 *)
        let mib = lookup_mind (fst ipair) env in
        let oib = mib.mind_packets.(snd ipair) in
@@ -665,7 +702,7 @@ let lambda_of_iterator env kn op args =
            asw_finite = mib.mind_finite;
            asw_prefix = ppair} in
        Llam(Named, [|_U;_V;_m;_k|],
-       Llam(Value, [|_t|], 
+       Llam(StArray, [|_t|], 
           Lcase
             (annot,
              Llam(Value, [|Anonymous|], mkLapp lpair [|larray 6; r_U 6|]),
@@ -675,11 +712,11 @@ let lambda_of_iterator env kn op args =
        )) in
      let read = (* fun n t -> (t, get t n) *)
        Llam(Named,[|_n|],
-       Llam(Value,[|_t|],
+       Llam(StArray,[|_t|],
           mkLpair (r_t 1) (prget [|lam_lift 2 fA; r_t 1; r_n 2|]))) in
      let write = (* fun n a t -> (set t n a, tt) *)
        Llam(Named, [|_n;_a|],
-       Llam(Value, [|_t|],
+       Llam(StArray, [|_t|],
           mkLpair (prset [| lam_lift 3 fA; r_t 1; r_n 3; r_a 2|]) tt)) in
      let t = prmake [| fA; fn; fdft |] in (* make n dft *) 
      let res = 
