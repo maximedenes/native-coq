@@ -58,8 +58,6 @@ let accumulate_code (k:accumulator) (x:t) =
 let rec accumulate (x:t) =
   accumulate_code (Obj.magic accumulate) x
 
-let raccumulate = ref accumulate
-
 let mk_accu_gen rcode (a:atom) =
 (*  Format.eprintf "size rcode =%i\n" (Obj.size (Obj.magic rcode)); *)
   let r = Obj.new_block 0 3 in

@@ -729,7 +729,7 @@ let compile_cprim prefix kn p args =
       let body = ml_of_lam env l body in
       MLlet(lname,def,body)
   | Lapp(f,args) ->
-      MLapp(ml_of_lam env l f, Array.map (ml_of_lam env l) args)
+      mkMLapp (ml_of_lam env l f) (Array.map (ml_of_lam env l) args)
   | Lconst (prefix,c) -> MLglobal(Gconstant (prefix,c))
   | Lprim _ ->
       let decl,cond,paux = extract_prim (ml_of_lam env l) t in
@@ -1015,8 +1015,9 @@ let subst_norm params args s =
 
 let subst_case params args s =
   let len = Array.length params in
+  let largs = Array.length args in
   assert (len > 0 && 
-	  Array.length args = len && 
+	  largs >= len && 
 	  let r = ref true and i = ref 0 in
 	  (* we test all arguments excepted the last *)
 	  while !i < len - 1  && !r do r := can_subst args.(!i); incr i done;
@@ -1025,7 +1026,8 @@ let subst_case params args s =
   for i = 0 to len - 2 do
     s := add_subst params.(i) args.(i) !s
   done;
-  !s, params.(len-1), args.(len-1)
+  !s, params.(len-1), args.(len-1), 
+    if len = largs then [||] else Array.sub args len (largs - len)
     
 let empty_gdef = Intmap.empty, Intmap.empty
 let get_norm (gnorm, _) i = Intmap.find i gnorm
@@ -1072,9 +1074,11 @@ let optimize gdef l =
 	| MLglobal (Gcase (_,i)) ->
 	    (try 
 	      let params,body = get_case gdef i in
-	      let s, id, arg = subst_case params args s in
-	      if can_subst arg then optimize (add_subst id arg s) body
-	      else MLlet(id, arg, optimize s body)
+	      let s, id, arg, extra = subst_case params args s in
+              (* Is it really correct *)
+	      if can_subst arg then 
+                optimize (add_subst id arg s) (mkMLapp body extra)
+	      else MLlet(id, arg, optimize s (mkMLapp body extra))
 	    with Not_found ->  MLapp(optimize s f, args))
 	| _ -> 
             let f = optimize s f in
