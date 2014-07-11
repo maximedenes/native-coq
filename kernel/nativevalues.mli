@@ -71,7 +71,7 @@ val atom_of_accu : accumulator -> atom
 val args_of_accu : accumulator -> t list
 val accu_nargs : accumulator -> int
 
-val cast_accu : t -> accumulator
+val cast_accu : 'a -> accumulator
 (* Functions over block: i.e constructors *)
     
 type block
@@ -97,104 +97,70 @@ val kind_of_value : t -> kind_of_value
 (* *)
 val is_accu : t -> bool
 
-(*** Primitive sur les entiers *)
+(*** Primitive on int63 *)
 
-val val_to_int : t -> int
 val of_bool : bool -> t
 val is_int : t -> bool
 
 (* function with check *)
-val head0 : t -> t -> t
-val tail0 : t -> t -> t
+val head0 : t -> t
+val tail0 : t -> t
 
-val add : t -> t -> t -> t
-val sub : t -> t -> t -> t
-val mul : t -> t -> t -> t
-val div : t -> t -> t -> t
-val rem : t -> t -> t -> t
+val add : t -> t -> t
+val sub : t -> t -> t
+val mul : t -> t -> t
+val div : t -> t -> t
+val rem : t -> t -> t
 
-val l_sr  : t -> t -> t -> t
-val l_sl  : t -> t -> t -> t
-val l_and : t -> t -> t -> t
-val l_xor : t -> t -> t -> t
-val l_or  : t -> t -> t -> t
+val l_sr  : t -> t -> t
+val l_sl  : t -> t -> t
+val l_and : t -> t -> t
+val l_xor : t -> t -> t
+val l_or  : t -> t -> t
 
-val addc      : t -> t -> t -> t
-val subc      : t -> t -> t -> t
-val addCarryC : t -> t -> t -> t
-val subCarryC : t -> t -> t -> t
+val addc      : t -> t -> t
+val subc      : t -> t -> t
+val addCarryC : t -> t -> t
+val subCarryC : t -> t -> t
 
-val mulc    : t -> t -> t -> t
-val diveucl : t -> t -> t -> t
+val mulc    : t -> t -> t
+val diveucl : t -> t -> t
 
-val div21     : t -> t -> t -> t -> t
-val addMulDiv : t -> t -> t -> t -> t
+val div21     : t -> t -> t -> t
+val addMulDiv : t -> t -> t -> t
 
-val eq      : t -> t -> t -> t
-val lt      : t -> t -> t -> t
-val le      : t -> t -> t -> t
-val compare : t -> t -> t -> t 
+val eq      : t -> t -> t
+val lt      : t -> t -> t
+val le      : t -> t -> t
+val compare : t -> t -> t 
 
-val eqb_correct : t -> t -> t -> t -> t
+val eqb_correct : t -> t -> t -> t
 
-val print : t -> t -> t
+val print : t -> t
+val foldi : t -> t -> t -> t -> t
+val foldi_down : t -> t -> t -> t -> t
 
-val arraymake    : t -> t -> t -> t -> t      (* accu A n def *)
-val arrayget     : t -> t -> t -> t -> t      (* accu A t n *)
-val arraydefault : t -> t -> t -> t           (* accu A t *)
-val arrayset     : t -> t -> t -> t -> t -> t (* accu A t n v *)
-val arraydestrset : t -> t -> t -> t -> t -> t (* accu A t n v *)
-val arraycopy    : t -> t -> t -> t           (* accu A t *)
-val arrayreroot  : t -> t -> t -> t           (* accu A t *)
-val arraylength  : t -> t -> t -> t           (* accu A t *)
-val arrayinit    : t -> t -> t -> t -> t -> t (* accu A n f def *)
-val arraymap     : t -> t -> t -> t -> t -> t (* accu A B f t *)
-
-(* Function without check *)
-val no_check_head0 : t -> t
-val no_check_tail0 : t -> t
-
-val no_check_add : t -> t -> t
-val no_check_sub : t -> t -> t
-val no_check_mul : t -> t -> t
-val no_check_div : t -> t -> t
-val no_check_rem : t -> t -> t
-
-val no_check_l_sr  : t -> t -> t
-val no_check_l_sl  : t -> t -> t
-val no_check_l_and : t -> t -> t
-val no_check_l_xor : t -> t -> t
-val no_check_l_or  : t -> t -> t
-
-val no_check_addc      : t -> t -> t
-val no_check_subc      : t -> t -> t
-val no_check_addCarryC : t -> t -> t
-val no_check_subCarryC : t -> t -> t
-
-val no_check_mulc    : t -> t -> t
-val no_check_diveucl : t -> t -> t
-
-val no_check_div21     : t -> t -> t -> t
-val no_check_addMulDiv : t -> t -> t -> t
-
-val no_check_eq      : t -> t -> t
-val no_check_lt      : t -> t -> t
-val no_check_le      : t -> t -> t
-val no_check_compare : t -> t -> t 
-
-
+val arraymake    : t -> t -> t      (* accu A n def *)
+val arrayget     : t -> t -> t      (* accu A t n *)
+val arraydefault : t -> t           (* accu A t *)
+val arrayset     : t -> t -> t -> t (* accu A t n v *)
+val arraydestrset : t -> t -> t -> t (* accu A t n v *)
+val arraycopy    : t -> t           (* accu A t *)
+val arrayreroot  : t -> t           (* accu A t *)
+val arraylength  : t -> t           (* accu A t *)
+val arrayinit    : t -> t -> t -> t (* accu A n f def *)
+val arraymap     : t -> t -> t (* accu A B f t *)
 
 val lt_b : t -> t -> bool
 val le_b : t -> t -> bool
 
 val parray_of_array : t array -> t
 val is_parray : t -> bool
-val no_check_arrayget : t -> t -> t
-val no_check_arrayset : t -> t -> t -> t
-val no_check_arraydestrset : t -> t -> t -> t
-val resourcegeti : t -> t -> t -> t
-val resourcegetc : t -> t -> t -> t
-val resourcemake : t -> t -> t
+
+val resourcegeti : t -> t -> t
+val resourcegetc : t -> t -> t
+val check_resource_name : t -> bool
+val resourcemake : t -> t
 
 val str_encode : 'a -> string
 val str_decode : string -> 'a

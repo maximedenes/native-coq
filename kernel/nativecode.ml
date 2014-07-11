@@ -153,7 +153,9 @@ let get_symbols_tbl () = Array.of_list (List.rev !symbols_list)
 (**}}}**)
 
 (** Lambda to Mllambda {{{**)
-  
+
+type prim_path = gname option 
+
 type primitive =
   | Mk_prod
   | Mk_sort
@@ -167,6 +169,8 @@ type primitive =
   | Is_accu
   | Is_int
   | Is_array
+  | Is_resource 
+  | Check_resource_name 
   | Cast_accu
   | Upd_cofix
   | Force_cofix
@@ -174,46 +178,49 @@ type primitive =
   | Mk_uint
   | Val_of_bool
   (* Coq primitive with check *)
-  | Chead0 of (string * constant) option
-  | Ctail0 of (string * constant) option
-  | Cadd of (string * constant) option
-  | Csub of (string * constant) option
-  | Cmul of (string * constant) option
-  | Cdiv of (string * constant) option
-  | Crem of (string * constant) option
-  | Clsr of (string * constant) option
-  | Clsl of (string * constant) option
-  | Cand of (string * constant) option
-  | Cor of (string * constant) option
-  | Cxor of (string * constant) option
-  | Caddc of (string * constant) option
-  | Csubc of (string * constant) option
-  | CaddCarryC of (string * constant) option
-  | CsubCarryC of (string * constant) option
-  | Cmulc of (string * constant) option
-  | Cdiveucl of (string * constant) option
-  | Cdiv21 of (string * constant) option
-  | CaddMulDiv of (string * constant) option
-  | Ceq of (string * constant) option
-  | Clt of (string * constant) option
-  | Cle of (string * constant) option
+  | Chead0 of prim_path
+  | Ctail0 of prim_path
+  | Cadd of prim_path
+  | Csub of prim_path
+  | Cmul of prim_path
+  | Cdiv of prim_path
+  | Crem of prim_path
+  | Clsr of prim_path
+  | Clsl of prim_path
+  | Cand of prim_path
+  | Cor of prim_path
+  | Cxor of prim_path
+  | Caddc of prim_path
+  | Csubc of prim_path
+  | CaddCarryC of prim_path
+  | CsubCarryC of prim_path
+  | Cmulc of prim_path
+  | Cdiveucl of prim_path
+  | Cdiv21 of prim_path
+  | CaddMulDiv of prim_path
+  | Ceqb_correct of prim_path
+  | Ceq of prim_path
+  | Clt of prim_path
+  | Cle of prim_path
   | Clt_b 
   | Cle_b
-  | Ccompare of (string * constant) option
-  | Cprint of (string * constant) option
-  | Carraymake of (string * constant) option
-  | Carrayget of (string * constant) option
-  | Carraydefault of (string * constant) option
-  | Carrayset of (string * constant) option
-  | Carraydestrset of (string * constant) option
-  | Carraycopy of (string * constant) option
-  | Carrayreroot of (string * constant) option
-  | Carraylength of (string * constant) option
-  | Carrayinit of (string * constant) option
-  | Carraymap of (string * constant) option
-  | Cresourcemake of (string * constant) option
-  | Cresourcegetc of (string * constant) option
-  | Cresourcegeti of (string * constant) option
+  | Ccompare of prim_path
+  | Cprint of prim_path
+  | Carraymake of prim_path
+  | Carrayget of prim_path
+  | Carraydefault of prim_path
+  | Carrayset of prim_path
+  | Carraydestrset of prim_path
+  | Carraycopy of prim_path
+  | Carrayreroot of prim_path
+  | Carraylength of prim_path
+  | Carrayinit of prim_path
+  | Carraymap of prim_path
+  | Cresourcemake of prim_path
+  | Cresourcegetc of prim_path
+  | Cresourcegeti of prim_path
+  | Cfoldi of prim_path
+  | Cfoldi_down of prim_path
   (* Caml primitive *)
   | MLand
   | MLle
@@ -238,8 +245,8 @@ type mllambda =
   | MLlet          of lname * mllambda * mllambda
   | MLapp          of mllambda * mllambda array
   | MLif           of mllambda * mllambda * mllambda
-  | MLmatch        of annot_sw * mllambda * mllambda * mllam_branches
-                              (* argument, prefix, accu branch, branches *)
+  | MLmatch        of annot_sw * mllambda * (lname * mllambda) * mllam_branches
+                              (* argument, accu branch, branches *)
   | MLconstruct    of string * constructor * mllambda array
                    (* prefix, constructor name, arguments *)
   | MLint          of int
@@ -273,8 +280,9 @@ let fv_lam l =
 	Array.fold_right fv_arg args (aux f bind fv)
     | MLif(t,b1,b2) ->
 	aux t bind (aux b1 bind (aux b2 bind fv))
-    | MLmatch(_,a,p,bs) ->
-      let fv = aux a bind (aux p bind fv) in
+    | MLmatch(_,a,(x,p),bs) ->
+      let fv = aux a bind fv in
+      let fv = aux p (LNset.add x bind) fv in
       let fv_bs (cargs, body) fv =
 	let bind = 
 	  List.fold_right (fun (_,args) bind ->
@@ -321,7 +329,7 @@ type global =
   | Gtblfixtype of gname * lname array * mllambda array
   | Glet of gname * mllambda
   | Gletcase of 
-      gname * lname array * annot_sw * mllambda * mllambda * mllam_branches
+      gname * lname array * annot_sw * mllambda * (lname * mllambda) * mllam_branches
   | Gopen of string
   | Gtype of inductive * int array
     (* ind name, arities of constructors *)
@@ -536,7 +544,7 @@ let mlprim_of_prim p o =
   | Native.Int63lt          -> Clt o
   | Native.Int63le          -> Cle o
   | Native.Int63compare     -> Ccompare o
-  | Native.Int63eqb_correct -> assert false
+  | Native.Int63eqb_correct -> Ceqb_correct o 
       
 let mlprim_of_cprim p kn =
   match p with
@@ -556,7 +564,13 @@ let mlprim_of_cprim p kn =
   | Native.ResourceGetc    -> Cresourcegetc (Some kn)
   | Native.ResourceGeti32  -> Cresourcegeti (Some kn)
 
-type prim_aux = 
+let mlprim_of_iprim p kn =
+  match p with
+  | Native.Int63foldi      -> Cfoldi (Some kn)
+  | Native.Int63foldi_down -> Cfoldi_down (Some kn)
+  | Native.ArrayCreate     -> assert false (* Should be inline before *)
+
+(*type prim_aux = 
   | PAprim of (string * constant) option * Native.prim_op * prim_aux array
   (*| PAcprim of constant * Native.caml_prim * prim_aux array *)
   | PAml of mllambda
@@ -703,7 +717,7 @@ let compile_cprim prefix kn p args =
        MLapp(MLprimitive (Carraydestrset None),[|mlt;mli;mlv|]),
        MLapp(MLglobal (Gconstant (prefix, kn)),[|args.(0);mlt;mli;mlv|])))))
   | _ ->
-      MLapp(MLprimitive (mlprim_of_cprim p (prefix, kn)), args)
+      MLapp(MLprimitive (mlprim_of_cprim p (prefix, kn)), args) *)
 
  let rec ml_of_lam env l t =
   match t with
@@ -731,12 +745,15 @@ let compile_cprim prefix kn p args =
   | Lapp(f,args) ->
       mkMLapp (ml_of_lam env l f) (Array.map (ml_of_lam env l) args)
   | Lconst (prefix,c) -> MLglobal(Gconstant (prefix,c))
-  | Lprim _ ->
-      let decl,cond,paux = extract_prim (ml_of_lam env l) t in
-      compile_prim decl cond paux
+  | Lprim (o,p,args) ->
+    let p = mlprim_of_prim p (Option.map (fun (x1,x2) -> Gconstant(x1,x2)) o) in
+    mkMLapp (MLprimitive p) (Array.map (ml_of_lam env l) args)
   | Lcprim (prefix,kn,p,args) ->
-      compile_cprim prefix kn p (Array.map (ml_of_lam env l) args)
-  | Liprim _ -> assert false
+    let p = mlprim_of_cprim p (Gconstant (prefix, kn)) in
+    mkMLapp (MLprimitive p) (Array.map (ml_of_lam env l) args)
+  | Liprim (prefix,kn,p,args) ->
+    let p = mlprim_of_iprim p (Gconstant (prefix, kn)) in
+    mkMLapp(MLprimitive p) (Array.map (ml_of_lam env l) args)
   | Lcase (annot,p,a,bs) ->
       (* let predicate_uid fv_pred = compilation of p 
          let rec case_uid fv a_uid = 
@@ -771,14 +788,19 @@ let compile_cprim prefix kn p args =
          (* remark : the call to fv_args does not add free variables in env_c *)
       let i = push_symbol (SymbMatch annot) in
       let accu =
-	MLapp(MLprimitive Mk_sw,
-	      [| get_match_code i; MLapp (MLprimitive Cast_accu, [|la_uid|]);
-		 pred;
-		 cn_fv |]) in
+        let x = fresh_lname Anonymous in
+        let b = 
+	  MLapp(MLprimitive Mk_sw,
+	        [| get_match_code i; 
+                   MLapp (MLprimitive Cast_accu, [|MLlocal x|]);
+		   pred;
+		   cn_fv |]) in
+        (x,b) in
 (*      let body = MLlam([|a_uid|], MLmatch(annot, la_uid, accu, bs)) in
       let case = generalize_fv env_c body in *)
       push_global_case cn 
-	(Array.append (fv_params env_c) [|a_uid|]) annot la_uid accu (merge_branches bs);
+	(Array.append (fv_params env_c) [|a_uid|]) 
+        annot la_uid accu (merge_branches bs);
 
       (* Final result *)
       let arg = ml_of_lam env l a in
@@ -989,9 +1011,9 @@ let subst s l =
       | MLlet(id,def,body) -> MLlet(id,aux def, aux body)
       | MLapp(f,args) -> MLapp(aux f, Array.map aux args)
       | MLif(t,b1,b2) -> MLif(aux t, aux b1, aux b2)
-      | MLmatch(annot,a,accu,bs) ->
+      | MLmatch(annot,a,(l,accu),bs) ->
 	  let auxb (cargs,body) = (cargs,aux body) in
-	  MLmatch(annot,a,aux accu, Array.map auxb bs)
+	  MLmatch(annot,a,(l,aux accu), Array.map auxb bs)
       | MLconstruct(prefix,c,args) -> MLconstruct(prefix,c,Array.map aux args)
       | MLparray p -> MLparray(Array.map aux p)
       | MLsetref(s,l1) -> MLsetref(s,aux l1) 
@@ -1040,13 +1062,15 @@ let all_lam n bs =
     | _ -> false in
   Util.array_for_all f bs
 
-let commutative_cut annot a accu bs args =
+(* FIXME: improve this *)
+let commutative_cut annot a (l,accu) bs args =
+  (* FIXME introduce let for arg ? *)
   let mkb (c,b) =
      match b with
      | MLlam(params, body) -> 
          (c, Util.array_fold_left2 (fun body x v -> MLlet(x,v,body)) body params args)
      | _ -> assert false in
-  MLmatch(annot, a, mkMLapp accu args, Array.map mkb bs)
+  MLmatch(annot, a, (l,mkMLapp accu args), Array.map mkb bs)
 
 let optimize gdef l =   
   let rec optimize s l =
@@ -1075,19 +1099,17 @@ let optimize gdef l =
 	    (try 
 	      let params,body = get_case gdef i in
 	      let s, id, arg, extra = subst_case params args s in
-              (* Is it really correct *)
-	      if can_subst arg then 
-                optimize (add_subst id arg s) (mkMLapp body extra)
-	      else MLlet(id, arg, optimize s (mkMLapp body extra))
+              optimize (add_subst id arg s) (mkMLapp body extra)
 	    with Not_found ->  MLapp(optimize s f, args))
 	| _ -> 
-            let f = optimize s f in
-            match f with
-            | MLmatch (annot,a,accu,bs) ->
-              if all_lam (Array.length args) bs then  
-                commutative_cut annot a accu bs args 
-              else MLapp(f, args)
-            | _ -> MLapp(f, args)
+          (* FIXME all_lam not necessary *)
+          let f = optimize s f in
+          match f with
+          | MLmatch (annot,a,accu,bs) ->
+            if all_lam (Array.length args) bs then  
+              commutative_cut annot a accu bs args 
+            else MLapp(f, args)
+          | _ -> MLapp(f, args)
 
 	end
     | MLif(t,b1,b2) ->
@@ -1095,13 +1117,13 @@ let optimize gdef l =
 	let b1 = optimize s b1 in
 	let b2 = optimize s b2 in
 	begin match t, b2 with
-	| MLapp(MLprimitive Is_accu,[| l1 |]), MLmatch(annot, l2, _, bs)
-	    when l1 = l2 -> MLmatch(annot, l1, b1, bs)	
+	| MLapp(MLprimitive Is_accu,[| l1 |]), MLmatch(annot, l2, (x,_), bs)
+	    when l1 = l2 -> MLmatch(annot, l1, (x,b1), bs)	
         | _, _ -> MLif(t, b1, b2)
 	end
-    | MLmatch(annot,a,accu,bs) ->
+    | MLmatch(annot,a,(x,accu),bs) ->
 	let opt_b (cargs,body) = (cargs,optimize s body) in
-	MLmatch(annot, optimize s a, subst s accu, Array.map opt_b bs)
+	MLmatch(annot, optimize s a, (x,subst s accu), Array.map opt_b bs)
     | MLconstruct(prefix,c,args) ->
         MLconstruct(prefix,c,Array.map (optimize s) args)
     | MLparray p -> MLparray (Array.map (optimize s) p)
@@ -1239,13 +1261,16 @@ let pp_mllam fmt l =
     | MLif(t,l1,l2) ->
 	Format.fprintf fmt "@[(if %a then@\n  %a@\nelse@\n  %a)@]"
 	  pp_mllam t pp_mllam l1 pp_mllam l2 
-    | MLmatch (asw, c, accu_br, br) ->
+    | MLmatch (asw, c, (x, accu_br), br) ->
 	let mind,i = asw.asw_ind in
-    let prefix = asw.asw_prefix in
-	let accu = Format.sprintf "%sAccu_%s_%i" prefix (string_of_mind mind) i in
+        let prefix = asw.asw_prefix in
+	let accu = 
+          Format.sprintf "%sAccu_%s_%i" prefix (string_of_mind mind) i in
 	Format.fprintf fmt 
-	  "@[begin match Obj.magic (%a) with@\n| %s _ ->@\n  %a@\n%aend@]"
-	  pp_mllam c accu pp_mllam accu_br (pp_branches prefix) br
+	  "@[begin match Obj.magic (%a) with@\n| (%s _) as %a ->@\n  %a@\n%aend@]"
+	  pp_mllam c 
+          accu pp_mllam (MLlocal x) pp_mllam accu_br 
+          (pp_branches prefix) br
 	  
     | MLconstruct(prefix,c,args) ->
         Format.fprintf fmt "@[(Obj.magic (%s%a) : Nativevalues.t)@]" 
@@ -1337,9 +1362,8 @@ let pp_mllam fmt l =
 
   and pp_vprim o s = 
     match o with
-    | None -> Format.fprintf fmt "no_check_%s" s
-    | Some (prefix,kn) ->
-        Format.fprintf fmt "%s %a" s pp_mllam (MLglobal (Gconstant (prefix,kn)))
+    | None -> Format.fprintf fmt "%s" s
+    | Some gn -> Format.fprintf fmt "%a" pp_mllam (MLglobal gn)
 
   and pp_primitive fmt = function
     | Mk_prod -> Format.fprintf fmt "mk_prod_accu" 
@@ -1362,6 +1386,8 @@ let pp_mllam fmt l =
     | Is_accu -> Format.fprintf fmt "is_accu"
     | Is_int -> Format.fprintf fmt "is_int"
     | Is_array -> Format.fprintf fmt "is_parray"
+    | Is_resource -> Format.fprintf fmt "is_resource"
+    | Check_resource_name -> Format.fprintf fmt "check_resource_name"
     | Cast_accu -> Format.fprintf fmt "cast_accu"
     | Upd_cofix -> Format.fprintf fmt "upd_cofix"
     | Force_cofix -> Format.fprintf fmt "force_cofix"
@@ -1388,6 +1414,7 @@ let pp_mllam fmt l =
     | Cdiveucl o -> pp_vprim o "diveucl"
     | Cdiv21 o -> pp_vprim o "div21"
     | CaddMulDiv o -> pp_vprim o "addMulDiv"
+    | Ceqb_correct o -> pp_vprim o "eqb_correct"
     | Ceq o -> pp_vprim o "eq"
     | Clt o -> pp_vprim o "lt"
     | Cle o -> pp_vprim o "le"
@@ -1408,6 +1435,8 @@ let pp_mllam fmt l =
     | Cresourcemake o -> pp_vprim o "resourcemake"
     | Cresourcegetc o -> pp_vprim o "resourcegetc"
     | Cresourcegeti o -> pp_vprim o "resourcegeti"
+    | Cfoldi o -> pp_vprim o "foldi"
+    | Cfoldi_down o -> pp_vprim o "foldi_down"
 	  (* Caml primitive *)
     | MLand -> Format.fprintf fmt "(&&)"
     | MLle -> Format.fprintf fmt "(<=)"
@@ -1517,6 +1546,214 @@ and compile_named env auxdefs id =
   | None -> 
       Glet(Gnamed id, MLprimitive (Mk_var id))::auxdefs
 
+let is_int x = MLapp(MLprimitive Is_int, [|x|])
+let is_array x = MLapp(MLprimitive Is_array, [|x|])
+let is_resource x = MLapp(MLprimitive Is_resource, [|x|])
+let mk_and t1 t2 = MLapp(MLprimitive MLand, [|t1; t2|])
+
+let mk_lname s i = 
+  let _x = { lname = Name (id_of_string s); luid = i} in
+  _x, MLlocal _x
+
+let mk_check param t p pargs n nargs = 
+  MLlam(param, 
+        MLif(t, MLapp (MLprimitive p, pargs), 
+             MLapp(MLglobal n, nargs)))
+
+let mk_array1 prim accu = 
+  let _A, vA = mk_lname "vA" 0 in
+  let _t, t = mk_lname "t" 1 in
+  mk_check [|_A;_t|] (is_array t)
+    prim [|t|]
+    accu [|vA; t|]  
+
+let compile_cprim accu cprim =
+  match cprim with
+  | Native.Int63print -> 
+    let _x, x = mk_lname "x" 0 in
+    let arg = [|x|] in
+    mk_check [|_x|] (is_int x) 
+      (Cprint None) arg 
+      accu arg
+ 
+  | Native.ArrayMake ->
+    let _A, vA = mk_lname "vA" 0 in
+    let _n, n = mk_lname "n" 1 in
+    let _d, d= mk_lname "d" 2 in
+    mk_check [|_A;_n;_d|] (is_int n) 
+      (Carraymake None) [| n; d|] 
+      accu [|vA; n; d|]
+
+  | Native.ArrayGet ->
+    let _A, vA = mk_lname "vA" 0 in
+    let _t, t = mk_lname "t" 1 in
+    let _n, n= mk_lname "n" 2 in
+    mk_check [|_A;_t; _n|] (mk_and (is_array t) (is_int n))
+      (Carrayget None) [|t; n|]
+      accu [|vA; t; n|]
+ 
+  | Native.ArraySet ->
+    let _A, vA = mk_lname "vA" 0 in
+    let _t, t = mk_lname "t" 1 in
+    let _n, n = mk_lname "n" 2 in
+    let _v, v = mk_lname "n" 3 in
+    mk_check [|_A;_t; _n;_v|] (mk_and (is_array t) (is_int n))
+      (Carrayset None) [|t; n; v|]
+      accu [|vA; t; n; v|]
+
+  | Native.ArrayDestrSet -> assert false
+
+  | Native.ArrayGetdefault ->
+    mk_array1 (Carraydefault None) accu
+
+  | Native.ArrayCopy ->
+    mk_array1 (Carraycopy None) accu
+
+  | Native.ArrayReroot ->
+    mk_array1 (Carrayreroot None) accu
+    
+  | Native.ArrayLength ->
+    mk_array1 (Carraylength None) accu
+
+  | Native.ArrayInit ->
+    let _A, vA = mk_lname "vA" 0 in
+    let _n, n = mk_lname "n" 1 in
+    let _f, f = mk_lname "f" 2 in
+    let _d, d = mk_lname "d" 3 in
+    mk_check [|_A;_n; _f;_d|] (is_int n)
+      (Carrayinit None) [|n; f; d|]
+      accu [|vA; n; f; d|]
+    
+  | Native.ArrayMap ->
+    let _A, vA = mk_lname "vA" 0 in
+    let _B, vB = mk_lname "vB" 1 in
+    let _f, f = mk_lname "f" 2 in
+    let _t, t = mk_lname "t" 3 in
+    mk_check [|_A;_B;_f;_t|] (is_array t)
+      (Carraymap None) [|f;t|]
+      accu [|vA;vB;f;t|]
+  
+  (* Resource Operations *)
+  | Native.ResourceMake ->
+    let _t, t = mk_lname "t" 0 in
+    mk_check [|_t|] (MLapp(MLprimitive Check_resource_name, [|t|]))
+      (Cresourcemake None) [|t|]
+      accu [|t|]
+    
+  | Native.ResourceGetc ->
+    let _r,r = mk_lname "r" 0 in
+    let _n,n = mk_lname "n" 1 in
+    mk_check [|_r;_n|] (mk_and (is_resource r) (is_int n))
+      (Cresourcegetc None) [|r; n |]
+      accu [|r; n|]
+  | Native.ResourceGeti32 ->
+    let _r,r = mk_lname "r" 0 in
+    let _n,n = mk_lname "n" 1 in
+    mk_check [|_r;_n|] (mk_and (is_resource r) (is_int n))
+      (Cresourcegeti None) [|r; n |]
+      accu [|r; n|]
+    
+let compile_iprim accu iprim = 
+  match iprim with
+  | Native.Int63foldi ->
+    let _A, vA = mk_lname "_A" 0 in
+    let _B, vB = mk_lname "_B" 1 in
+    let _f, f  = mk_lname "f" 2 in
+    let _min, min = mk_lname "min" 3 in
+    let _max, max = mk_lname "max" 4 in
+    let _cont, cont = mk_lname "cont" 5 in
+    mk_check [|_A;_B;_f;_min;_max;_cont|] 
+      (mk_and (is_int min) (is_int max))
+      (Cfoldi None) [|f;min;max;cont|]
+      accu [|vA;vB;f;min;max;cont|]
+  | Native.Int63foldi_down ->
+    let _A, vA = mk_lname "_A" 0 in
+    let _B, vB = mk_lname "_B" 1 in
+    let _f, f  = mk_lname "f" 2 in
+    let _max, max = mk_lname "max" 4 in
+    let _min, min = mk_lname "min" 3 in
+    let _cont, cont = mk_lname "cont" 5 in
+    mk_check [|_A;_B;_f;_max;_min;_cont|] 
+      (mk_and (is_int min) (is_int max))
+      (Cfoldi_down None) [|f;max;min;cont|]
+      accu [|vA;vB;f;max;min;cont|]
+      
+  | Native.ArrayCreate -> assert false
+
+let mk_int1 prim accu = 
+  let _x, x = mk_lname "x" 0 in
+  mk_check [|_x|] (is_int x)
+    prim [|x|]
+    accu [|x|]  
+
+let mk_int2 prim accu = 
+  let _x, x = mk_lname "x" 0 in
+  let _y, y = mk_lname "y" 1 in
+  mk_check [|_x;_y|] (mk_and (is_int x) (is_int y))
+    prim [|x;y|]
+    accu [|x;y|]  
+
+let compile_oprim accu oprim = 
+  match oprim with
+  | Native.Int63head0 -> mk_int1 (Chead0 None) accu
+  | Native.Int63tail0 -> mk_int1 (Ctail0 None) accu
+
+  | Native.Int63add -> mk_int2 (Cadd None) accu
+  | Native.Int63sub -> mk_int2 (Csub None) accu
+  | Native.Int63mul -> mk_int2 (Cmul None) accu
+  | Native.Int63div -> mk_int2 (Cdiv None) accu
+  | Native.Int63mod -> mk_int2 (Crem None) accu
+  | Native.Int63lsr -> mk_int2 (Clsr None) accu
+  | Native.Int63lsl -> mk_int2 (Clsl None) accu
+  | Native.Int63land -> mk_int2 (Cand None) accu
+  | Native.Int63lor  -> mk_int2 (Cor None) accu
+  | Native.Int63lxor -> mk_int2 (Cxor None) accu
+
+  | Native.Int63addc -> mk_int2 (Caddc None) accu
+  | Native.Int63subc -> mk_int2 (Csubc None) accu
+  | Native.Int63addCarryC -> mk_int2 (CaddCarryC None) accu
+  | Native.Int63subCarryC -> mk_int2 (CsubCarryC None) accu
+
+  | Native.Int63mulc -> mk_int2 (Cmulc None) accu
+  | Native.Int63diveucl -> mk_int2 (Cdiveucl None) accu
+
+  | Native.Int63div21 -> 
+    let _x, x = mk_lname "x" 0 in
+    let _y, y = mk_lname "y" 1 in
+    let _z, z = mk_lname "z" 2 in
+    mk_check [|_x;_y;_z|] (mk_and (is_int x) (mk_and (is_int y) (is_int z)))
+      (Cdiv21 None) [|x;y;z|]
+      accu [|x;y;z|]      
+
+  | Native.Int63addMulDiv ->
+    let _x, x = mk_lname "x" 0 in
+    let _y, y = mk_lname "y" 1 in
+    let _z, z = mk_lname "z" 2 in
+    mk_check [|_x;_y;_z|] (mk_and (is_int x) (mk_and (is_int y) (is_int z)))
+      (CaddMulDiv None) [|x;y;z|]
+      accu [|x;y;z|]  
+    
+  | Native.Int63eq -> mk_int2 (Ceq None) accu 
+  | Native.Int63lt -> mk_int2 (Clt None) accu
+  | Native.Int63le -> mk_int2 (Cle None) accu
+  | Native.Int63compare -> mk_int2 (Ccompare None) accu
+  | Native.Int63eqb_correct -> 
+    let _x, x = mk_lname "x" 0 in
+    let _y, y = mk_lname "y" 1 in
+    let _h, h = mk_lname "heq" 2 in
+    MLlam(
+      [|_x;_y;_h|], 
+      MLif(
+        is_int h, 
+        h,
+        MLapp(MLglobal accu, [|x;y;h|])))
+
+let compile_prim accu p = 
+  match p with
+  | Native.Oprim p -> compile_oprim accu p
+  | Native.Ocaml_prim p -> compile_cprim accu p
+  | Native.Oiterator p -> compile_iprim accu p 
+
 let compile_constant env prefix con body =
   match body with
   | Def t ->
@@ -1532,10 +1769,22 @@ let compile_constant env prefix con body =
         optimize_stk (Glet(Gconstant ("",con),code)::auxdefs)
       in
       l, name
+  | Primitive op -> 
+   (* let accu = ... 
+      let op = check_op accu ... 
+      compilation optimise if ... then no_check_add ... else op ... *)
+
+    let i = push_symbol (SymbConst con) in
+    let l = Some (con_label con) in
+    let n = fresh_gnorm l in
+    let code = 
+      [Glet(Gconstant ("", con), compile_prim n op);
+       Glet(n, MLapp (MLprimitive Mk_const, [|get_const_code i|])) ] in
+    code, Linked prefix
   | _ -> 
-      let i = push_symbol (SymbConst con) in
-      [Glet(Gconstant ("",con), MLapp (MLprimitive Mk_const, [|get_const_code i|]))],
-      Linked prefix
+    let i = push_symbol (SymbConst con) in
+    [Glet(Gconstant ("",con), MLapp (MLprimitive Mk_const, [|get_const_code i|]))],
+    Linked prefix
 
 let loaded_native_files = ref ([] : string list)
 

@@ -239,89 +239,41 @@ let is_int (x:t) =
 
 let to_uint (x:t) = (Obj.magic x : Uint63.t)
 
-let no_check_head0 x =
- mk_uint (Uint63.head0 (to_uint x))
+let head0 x =
+  mk_uint (Uint63.head0 (to_uint x))
 
-let head0 accu x =
- if is_int x then  no_check_head0 x
- else accu x
-
-let no_check_tail0 x =
+let tail0 x =
   mk_uint (Uint63.tail0 (to_uint x))
 
-let tail0 accu x =
- if is_int x then no_check_tail0 x
- else accu x
-
-let no_check_add  x y =
+let add  x y =
   mk_uint (Uint63.add (to_uint x) (to_uint y))
 
-let add accu x y =
-  if is_int x && is_int y then no_check_add x y 
-  else accu x y
+let sub x y =
+  mk_uint (Uint63.sub (to_uint x) (to_uint y))
 
-let no_check_sub x y =
-     mk_uint (Uint63.sub (to_uint x) (to_uint y))
-
-let sub accu x y =
-  if is_int x && is_int y then no_check_sub x y
-  else accu x y
-
-let no_check_mul x y =
+let mul x y =
   mk_uint (Uint63.mul (to_uint x) (to_uint y))
 
-let mul accu x y =
-  if is_int x && is_int y then no_check_mul x y
-  else accu x y
-
-let no_check_div x y =
+let div x y =
   mk_uint (Uint63.div (to_uint x) (to_uint y))
 
-let div accu x y =
-  if is_int x && is_int y then no_check_div x y 
-  else accu x y
-
-let no_check_rem x y =
+let rem x y =
   mk_uint (Uint63.rem (to_uint x) (to_uint y))
 
-let rem accu x y =
-  if is_int x && is_int y then no_check_rem x y
-  else accu x y
-
-let no_check_l_sr x y =
+let l_sr x y =
   mk_uint (Uint63.l_sr (to_uint x) (to_uint y))
 
-let l_sr accu x y =
-  if is_int x && is_int y then no_check_l_sr x y
-  else accu x y
-
-let no_check_l_sl x y =
+let l_sl x y =
   mk_uint (Uint63.l_sl (to_uint x) (to_uint y))
 
-let l_sl accu x y =
-  if is_int x && is_int y then no_check_l_sl x y
-  else accu x y
-
-let no_check_l_and x y =
+let l_and x y =
   mk_uint (Uint63.l_and (to_uint x) (to_uint y))
 
-let l_and accu x y =
-  if is_int x && is_int y then no_check_l_and x y
-  else accu x y
-
-let no_check_l_xor x y =
+let l_xor x y =
   mk_uint (Uint63.l_xor (to_uint x) (to_uint y))
 
-let l_xor accu x y =
-  if is_int x && is_int y then no_check_l_xor x y
-  else accu x y
-
-let no_check_l_or x y =
+let l_or x y =
   mk_uint (Uint63.l_or (to_uint x) (to_uint y))
-
-let l_or accu x y =
-  if is_int x && is_int y then no_check_l_or x y
-  else accu x y
 
 type coq_carry = 
   | Caccu of t
@@ -336,76 +288,41 @@ let mkCarry b i =
   if b then (Obj.magic (C1(mk_uint i)):t)
   else (Obj.magic (C0(mk_uint i)):t)
 
-let no_check_addc x y =
+let addc x y =
   let s = Uint63.add (to_uint x) (to_uint y) in
   mkCarry (Uint63.lt s (to_uint x)) s
 
-let addc accu x y =
-  if is_int x && is_int y then no_check_addc x y
-  else accu x y
-
-let no_check_subc x y =
+let subc x y =
   let s = Uint63.sub (to_uint x) (to_uint y) in
   mkCarry (Uint63.lt (to_uint x) (to_uint y)) s
 
-let subc accu x y =
-  if is_int x && is_int y then no_check_subc x y
-  else accu x y
-
-let no_check_addCarryC x y =
+let addCarryC x y =
   let s = 
     Uint63.add (Uint63.add (to_uint x) (to_uint y))
       (Uint63.of_int 1) in
   mkCarry (Uint63.le s (to_uint x)) s
 
-let addCarryC accu x y =
-  if is_int x && is_int y then no_check_addCarryC x y
-  else accu x y 
-
-let no_check_subCarryC x y =
+let subCarryC x y =
   let s = 
     Uint63.sub (Uint63.sub (to_uint x) (to_uint y))
       (Uint63.of_int 1) in
   mkCarry (Uint63.le (to_uint x) (to_uint y)) s
 
-let subCarryC accu x y =
-  if is_int x && is_int y then no_check_subCarryC x y
-  else accu x y 
-
 let of_pair (x, y) =
   (Obj.magic (PPair(mk_uint x, mk_uint y)):t)
 
-let no_check_mulc x y =
+let mulc x y =
     of_pair(Uint63.mulc (to_uint x) (to_uint y))
 
-let mulc accu x y =
-  if is_int x && is_int y then no_check_mulc x y
-  else accu x y
-
-let no_check_diveucl x y =
-  let i1, i2 = to_uint x, to_uint y in
+let diveucl x y =
+  let i1 = to_uint x and i2 = to_uint y in
   of_pair(Uint63.div i1 i2, Uint63.rem i1 i2)
 
-let diveucl accu x y =
-  if is_int x && is_int y then no_check_diveucl x y
-  else accu x y
+let div21 x y z =
+  of_pair (Uint63.div21 (to_uint x) (to_uint y) (to_uint z))
 
-let no_check_div21 x y z =
-  let i1, i2, i3 = to_uint x, to_uint y, to_uint z in
-  of_pair (Uint63.div21 i1 i2 i3)
-
-let div21 accu x y z =
-  if is_int x && is_int y && is_int z then no_check_div21 x y z
-  else accu x y z
-
-let no_check_addMulDiv x y z =
-  let p, i, j = to_uint x, to_uint y, to_uint z in
-  mk_uint (Uint63.addmuldiv p i j)
-
-let addMulDiv accu x y z =
-  if is_int x && is_int y && is_int z then no_check_addMulDiv x y z
-  else accu x y z
-
+let addMulDiv x y z =
+  mk_uint (Uint63.addmuldiv (to_uint x) (to_uint y) (to_uint z))
 
 type coq_bool =
   | Baccu of t
@@ -419,86 +336,52 @@ type coq_cmp =
   | CmpGt
 
 let of_bool b = (Obj.magic (not b) : (* coq_bool *) t) 
-  (*
-  if b then (Obj.magic Btrue:t)
-  else (Obj.magic Bfalse:t) 
-  *)
 
-let val_to_int (x : t) = (Obj.magic x : int)
-
-let no_check_eq x y =     
+let eq x y =     
   of_bool (Uint63.eq (to_uint x) (to_uint y))
 
-let eq accu x y =
-  if is_int x && is_int y then no_check_eq x y
-  else accu x y
-
-let no_check_lt x y =
+let lt x y =
   of_bool (Uint63.lt (to_uint x) (to_uint y))
 
-let lt accu x y =
-  if is_int x && is_int y then no_check_lt x y
-  else accu x y
-
-let no_check_le x y =
+let le x y =
   of_bool (Uint63.le (to_uint x) (to_uint y))
 
-let le accu x y =
-  if is_int x && is_int y then no_check_le x y
-  else accu x y
-
-let no_check_compare x y =
+let compare x y =
   match Uint63.compare (to_uint x) (to_uint y) with
   | x when x < 0 -> (Obj.magic CmpLt:t)
   | 0 -> (Obj.magic CmpEq:t)
   | _ -> (Obj.magic CmpGt:t)
 
-let compare accu x y =
-  if is_int x && is_int y then no_check_compare x y
-  else accu x y
 
-type coq_eq = 
-  | EqAccu of t
-  | EqRefl
+let eqb_correct x y heq = heq
 
-let eqb_correct accu x y heq =
-  if is_int x then (Obj.magic EqRefl:t)
-  else accu x y heq
+let print x = 
+  Printf.fprintf stderr "%s" (Uint63.to_string (to_uint x));
+  flush stderr;
+  x
 
-let print accu x = 
-  if is_int x then 
-    begin
-      Printf.fprintf stderr "%s" (Uint63.to_string (to_uint x));
-      flush stderr;
-      x
-    end
-  else accu x 
-
-let foldi_cont accu _A _B f min max cont =
-  if is_int min && is_int max then
-    let imin, imax = to_uint min, to_uint max in
-    if Uint63.le imin imax then
-      let rec aux i a =
-        f (mk_uint i) 
-         (if Uint63.lt i imax then
-	   aux (Uint63.add i (Uint63.of_int 1))
+let foldi f min max cont =
+  let imin = to_uint min and imax = to_uint max in
+  if Uint63.le imin imax then
+    let rec aux i a =
+      f (mk_uint i) 
+        (if Uint63.lt i imax then
+	    aux (Uint63.add i (Uint63.of_int 1))
 	 else cont) a in
-      aux imin
-    else cont
-  else accu _A _B f min max cont
+    aux imin
+  else cont
 
-let foldi_down_cont accu _A _B f max min cont =
-  if is_int max && is_int min then
-    let imax, imin = to_uint max, to_uint min in
-    if Uint63.le imin imax then
-      let rec aux i a =
-        f (mk_uint i) 
-         (if Uint63.lt imin i then
-	   aux (Uint63.sub i (Uint63.of_int 1))
+
+let foldi_down f max min cont =
+  let imax = to_uint max and imin = to_uint min in
+  if Uint63.le imin imax then
+    let rec aux i a =
+      f (mk_uint i) 
+        (if Uint63.lt imin i then
+	    aux (Uint63.sub i (Uint63.of_int 1))
 	 else cont) a in
-      aux imax
-    else cont
-  else accu _A _B f max min cont
+    aux imax
+  else cont
 
 let is_parray t =
   let t = Obj.magic t in
@@ -507,67 +390,38 @@ let is_parray t =
 let to_parray t = Obj.magic t
 let of_parray t = Obj.magic t
 
-let arraymake accu vA n def = 
-  if is_int n then 
-    of_parray (Parray.make (to_uint n) def)
-  else accu vA n def
+let arraymake n def = 
+  of_parray (Parray.make (to_uint n) def)
 
-let no_check_arrayget t n =
+let arrayget t n =
    Parray.get (to_parray t) (to_uint n)
 
-let arrayget accu vA t n =
-  if is_parray t && is_int n then
-    Parray.get (to_parray t) (to_uint n)
-  else accu vA t n
+let arraydefault t =
+  Parray.default (to_parray t) 
 
-let arraydefault accu vA t =
-  if is_parray t then  
-    Parray.default (to_parray t) 
-  else accu vA t 
-
-let no_check_arrayset t n v =
+let arrayset t n v =
   of_parray (Parray.set (to_parray t) (to_uint n) v)
 
-let no_check_arraydestrset t n v =
+let arraydestrset t n v =
   of_parray (Parray.destr_set (to_parray t) (to_uint n) v)
 
-let arrayset accu vA t n v =
-  if is_parray t && is_int n then
-    of_parray (Parray.set (to_parray t) (to_uint n) v)
-  else accu vA t n v
+let arraycopy t = 
+  of_parray (Parray.copy (to_parray t))
 
-let arraydestrset accu vA t n v =
-   if is_parray t && is_int n then
-    of_parray (Parray.destr_set (to_parray t) (to_uint n) v)
-  else accu vA t n v
+let arrayreroot t =
+  of_parray (Parray.reroot (to_parray t))
 
-let arraycopy accu vA t = 
-  if is_parray t then
-    of_parray (Parray.copy (to_parray t))
-  else accu vA t 
-
-let arrayreroot accu vA t =
-  if is_parray t then
-    of_parray (Parray.reroot (to_parray t))
-  else accu vA t 
-
-let arraylength accu vA t =
-  if is_parray t then
-    mk_uint (Parray.length (to_parray t))
-  else accu vA t
+let arraylength t =
+  mk_uint (Parray.length (to_parray t))
 
 let parray_of_array t =
   (Obj.magic (Parray.of_array t) : t)
 
-let arrayinit accu vA n (f:t->t) def =
-  if is_int n then 
-    of_parray (Parray.init (to_uint n) (Obj.magic f) def)
-  else accu vA n f def
+let arrayinit n (f:t->t) def =
+  of_parray (Parray.init (to_uint n) (Obj.magic f) def)
 
-let arraymap accu vA vB f t =
-  if is_parray t then
-    of_parray (Parray.map f (to_parray t))
-  else accu vA vB f t
+let arraymap f t =
+  of_parray (Parray.map f (to_parray t))
 
 let lt_b x y =
   Uint63.lt (to_uint x) (to_uint y)
@@ -575,35 +429,35 @@ let lt_b x y =
 let le_b x y =
   Uint63.le (to_uint x) (to_uint y)
 
-
 let to_resource t = Obj.magic t
 
 let is_resource t = 
   Obj.tag (Obj.repr t) = Obj.custom_tag 
 
-let resourcegetc accu r n = 
-  if is_resource r && is_int n then
-    mk_uint (Resource.getc (to_resource r) (to_uint n))
-  else accu r n
+let resourcegetc r n = 
+  mk_uint (Resource.getc (to_resource r) (to_uint n))
 
-let resourcegeti accu r n = 
-  if is_resource r && is_int n then
-    mk_uint (Resource.geti32 (to_resource r) (to_uint n))
-  else accu r n
+let resourcegeti r n = 
+  mk_uint (Resource.geti32 (to_resource r) (to_uint n))
 
-let resourcemake accu t =
-  if is_parray t then
-    try 
-      let t = to_parray t in
-      let len = Parray.length t in
-      let a = 
-        Array.init (Uint63.to_int len) (fun i -> 
-          let ei = Parray.get t (Uint63.of_int i) in
-          if is_int ei then to_uint ei 
-          else raise Not_found) in
-      mk_resource (Resource.make a)
-    with Not_found -> accu t
-  else accu t 
+let check_resource_name t =
+  if is_parray t then 
+    let t = to_parray t in
+    let len = Uint63.to_int (Parray.length t) in
+    let rec aux i = 
+      if i < len then
+        is_int (Parray.get t (Uint63.of_int i)) && aux (i+1)
+      else true in
+    aux 0
+  else false 
+  
+let resourcemake t =
+  let t = to_parray t in
+  let len = Parray.length t in
+  let a = 
+    Array.init (Uint63.to_int len)
+      (fun i ->  to_uint (Parray.get t (Uint63.of_int i))) in
+  mk_resource (Resource.make a)
 
 let hobcnv = Array.init 256 (fun i -> Printf.sprintf "%.2x" i)
 let bohcnv = Array.init 256 (fun i -> i -
