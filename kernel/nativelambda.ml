@@ -1029,8 +1029,8 @@ let lambda_of_constr env c =
     (msgerrnl (str "Lambda = \n" ++ pp_lam lam);flush_all()); 
   end; *)
   let lam = optimize lam in
-  let lam = remove_iterator () lam in
-  let lam = optimize lam in
+(*  let lam = remove_iterator () lam in
+  let lam = optimize lam in *)
   lam 
 
 let mk_lazy c =
