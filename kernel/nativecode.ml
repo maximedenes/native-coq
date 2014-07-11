@@ -162,10 +162,10 @@ type primitive =
   | Mk_ind
   | Mk_const
   | Mk_sw
-  | Mk_fix of rec_pos * int 
-  | Mk_cofix of int
-  | Mk_rel of int
-  | Mk_var of identifier
+  | Mk_fix         of rec_pos * int 
+  | Mk_cofix       of int
+  | Mk_rel         of int
+  | Mk_var         of identifier
   | Is_accu
   | Is_int
   | Is_array
@@ -177,50 +177,54 @@ type primitive =
   | Val_to_int
   | Mk_uint
   | Val_of_bool
+
   (* Coq primitive with check *)
-  | Chead0 of prim_path
-  | Ctail0 of prim_path
-  | Cadd of prim_path
-  | Csub of prim_path
-  | Cmul of prim_path
-  | Cdiv of prim_path
-  | Crem of prim_path
-  | Clsr of prim_path
-  | Clsl of prim_path
-  | Cand of prim_path
-  | Cor of prim_path
-  | Cxor of prim_path
-  | Caddc of prim_path
-  | Csubc of prim_path
-  | CaddCarryC of prim_path
-  | CsubCarryC of prim_path
-  | Cmulc of prim_path
-  | Cdiveucl of prim_path
-  | Cdiv21 of prim_path
-  | CaddMulDiv of prim_path
-  | Ceqb_correct of prim_path
-  | Ceq of prim_path
-  | Clt of prim_path
-  | Cle of prim_path
+  | Chead0         of prim_path
+  | Ctail0         of prim_path
+  | Cadd           of prim_path
+  | Csub           of prim_path
+  | Cmul           of prim_path
+  | Cdiv           of prim_path
+  | Crem           of prim_path
+  | Clsr           of prim_path
+  | Clsl           of prim_path
+  | Cand           of prim_path
+  | Cor            of prim_path
+  | Cxor           of prim_path
+  | Caddc          of prim_path
+  | Csubc          of prim_path
+  | CaddCarryC     of prim_path
+  | CsubCarryC     of prim_path
+  | Cmulc          of prim_path
+  | Cdiveucl       of prim_path
+  | Cdiv21         of prim_path
+  | CaddMulDiv     of prim_path
+  | Ceqb_correct   of prim_path
+  | Ceq            of prim_path
+  | Clt            of prim_path
+  | Cle            of prim_path
   | Clt_b 
   | Cle_b
-  | Ccompare of prim_path
-  | Cprint of prim_path
-  | Carraymake of prim_path
-  | Carrayget of prim_path
-  | Carraydefault of prim_path
-  | Carrayset of prim_path
+  | Ccompare       of prim_path
+  | Cprint         of prim_path
+
+  | Carraymake     of prim_path
+  | Carrayget      of prim_path
+  | Carraydefault  of prim_path
+  | Carrayset      of prim_path
   | Carraydestrset of prim_path
-  | Carraycopy of prim_path
-  | Carrayreroot of prim_path
-  | Carraylength of prim_path
-  | Carrayinit of prim_path
-  | Carraymap of prim_path
-  | Cresourcemake of prim_path
-  | Cresourcegetc of prim_path
-  | Cresourcegeti of prim_path
-  | Cfoldi of prim_path
-  | Cfoldi_down of prim_path
+  | Carraycopy     of prim_path
+  | Carrayreroot   of prim_path
+  | Carraylength   of prim_path
+  | Carrayinit     of prim_path
+  | Carraymap      of prim_path
+
+  | Cresourcemake  of prim_path
+  | Cresourcegetc  of prim_path
+  | Cresourcegeti  of prim_path
+
+  | Cfoldi         of prim_path
+  | Cfoldi_down    of prim_path
   (* Caml primitive *)
   | MLand
   | MLle
@@ -568,7 +572,7 @@ let mlprim_of_iprim p kn =
   match p with
   | Native.Int63foldi      -> Cfoldi (Some kn)
   | Native.Int63foldi_down -> Cfoldi_down (Some kn)
-  | Native.ArrayCreate     -> assert false (* Should be inline before *)
+  | Native.ArrayCreate     -> assert false  (* Should be inline before *)
 
 (*type prim_aux = 
   | PAprim of (string * constant) option * Native.prim_op * prim_aux array
@@ -1678,7 +1682,7 @@ let compile_iprim accu iprim =
       (Cfoldi_down None) [|f;max;min;cont|]
       accu [|vA;vB;f;max;min;cont|]
       
-  | Native.ArrayCreate -> assert false
+  | Native.ArrayCreate -> assert false 
 
 let mk_int1 prim accu = 
   let _x, x = mk_lname "x" 0 in
@@ -1769,7 +1773,7 @@ let compile_constant env prefix con body =
         optimize_stk (Glet(Gconstant ("",con),code)::auxdefs)
       in
       l, name
-  | Primitive op -> 
+  | Primitive op when op <> Native.Oiterator Native.ArrayCreate -> 
    (* let accu = ... 
       let op = check_op accu ... 
       compilation optimise if ... then no_check_add ... else op ... *)
