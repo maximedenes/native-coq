@@ -360,28 +360,21 @@ let print x =
   flush stderr;
   x
 
-let foldi f min max cont =
+let foldi f min max a =
   let imin = to_uint min and imax = to_uint max in
-  if Uint63.le imin imax then
-    let rec aux i a =
-      f (mk_uint i) 
-        (if Uint63.lt i imax then
-	    aux (Uint63.add i (Uint63.of_int 1))
-	 else cont) a in
-    aux imin
-  else cont
+  let rec aux i =
+    if Uint63.lt i imax then 
+      f (mk_uint i) (aux (Uint63.add i (Uint63.of_int 1)))
+    else a in
+  aux imin
 
-
-let foldi_down f max min cont =
+let foldi_down f max min a =
   let imax = to_uint max and imin = to_uint min in
-  if Uint63.le imin imax then
-    let rec aux i a =
-      f (mk_uint i) 
-        (if Uint63.lt imin i then
-	    aux (Uint63.sub i (Uint63.of_int 1))
-	 else cont) a in
-    aux imax
-  else cont
+  let rec aux i =
+    if Uint63.lt imin i then
+      f (mk_uint i) (aux (Uint63.sub i (Uint63.of_int 1)))
+    else a in
+  aux imax
 
 let is_parray t =
   let t = Obj.magic t in

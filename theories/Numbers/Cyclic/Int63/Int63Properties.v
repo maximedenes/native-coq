@@ -1760,7 +1760,7 @@ Proof.
 Qed.
 
 (** Iterators *)
-
+(*
 Lemma foldi_gt : forall A f from to (a:A), 
   (to < from)%int63 = true -> foldi f from to a = a.
 Proof.
@@ -1836,7 +1836,7 @@ Lemma fold_down_gt : forall A f from downto (a:A),
 Proof.
  intros;apply foldi_down_gt;trivial.
 Qed.
-
+*)
 Require Import Wf_Z.
 
 Lemma int_ind : forall (P:int -> Type),
@@ -1893,7 +1893,7 @@ Proof.
  rewrite H;apply (X [| max - min |]);trivial;rewrite sub_spec, Zmod_small;auto with zarith.
 Qed.
 
-Lemma foldi_cont_ZInd : forall A B (P: Z -> (A -> B) -> Prop) (f:int -> (A -> B) -> (A -> B)) min max cont,
+(*Lemma foldi_cont_ZInd : forall A B (P: Z -> (A -> B) -> Prop) (f:int -> (A -> B) -> (A -> B)) min max cont,
    (forall z, ([|max|] < z)%Z -> P z cont) ->
    (forall i cont, min <= i = true -> i <= max = true -> P ([|i|] + 1)%Z cont -> P [|i|] (f i cont)) ->
    P [|min|] (foldi_cont f min max cont).
@@ -1915,7 +1915,7 @@ Proof.
  assert (max < min = true) by (rewrite ltb_negb_geb,Heq;trivial).
  rewrite foldi_cont_gt;trivial;apply Ha;rewrite <- ltb_spec;trivial.
 Qed.
-
+*)
 Lemma of_pos_spec : forall p, [|of_pos p|] = Zpos p mod wB. 
 Proof.
  unfold of_pos.
@@ -1987,7 +1987,7 @@ Proof.
  rewrite e, Z_mod_zero_opp_r;trivial.
  rewrite Z_mod_nz_opp_r, Zminus_mod, Z_mod_same_full, Zmod_mod, Zminus_0_r, Zmod_mod;trivial.
 Qed.
-
+(*
 Lemma foldi_cont_Ind : forall A B (P: int -> (A -> B) -> Prop) (f:int -> (A -> B) -> (A -> B)) min max cont,
    max < max_int = true ->
    (forall z, max < z = true -> P z cont) ->
@@ -2560,7 +2560,8 @@ Proof.
  destruct (to_Z_bounded i);rewrite leb_spec.
  change [|digits - 1 |] with ([|digits|] - 1)%Z;omega.
 Qed.
-
+*)
+(*
 Lemma land_max_int_l : forall i, max_int land i = i.
 Proof.
   intros;apply bit_eq;intros.
@@ -2576,4 +2577,4 @@ Lemma land_max_int_r : forall i, i land max_int = i.
 Proof.
  intros;rewrite land_comm;apply land_max_int_l.
 Qed.
-
+*)

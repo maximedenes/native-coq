@@ -76,7 +76,7 @@ Axiom get_ext : forall A (t1 t2:array A),
 Definition to_list {A:Type} (t:array A) :=
   let len := length t in
   if 0 == len then nil
-  else foldi_down (fun i l => t.[i] :: l)%list (len - 1) 0 nil.
+  else foldi_down (fun i l => t.[i-1] :: l)%list len 0 nil.
 
 Definition forallbi {A:Type} (f:int-> A->bool) (t:array A) :=
   let len := length t in
@@ -99,7 +99,8 @@ Definition existsb {A:Type} (f:A->bool) (t:array A) :=
   else existsb (fun i => f (t.[i])) 0 (len - 1).
 
 (* TODO : We should add init as native and add it *)
-Definition mapi {A B:Type} (f:int->A->B) (t:array A) :=
+(* FIXME *)
+(*Definition mapi {A B:Type} (f:int->A->B) (t:array A) :=
   let size := length t in
   let def := f size (default t) in
   let tb := make size def in
@@ -125,7 +126,7 @@ Definition fold_right {A B:Type} (f: A -> B -> B) (t:array A) b :=
   let len := length t in
   if 0 == len then b 
   else foldi_down (fun i b => f (t.[i]) b) (len - 1) 0 b.
-
+*)
 (* Lemmas *)
 
 Lemma default_copy : forall A (t:array A), default (copy t) = default t.
@@ -162,6 +163,7 @@ Proof.
  elim Hd;rewrite get_outofbound;trivial.
 Qed.
 
+(*
 Lemma foldi_left_Ind : 
      forall A B (P : int -> A -> Prop) (f : int -> A -> B -> A) (t:array B),
      (forall a i, i < length t = true -> P i a -> P (i+1) (f i a (t.[i]))) ->
@@ -272,9 +274,10 @@ Lemma existsb_spec : forall A (f : A -> bool) t,
 Proof.
  intros A f;apply (existsbi_spec A (fun i => f)).
 Qed.
-
+*)
 Local Open Scope list_scope.
 
+(*
 Definition to_list_ntr A (t:array A) := 
   let len := length t in
   if 0 == len then nil
@@ -313,7 +316,7 @@ Proof.
   unfold foldi_ntr;rewrite foldi_lt, foldi_cont_lt;trivial;simpl.
   apply Hrec.
 Qed.
-
+*)
 Require Import Bool.
 Local Open Scope bool_scope.
 
@@ -321,7 +324,7 @@ Definition eqb {A:Type} (Aeqb: A->A->bool) (t1 t2:array A) :=
   (length t1 == length t2) &&
   Aeqb (default t1) (default t2) && 
   forallbi (fun i a1 => Aeqb a1 (t2.[i])) t1.
-
+(*
 Lemma reflect_eqb : forall (A:Type) (Aeqb:A->A->bool),
   (forall a1 a2, reflect (a1 = a2) (Aeqb a1 a2)) ->
   forall t1 t2, reflect (t1 = t2) (eqb Aeqb t1 t2).
@@ -341,7 +344,7 @@ Proof.
  intros i _; rewrite <- (reflect_iff _ _ (HA _ _));trivial.
  rewrite <- not_true_iff_false, <- (reflect_iff _ _ (HA _ _)) in H0;apply H0;trivial.
 Qed.
-
+*)
 (* The state monad *)
 
 Register create : 

@@ -127,27 +127,29 @@ Register tail0 : int -> int as int63_tail0.
 
 (** Iterators *)
 
-Definition foldi {A} (f:int -> A -> A) from to :=
-  foldi_cont (fun i cont a => cont (f i a)) from to (fun a => a).
+Definition foldi {A} (f:int -> A -> A) from to a :=
+  foldi_right (fun i cont a => cont (f i a)) from to (fun a => a) a.
 Register foldi as PrimInline.
 
-Definition fold {A} (f: A -> A) from to :=
-  foldi_cont (fun i cont a => cont (f a)) from to (fun a => a).
+Definition fold {A} (f: A -> A) from to a :=
+  foldi_right (fun i cont a => cont (f a)) from to (fun a => a) a.
 Register fold as PrimInline.
 
-Definition foldi_down {A} (f:int -> A -> A) from downto :=
-  foldi_down_cont (fun i cont a => cont (f i a)) from downto (fun a => a).
+Definition foldi_down {A} (f:int -> A -> A) from downto a :=
+  foldi_down_right (fun i cont a => cont (f i a)) from downto (fun a => a) a.
 Register foldi_down as PrimInline.
 
-Definition fold_down {A} (f:A -> A) from downto :=
-  foldi_down_cont (fun i cont a => cont (f a)) from downto (fun a => a).
+Definition fold_down {A} (f:A -> A) from downto a :=
+  foldi_down_right (fun i cont a => cont (f a)) from downto (fun a => a) a.
 Register fold_down as PrimInline.
 
 Definition forallb (f:int -> bool) from to :=
-  foldi_cont (fun i cont _ => if f i then cont tt else false) from to (fun _ => true) tt.
+  foldi_right (fun i cont _ => if f i then cont tt else false) 
+     from to (fun _ => f to) tt.
 
 Definition existsb (f:int -> bool) from to :=
-  foldi_cont (fun i cont _ => if f i then true else cont tt) from to (fun _ => false) tt.
+  foldi_right (fun i cont _ => if f i then true else cont tt) 
+     from to (fun _ => f to) tt.
 
 (** Translation to Z *)
 

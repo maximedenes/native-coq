@@ -72,24 +72,30 @@ Notation "m <= n" := (leb m n) : int63_scope.
      eqb_correct i i (eq_refl true) ---> (eq_refl i) *)
 Register eqb_correct : forall i j, (i==j)%int63 = true -> i = j as int63_eqb_correct.
 
-
 (* Iterators *)
-Register foldi_cont : 
-   forall 
-     {A B     : Type}
+Register foldi_right :
+  forall 
+     {A       : Type}
+     (f       : int -> A -> A ) 
+     (from to : int),
+     A -> A
+     as int63_foldi.
+
+(*Definition foldi_cont {A B : type} 
      (f       : int -> (A -> B) -> A -> B) 
      (from to : int)
      (cont    : A -> B), 
-     A -> B
-     as int63_foldi.
+     (a:A) : B := 
+  if i 
+  foldi_right f from to (f to) 
+     as int63_foldi. *)
 
-Register foldi_down_cont : 
+Register foldi_down_right : 
   forall 
-    {A B         : Type}
-    (f           : int -> (A -> B) -> A -> B)
-    (from downto : int)
-    (cont        : A -> B),
-    A -> B
+    {A           : Type}
+    (f           : int -> A -> A)
+    (from downto : int),
+    A -> A
     as int63_foldi_down.
 
 (* Print *)

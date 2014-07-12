@@ -69,8 +69,6 @@ type op =
   | Ocaml_prim of caml_prim
   | Oiterator of iterator
 
-
-
 let caml_prim_to_string = function
   | Int63print -> "print"
   | ArrayMake -> "make"
@@ -154,7 +152,7 @@ let caml_prim_kind = function
 	
 let iterator_kind = function
  | ArrayCreate -> [Kparam;Kparam;Karg;Karg;Karg]
- | Int63foldi_down | Int63foldi -> [Kparam;Kparam;Karg;Kwhnf;Kwhnf;Karg]
+ | Int63foldi_down | Int63foldi -> [Kparam;Karg;Kwhnf;Kwhnf;Karg]
     
 let prim_kind = function
   | Int63head0 | Int63tail0 -> [Kwhnf]
@@ -192,7 +190,7 @@ let caml_prim_arity = function
 	
 let iterator_arity = function 
   | ArrayCreate -> (2,3)
-  | Int63foldi | Int63foldi_down -> (2, 4)
+  | Int63foldi | Int63foldi_down -> (1, 4)
     
 let prim_arity = function
   | Int63head0 | Int63tail0 -> (0,1)

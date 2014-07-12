@@ -688,7 +688,8 @@ let r_n = mkLrel _n
 let lambda_of_iterator env kn op args =
   match op with
   | Native.Int63foldi ->
-      (* args = [|A;B;f;min;max;cont;extra|] *)
+      (* FIXME *)
+      (* args = [|A;f;min;max;cont;extra|] *)
       (* 
          if min <= max then
            (rec aux i a =
@@ -700,14 +701,14 @@ let lambda_of_iterator env kn op args =
        *)
       
       let extra =
-	if Array.length args > 6 then
-	  Array.sub args 6 (Array.length args - 6)
+	if Array.length args > 5 then
+	  Array.sub args 5 (Array.length args - 5)
 	else [||] in
       let extra4 = Array.map (lam_lift 4) extra in
-      Llet(_cont, args.(5),
-      Llet(_max, lam_lift 1 args.(4),
-      Llet(_min, lam_lift 2 args.(3),
-      Llet(_f, lam_lift 3 args.(2),
+      Llet(_cont, args.(4),
+      Llet(_max, lam_lift 1 args.(3),
+      Llet(_min, lam_lift 2 args.(2),
+      Llet(_f, lam_lift 3 args.(1),
       (* f->#1;min->#2;max->#3;cont->#4 *)
       Lif(areint (r_min 2) (r_max 3), (*then*)
   	  Lif(isle (r_min 2) (r_max 3), (*then*)
@@ -728,12 +729,13 @@ let lambda_of_iterator env kn op args =
 		extra4),
 	  Lapp(Lconst kn, 
 	       Array.append
-		 [|lam_lift 4 args.(0); lam_lift 4 args.(1);
+		 [|lam_lift 4 args.(0); 
 		   r_f 1; r_min 2; r_max 3; r_cont 4|]
 		 extra4))))))
 	
    | Native.Int63foldi_down -> 
-       (* args = [|A;B;f;max;min;cont;extra|] *)
+      (* FIXME *) 
+      (* args = [|A;B;f;max;min;cont;extra|] *)
       (* 
          if min <= max then
            (rec aux i a =
