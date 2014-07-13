@@ -243,7 +243,7 @@ let rec beta_red f args =
 (* that is :                                                          *)
 (* - Reduce [let] is the definition can be substituted i.e:           *)
 (*    - a variable (rel or identifier)                                *)
- (*    - a constant                                                    *)
+(*    - a constant                                                    *)
 (*    - a structured constant                                         *)
 (*    - a function                                                    *)
 (* - Transform beta redex into [let] expression                       *)
@@ -256,26 +256,6 @@ let can_subst lam =
   | Lrel _ | Lvar _ | Lconst _ | Lint _ 
   | Lval _ | Lsort _ | Lind _ | Llam _ | Lconstruct _ -> true
   | _ -> false
-
-(*let can_merge_if bt bf =
-  match bt, bf with
-  | Llam(idst,_), Llam(idsf,_) -> true
-  | _ -> false
-
-let merge_if t bt bf =
-  let (idst,bodyt) = decompose_Llam bt in
-  let (idsf,bodyf) = decompose_Llam bf in
-  let nt = Array.length idst in
-  let nf = Array.length idsf in
-  let common,idst,idsf = 
-    if nt = nf then idst, [||], [||] 
-    else
-      if nt < nf then idst,[||], Array.sub idsf nt (nf - nt)
-      else idsf, Array.sub idst nf (nt - nf), [||] in
-  Llam(common,
-       Lif(lam_lift (Array.length common) t, 
-	   mkLlam idst bodyt,
-	   mkLlam idsf bodyf)) *)
 
 let is_ST_br (_, _, body) = 
   match body with
@@ -321,14 +301,6 @@ let rec simplify subst lam =
       | lam' -> lam'
       end
 
-(*  | Lif(t,bt,bf) ->
-      let t' = simplify subst t in
-      let bt' = simplify subst bt in
-      let bf' = simplify subst bf in
-      if can_merge_if bt' bf' then merge_if t' bt' bf'
-      else 
-	if t == t' && bt == bt' && bf == bf' then lam
-	else Lif(t',bt',bf') *)
   | Lcase(annot, t, a, br) ->
     let a' = simplify subst a in
     (* FIXME add case for Lval *)
@@ -509,30 +481,8 @@ let rec get_allias env kn =
 
 (* Translation of iterators *)
 
-let isle l1 l2 = Lprim(None, Native.Int63le, [|l1;l2|])
-let islt l1 l2 = Lprim(None, Native.Int63lt, [|l1;l2|])
-let areint l1 l2 = Lareint [|l1; l2|]
 let isint l = Lareint [|l|]
-let add63 l1 l2 =Lprim(None, Native.Int63add, [|l1;l2|]) 
-let sub63 l1 l2 =Lprim(None, Native.Int63sub, [|l1;l2|]) 
-let one63 = Lint (Uint63.of_int 1)
-
-let _f = Name(id_of_string "f")
-let _min = Name (id_of_string "min") 
-let _max = Name (id_of_string "max") 
-let _cont = Name (id_of_string "cont")
-let _aux = Name (id_of_string "aux") 
-let _i = Name (id_of_string "i") 
-let _i' = Name (id_of_string "i'")
 let _a = Name (id_of_string "a")
-
-let r_f = mkLrel _f
-let r_min = mkLrel _min
-let r_max = mkLrel _max
-let r_cont = mkLrel _cont
-let r_aux = mkLrel _aux
-let r_i = mkLrel _i
-let r_i' = mkLrel _i'
 let r_a = mkLrel _a
 
 let _U = Name(id_of_string "U")
@@ -550,93 +500,6 @@ let r_t0 = mkLrel _t0
 let r_m = mkLrel _m
 let r_k = mkLrel _k 
 let r_n = mkLrel _n
-
-let expand_iterator prefix kn op args = 
-  match op with
-  | Native.Int63foldi  -> 
-      (* args = [|A;B;f;min;max;cont;extra|] *)
-      (* 
-         if min <= max then
-           (rec aux i a = f i (if i < max then aux (i+1) else cont) a)
-            min extra
-         else
- 	   cont extra
-       *)
-      
-    let extra =
-	if Array.length args > 6 then
-	  Array.sub args 6 (Array.length args - 6)
-	else [||] in
-    let extra2 = Array.map (lam_lift 2) extra in
-    let cont = args.(5) in
-    let cont2 = lam_lift 2 cont in
-    let f = args.(2) in
-    Llet(_max, args.(4),
-    Llet(_min, lam_lift 1 args.(3),
-    Lif(areint (r_min 1) (r_max 2), (*then*)
-  	Lif(isle (r_min 1) (r_max 2), (*then*)
-	    Lapp
-              (Lrec(_aux, mkLlam Value [|_i;_a|]
-                 (let lcont = 
-                   Lif(islt (r_i 2) (r_max 5),
-                       Lapp(r_aux 3, [| add63 (r_i 2) one63|]),
-                       (lam_lift 5 cont)) in
-                 beta_red (lam_lift 5 f) [| r_i 2; lcont ; r_a 1|])),
-               Array.append [|r_min 1|] extra2),
-            mkLapp cont2 extra2),
-	Lapp(Lconst (prefix, kn),
-	     Array.append
-	       [|lam_lift 2 args.(0); lam_lift 2 args.(1);
-		 lam_lift 2 f; r_min 1; r_max 2; cont2|] extra2))))
-	
-   | Native.Int63foldi_down -> 
-       (* args = [|A;B;f;max;min;cont;extra|] *)
-       (* 
-         if min <= max then
-           (rec aux i a = f i (if min < i then aux (i-1) else cont) a)
-            min extra
-         else
- 	   cont extra
-       *)
-     let extra =
-       if Array.length args > 6 then
-	 Array.sub args 6 (Array.length args - 6)
-       else [||] in
-     let extra2 = Array.map (lam_lift 2) extra in
-     let cont = args.(5) in
-     let cont2 = lam_lift 2 cont in
-     let f = args.(2) in
-     Llet(_max, args.(3),
-     Llet(_min, lam_lift 1 args.(3),
-     Lif(areint (r_min 1) (r_max 2), (*then*)
-  	Lif(isle (r_min 1) (r_max 2), (*then*)
-	    Lapp
-              (Lrec(_aux, mkLlam Value [|_i;_a|]
-                 (let lcont = 
-                   Lif(islt (r_max 4) (r_i 2) ,
-                       Lapp(r_aux 3, [| add63 (r_i 2) one63|]),
-                       (lam_lift 5 cont)) in
-                 beta_red (lam_lift 5 f) [| r_i 2; lcont ; r_a 1|])),
-               Array.append [|r_max 2|] extra2),
-            mkLapp cont2 extra2),
-	Lapp(Lconst (prefix, kn),
-	     Array.append
-	       [|lam_lift 2 args.(0); lam_lift 2 args.(1);
-		 lam_lift 2 f; r_max 2; r_min 1; cont2|] extra2))))
-
-   | Native.ArrayCreate -> assert false
-
-let rec remove_iterator () lam = 
-  match lam with
-  | Liprim(prefix, kn, op, args) ->
-    let args = Array.map (remove_iterator ()) args in
-    simplify subst_id (expand_iterator prefix kn op args)
-  | _ -> 
-    map_lam_with_binders (fun _ _ -> ()) remove_iterator () lam 
-  
-
-
-
 
 let lambda_of_iterator env kn op args =
   match op with
@@ -714,7 +577,6 @@ let lambda_of_iterator env kn op args =
      let t = prmake [| fA; fn; fdft |] in (* make n dft *) 
      let res = 
        mkLapp ff [| st; uni; bind; read; write; t |] in
-     (* TODO optimize res *)
      res
 
 
@@ -723,13 +585,14 @@ let _h =  Name(id_of_string "h")
 
 let prim env kn op args =
   match op with
+  (* Should we expense of not *)
   | Native.Oprim Native.Int63eqb_correct ->
-      let prefix = get_const_prefix env kn in
-      let h = Lrel(_h,1) in
-      Llet(_h,args.(2),
-	Lif(isint h,
-            Lint (Uint63.of_int 0) (* constructor eq_refl *),
-	    Lapp(Lconst (prefix,kn), [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
+    let prefix = get_const_prefix env kn in
+    let h = Lrel(_h,1) in
+    Llet(_h,args.(2),
+    Lif(isint h,
+       Lint (Uint63.of_int 0) (* constructor eq_refl *),
+    Lapp(Lconst (prefix,kn), [|lam_lift 1 args.(0);lam_lift 1 args.(1);h|])))
   | Native.Oprim p      ->
       let prefix = get_const_prefix env kn in
       Lprim(Some (prefix, kn), p, args)

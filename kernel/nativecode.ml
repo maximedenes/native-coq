@@ -304,18 +304,24 @@ let fv_lam l =
     | MLsequence(l1,l2) -> aux l1 bind (aux l2 bind fv) in
   aux l LNset.empty LNset.empty
 
+let fresh_local s = 
+  let _x = fresh_lname (Name (id_of_string s)) in
+  _x, MLlocal _x
+
+let mk_local x = MLlocal x
 let is_int x = MLapp(MLprimitive Is_int, [|x|])
 let is_array x = MLapp(MLprimitive Is_array, [|x|])
 let is_resource x = MLapp(MLprimitive Is_resource, [|x|])
 let mk_and t1 t2 = MLapp(MLprimitive MLand, [|t1; t2|])
 let is_lt t1 t2 = MLapp(MLprimitive MLlt, [|t1; t2|])
-let mk_add t1 t2 = MLapp(MLprimitive (Cadd None), [|t1; t2|])
+let mk_add_imm t1 t2 = MLapp(MLprimitive (Cadd None), [|t1; t2|])
+let mk_sub_imm t1 t2 = MLapp(MLprimitive (Csub None), [|t1; t2|])
 let mk_int i = MLapp(MLprimitive Mk_uint, [|MLuint (Uint63.of_int i) |])
 
 let rec mkMLlet x f1 f2 = 
   match f1 with
   | MLlet(y, fd, fb) ->
-    MLlet(y,fd, mkMLlet x fd f2)
+    MLlet(y, fd, mkMLlet x fb f2)
   | _ -> MLlet(x, f1, f2)
 
 let mkMLlam params body =
@@ -873,7 +879,7 @@ let compile_cprim prefix kn p args =
       let tnorm = Array.mapi ml_of_fix tb in
       let fvn,fvr = !(env_n.env_named), !(env_n.env_urel) in
       let fv_params = fv_params env_n in
-      let fv_args' = Array.map (fun id -> MLlocal id) fv_params in
+      let fv_args' = Array.map mk_local fv_params in
       let norm_params = Array.append fv_params lf in
       Array.iteri (fun i body ->
 	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body)) tnorm;
@@ -883,12 +889,12 @@ let compile_cprim prefix kn p args =
       (* Compilation of fix *)
       let fv_args = fv_args env fvn fvr in      
       let lf, env = push_rels env ids in
-      let lf_args = Array.map (fun id -> MLlocal id) lf in
+      let lf_args = Array.map mk_local lf in
       let mk_norm = MLapp(MLglobal norm, fv_args) in
       let mkrec i lname = 
 	let paramsi = t_params.(i) in
 	let reci = MLlocal (paramsi.(rec_pos.(i))) in
-	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
+	let pargsi = Array.map mk_local paramsi in
 	let body = 
 	  MLif(MLapp(MLprimitive Is_accu,[|reci|]),
 	       mkMLapp 
@@ -924,7 +930,7 @@ let compile_cprim prefix kn p args =
       let tnorm = Array.mapi ml_of_fix tb in
       let fvn,fvr = !(env_n.env_named), !(env_n.env_urel) in
       let fv_params = fv_params env_n in
-      let fv_args' = Array.map (fun id -> MLlocal id) fv_params in
+      let fv_args' = Array.map mk_local fv_params in
       let norm_params = Array.append fv_params lf in
       Array.iteri (fun i body ->
 	push_global_let (t_norm_f.(i)) (mkMLlam norm_params body)) tnorm;
@@ -937,10 +943,10 @@ let compile_cprim prefix kn p args =
       let lnorm = fresh_lname Anonymous in
       let ltype = fresh_lname Anonymous in
       let lf, env = push_rels env ids in
-      let lf_args = Array.map (fun id -> MLlocal id) lf in
+      let lf_args = Array.map mk_local lf in
       let upd i lname cont =
 	let paramsi = t_params.(i) in
-	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
+	let pargsi = Array.map mk_local paramsi in
 	let uniti = fresh_lname Anonymous in
 	let body =
 	  MLlam(Array.append paramsi [|uniti|],
@@ -955,19 +961,6 @@ let compile_cprim prefix kn p args =
 	  cont in
       let init = Util.array_fold_right_i mk_let lf upd in 
       mkMLlet lnorm mk_norm (mkMLlet ltype mk_type init)
-  (*    	    
-      let mkrec i lname = 
-	let paramsi = t_params.(i) in
-	let pargsi = Array.map (fun id -> MLlocal id) paramsi in
-	let uniti = fresh_lname Anonymous in
-	let body = 
-	  MLapp( MLprimitive(Mk_cofix i),
-		 [|mk_type;mk_norm; 
-		   MLlam([|uniti|],
-			 MLapp(MLglobal t_norm_f.(i),
-			       Array.concat [fv_args;lf_args;pargsi]))|]) in
-	(lname, paramsi, body) in
-      MLletrec(Array.mapi mkrec lf, lf_args.(start)) *)
    
   | Lmakeblock (prefix,cn,_,args) ->
       MLconstruct(prefix,cn,Array.map (ml_of_lam env l) args)
@@ -1085,6 +1078,22 @@ let commutative_cut annot a (l,accu) bs args =
      | _ -> assert false in
   MLmatch(annot, a, (l,mkMLapp accu args), Array.map mkb bs)
 
+type simplify_test = 
+  | Tml of mllambda
+  | Tbool of bool
+
+let rec simplify_test f = 
+  match f with
+  | MLapp(MLprimitive MLand, [|t1; t2|]) ->
+    begin match simplify_test t1, simplify_test t2 with
+    | Tbool false, _ | _, Tbool false-> Tbool false
+    | Tbool true, t | t, Tbool true -> t
+    | Tml t1, Tml t2 -> Tml (MLapp(MLprimitive MLand, [|t1;t2|]))
+    end
+  | MLapp(MLprimitive Is_int, [|MLapp(MLprimitive Mk_uint, [|MLuint _|])|]) ->
+    Tbool true
+  | _ -> Tml f
+
 let optimize gdef l =   
   let rec inline s l =
     match l with
@@ -1109,7 +1118,38 @@ let optimize gdef l =
 	  let params,body = get_case gdef i in
 	  let s, extra = subst_case params oargs s in
           mkMLapp (inline s body) extra
-
+        | MLprimitive (Carrayget (Some kn)) when Array.length oargs >= 3 ->
+          let _t, t = fresh_local "t" in
+          let _i, i = fresh_local "i" in 
+           mkMLlet _t oargs.(1)
+          (mkMLlet _i oargs.(2)
+          (MLif(mk_and (is_int i) (is_array t),
+            mkMLapp (MLapp(MLprimitive (Carrayget None), [|t; i|]))
+              (Array.sub oargs 3 (Array.length oargs - 3)),
+           let args' = Array.map (subst s) args in
+           args'.(1) <- t; args'.(2) <- i;
+           MLapp(MLglobal kn, args'))))
+        | MLprimitive (Carrayset (Some kn)) when Array.length oargs = 4 ->
+          let _t, t = fresh_local "t" in
+          let _i, i = fresh_local "i" in 
+          let _v, v = fresh_local "v" in 
+           mkMLlet _t oargs.(1)
+          (mkMLlet _i oargs.(2)
+          (mkMLlet _v oargs.(3)
+          (MLif(mk_and (is_int i) (is_array t),
+            MLapp(MLprimitive (Carrayset None), [|t; i; v|]),
+           MLapp(MLglobal kn, [|subst s args.(0); t; i; v|])))))
+        | MLprimitive (Carraydestrset (Some kn)) when Array.length oargs = 4 ->
+          (* This case is really important *)
+          let _t, t = fresh_local "t" in
+          let _i, i = fresh_local "i" in 
+          let _v, v = fresh_local "v" in 
+           mkMLlet _t oargs.(1)
+          (mkMLlet _i oargs.(2)
+          (mkMLlet _v oargs.(3)
+          (MLif(mk_and (is_int i) (is_array t),
+            MLapp(MLprimitive (Carraydestrset None), [|t; i; v|]),
+           MLapp(MLglobal kn, [|subst s args.(0); t; i; v|])))))
         | MLprimitive (Cfoldi (Some kn)) when Array.length oargs >= 5 ->
           (* A f from to a extra *)
           (* f = fun i a extraparams => body *)
@@ -1127,17 +1167,13 @@ let optimize gdef l =
           let args' = Array.map (subst s) args in
 
           if nparams >= 2 then begin
-            let _ifrom = fresh_lname (Name (id_of_string "ifrom"))  in
-            let ifrom  = MLlocal _ifrom in
-            let _i = fparams.(0) in 
-            let  i  = MLlocal _i in
-            let _ito = fresh_lname (Name (id_of_string "ito"))  in
-            let ito  = MLlocal _ito in
-            let _aux = fresh_lname (Name (id_of_string "aux")) in
-            let aux = MLlocal _aux in
+            let _ifrom, ifrom = fresh_local "ifrom" in
+            let _i = fparams.(0) in let i = MLlocal _i in
+            let _ito, ito = fresh_local "ito" in
+            let _aux, aux = fresh_local "aux" in
             let extraparams = Array.sub fparams 2 (nparams - 2) in
             let params = Array.append [|_i|] extraparams in
-            let aux1 = MLapp(aux, [|mk_add i (mk_int 1)|]) in
+            let aux1 = MLapp(aux, [|mk_add_imm i (mk_int 1)|]) in
             let args' = 
               let args' = Array.copy args' in
               args'.(2) <- ifrom;
@@ -1149,14 +1185,47 @@ let optimize gdef l =
                MLletrec ([|_aux, params, 
                  MLif(is_lt i ito,
                    subst (LNmap.add fparams.(1) aux1 LNmap.empty) body,
-                 mkMLapp oargs.(4) (Array.map (fun x -> MLlocal x) extraparams))
+                 mkMLapp oargs.(4) (Array.map mk_local extraparams))
                |],
                mkMLapp aux (Array.append [|ifrom|] 
                               (Array.sub oargs 5 (Array.length oargs - 5)))),
               MLapp(MLglobal kn, args'))))
           end else 
             MLapp(MLglobal kn, args') 
-        (* FIXME : Add case for foldi_down *) 
+
+
+        | MLprimitive (Cfoldi_down (Some kn)) when Array.length oargs >= 5 ->
+
+          let fparams, body = decompose_MLlam oargs.(1) in
+          let nparams = Array.length fparams in
+          let args' = Array.map (subst s) args in
+
+          if nparams >= 2 then begin
+            let _ifrom, ifrom = fresh_local "ifrom"  in
+            let _i = fparams.(0) in let i = MLlocal _i in
+            let _idownto, idownto = fresh_local "idownto"  in
+            let _aux, aux = fresh_local "aux" in
+            let extraparams = Array.sub fparams 2 (nparams - 2) in
+            let params = Array.append [|_i|] extraparams in
+            let aux1 = MLapp(aux, [|mk_sub_imm i (mk_int 1)|]) in
+            let args' = 
+              let args' = Array.copy args' in
+              args'.(2) <- ifrom;
+              args'.(3) <- idownto;
+              args' in
+             mkMLlet _ifrom oargs.(2)
+            (mkMLlet _idownto oargs.(3)
+            (MLif(mk_and (is_int ifrom) (is_int idownto),
+               MLletrec ([|_aux, params, 
+                 MLif(is_lt idownto i,
+                   subst (LNmap.add fparams.(1) aux1 LNmap.empty) body,
+                 mkMLapp oargs.(4) (Array.map mk_local extraparams))
+               |],
+               mkMLapp aux (Array.append [|ifrom|] 
+                              (Array.sub oargs 5 (Array.length oargs - 5)))),
+              MLapp(MLglobal kn, args'))))
+          end else 
+            MLapp(MLglobal kn, args') 
 	| _ -> mkMLapp (inline s f) oargs
 	end 
     | MLif(t,b1,b2) ->
@@ -1199,7 +1268,7 @@ let optimize gdef l =
                 Array.map (fun (c,body) -> c,opt_app body args) br)
       else
         let bd = Array.map (fun _ -> fresh_lname Anonymous) args in
-        let args' = Array.map (fun x -> MLlocal x) bd in
+        let args' = Array.map mk_local bd in
         let body = 
           MLmatch(aw,opt_app a [||], (x, mkMLapp accu args'),
                   Array.map (fun (c,body) -> c, opt_app body args') br) in
@@ -1210,7 +1279,7 @@ let optimize gdef l =
         MLif(opt_app t args, opt_app f1 args, opt_app f2 args)
       else 
         let bd = Array.map (fun _ -> fresh_lname Anonymous) args in
-        let args' = Array.map (fun x -> MLlocal x) bd in
+        let args' = Array.map mk_local bd in
         let body = 
           MLif(opt_app t [||], opt_app f1 args', opt_app f2 args') in
          Util.array_fold_right2 mkMLlet bd args body
@@ -1235,6 +1304,7 @@ let optimize gdef l =
     | MLlocal _ | MLglobal _ | MLprimitive _ ->
       mkMLapp f args in
 
+
   let rec remove_let s f = 
     match f with
     | MLlocal id -> (try LNmap.find id s with _ -> f)
@@ -1248,7 +1318,12 @@ let optimize gdef l =
       if can_subst def then remove_let (add_subst id def s) body
       else MLlet(id, def, remove_let s body)
     | MLapp(f,args) -> mkMLapp (remove_let s f) (Array.map (remove_let s) args)
-    | MLif(t,b1,b2) -> MLif(remove_let s t, remove_let s b1, remove_let s b2)
+    | MLif(t,b1,b2) -> 
+      begin match simplify_test (remove_let s t) with
+      | Tml t -> MLif(t, remove_let s b1, remove_let s b2)
+      | Tbool true -> remove_let s b1
+      | Tbool false -> remove_let s b2
+      end
     | MLmatch(annot,a,(l,accu),bs) ->
       let remove_letb (cargs,body) = (cargs,remove_let s body) in
       MLmatch(annot,remove_let s a, (l, subst s accu), 
@@ -1261,7 +1336,7 @@ let optimize gdef l =
 
   let l = inline LNmap.empty l in
   let l = opt_app l [||] in
-  let l = remove_let LNmap.empty l in
+  let l = remove_let LNmap.empty l in 
   l
 
 let optimize_stk stk =
