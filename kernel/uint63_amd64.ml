@@ -147,25 +147,6 @@ let mulc x y =
     let h = if lt l' l then h + 1 else h in
     (h + (x lsr 1), l')
 
-(*
-  let lx = ref (x land maxuint31) in
-  let ly = ref (y land maxuint31) in
-  let hx = x lsr 31 in
-  let hy = y lsr 31 in
-  let hr = ref (hx * hy) in
-  let lr = ref (!lx * !ly lor (!hr lsl 62)) in
-  hr := (!hr lsr 1) lor (hx land hy land 0x4000000000000000);
-  lx := !lx * hy;
-  ly := hx * !ly;
-  hr := !hr + (!lx lsr 32) + (!ly lsr 32);
-  lx := !lx lsl 31;
-  lr := !lr + !lx;
-  if lt !lr !lx then incr hr;
-  ly := !ly lsl 31;
-  lr := !lr + !ly;
-  if lt !lr !ly then incr hr;
-  (!hr, !lr)
-*)
 let eq (x : int) (y : int) = x = y
 
 let compare (x:int) (y:int) =

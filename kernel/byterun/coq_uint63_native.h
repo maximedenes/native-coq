@@ -80,7 +80,7 @@ value uint63_mulc(value x, value y, value* h) {
   ly <<= 32;
   lr += ly;
   if (lr < ly) { hr++; }
-  hr += lr >> 63;
+  hr = (hr << 1) | (lr >> 63);
   *h = Val_int(hr);
   return Val_int(lr);
 }
