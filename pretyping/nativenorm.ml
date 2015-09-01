@@ -332,7 +332,7 @@ let native_norm env c ty =
   let ml_filename, prefix = Nativelib.get_ml_filename () in
   let code, upd = mk_norm_code penv prefix c in
   match Nativelib.compile ml_filename code with
-    | 0,fn ->
+    | true,fn ->
         print_endline "Running norm ...";
 	let t0 = Sys.time () in
 	Nativelib.call_linker prefix fn (Some upd);

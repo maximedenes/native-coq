@@ -668,9 +668,8 @@ let save_library_to dir f =
     if not !Flags.no_native_compiler then begin
     let lp = List.map CUnix.string_of_physical_path (get_load_paths ()) in
     let fn = Filename.dirname f'^"/"^Nativecode.mod_uid_of_dirpath dir in
-    match Nativelibrary.compile_library dir ast lp fn with
-      | 0 -> ()
-      | _ -> anomaly "Library compilation failure"
+    if not (Nativelibrary.compile_library dir ast lp fn) then
+      anomaly "Library compilation failure"
     end
   with e -> warning ("Removed file "^f'); close_out ch; Sys.remove f'; raise e
 

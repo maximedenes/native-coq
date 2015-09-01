@@ -22,9 +22,9 @@ val get_ml_filename : unit -> string * string
 val write_ml_code : string ->
   ?header:Nativecode.global list -> global list -> unit
 
-val call_compiler : string -> string list -> int * string
+val call_compiler : string -> string list -> bool * string
 
-val compile : string -> global list -> int * string
+val compile : string -> global list -> bool * string
 
 val call_linker :
   string -> string -> code_location_updates option -> unit

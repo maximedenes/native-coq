@@ -15,6 +15,10 @@ open Pre_env
 open Errors
 
 (* This file provides facilities to access the native code compiler *)
+let coqlib () = Envars.coqlib (fun x -> x)
+
+let ( / ) a b =
+  if Filename.is_relative b then a ^ "/" ^ b else b
 
 let get_load_paths =
   ref (fun _ -> anomaly "get_load_paths not initialized" : unit -> string list)
@@ -27,11 +31,10 @@ let compiler_name =
   if Dynlink.is_native then "ocamlopt"
   else "ocamlc"
 
-let include_dirs =
-  let coqroot = !Flags.coqlib in
-  "-I "^Coq_config.camllib^"/camlp5 -I "^coqroot^"/config -I "
-  ^coqroot^"/lib -I "^coqroot^"/kernel -I "^coqroot^"/library "
-  ^"-I "^Filename.temp_dir_name^" "
+(* We have to delay evaluation of include_dirs because coqlib cannot be guessed
+until flags have been properly initialized *)
+let include_dirs () =
+  [Filename.temp_dir_name; coqlib () / "kernel"; coqlib () / "library"]
 
 (* Pointer to the function linking an ML object into coq's toplevel *)
 let load_obj = ref (fun x -> () : string -> unit)
@@ -40,7 +43,7 @@ let rt1 = ref (dummy_value ())
 let rt2 = ref (dummy_value ())
 
 let get_ml_filename () =
-  let filename = Filename.temp_file "Coq_native" ".ml" in
+  let filename = Filename.temp_file "Coq_native" ".native" in
   let prefix = Filename.chop_extension (Filename.basename filename) ^ "." in
   filename, prefix
 
@@ -52,22 +55,16 @@ let write_ml_code ml_filename ?(header=[]) code =
   close_out ch_out
 
 let call_compiler ml_filename load_path =
-  let include_dirs =
-    if load_path <> [] then
-      include_dirs^"-I " ^ (String.concat " -I " load_path) ^ " "
-    else include_dirs
-  in
-  let f = Filename.chop_extension ml_filename in
-  let link_filename = f ^ ".cmo" in
-  let link_filename = Dynlink.adapt_filename link_filename in
-  let comp_cmd =
-    Format.sprintf "%s -%s -o %s -rectypes -w -A %s %s"
-      compiler_name (if Dynlink.is_native then "shared" else "c")
-      link_filename include_dirs ml_filename
-  in
-  let res = Sys.command comp_cmd in
-  Sys.rename (f^".ml") (f^".native");
-  res, link_filename
+   let include_dirs = "-I " ^ String.concat " -I " (include_dirs () @ load_path) ^ " " in
+   let f = Filename.chop_extension ml_filename in
+   let link_filename = f ^ ".cmo" in
+   let link_filename = Dynlink.adapt_filename link_filename in
+   let comp_cmd =
+     Format.sprintf "%s -%s -o %s -rectypes -w -A %s -impl %s"
+       compiler_name (if Dynlink.is_native then "shared" else "c")
+       link_filename include_dirs ml_filename
+   in
+   Sys.command comp_cmd = 0, link_filename
 
 let compile ml_filename code =
   write_ml_code ml_filename code;

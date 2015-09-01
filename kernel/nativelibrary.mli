@@ -14,4 +14,4 @@ val dump_library : module_path -> dir_path -> env -> struct_expr_body ->
   global list * symbol array * code_location_updates
 
 val compile_library :
-  dir_path -> global list -> string list -> string -> int
+  dir_path -> global list -> string list -> string -> bool
