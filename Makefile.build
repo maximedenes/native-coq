@@ -728,7 +728,7 @@ parsing/grammar.cma: | parsing/grammar.mllib.d
 	$(HIDE)$(OCAMLC) $(BYTEFLAGS) -pp "$(CAMLP4O) -I $(CAMLLIB) $(CAMLP4FLAGS) $^ -impl" -impl test.ml4 -o test-grammar
 	@rm -f test-grammar test.*
 	$(SHOW)'OCAMLC -a $@'   
-	$(HIDE)$(OCAMLC) $(BYTEFLAGS) $^ -linkall -a -o $@
+	$(HIDE)$(OCAMLC) $(BYTEFLAGS) -I $(CAMLLIB) $(CAMLP4FLAGS) $^ -linkall -a -o $@
 
 # toplevel/mltop.ml4 (ifdef Byte)
 
