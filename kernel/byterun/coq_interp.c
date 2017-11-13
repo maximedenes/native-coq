@@ -876,7 +876,7 @@ value coq_interprete
 /* Access to components of blocks */
         
       Instruct(SWITCH) {
-	uint32 sizes = *pc++;
+	uint32_t sizes = *pc++;
 	print_instr("SWITCH");
 	print_int(sizes & 0xFFFF);
 	if (Is_block(accu)) {

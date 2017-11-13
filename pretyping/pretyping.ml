@@ -242,7 +242,7 @@ let pretype_sort evdref = function
   | GProp c -> judge_of_prop_contents c
   | GType _ -> evd_comb0 judge_of_new_Type evdref
 
-exception Found of fixpoint
+exception FoundFixpoint of fixpoint
 
 let new_type_evar evdref env loc =
   evd_comb0 (fun evd -> Evarutil.new_type_evar evd env ~src:(loc,InternalHole)) evdref
