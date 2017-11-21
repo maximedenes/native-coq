@@ -14,6 +14,7 @@
    for fast computation of bounded (31bits) integers */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <caml/callback.h>
 #include <signal.h>
 #include "coq_gc.h"

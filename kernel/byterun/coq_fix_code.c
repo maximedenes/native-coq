@@ -12,7 +12,8 @@
    for fast computation of bounded (31bits) integers */
 
 #include <stdio.h>
-#include <stdlib.h> 
+#include <stdlib.h>
+#include <stdint.h>
 #include <caml/config.h>
 #include <caml/misc.h>
 #include <caml/mlvalues.h>
