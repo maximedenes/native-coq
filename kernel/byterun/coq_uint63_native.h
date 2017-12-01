@@ -1,45 +1,45 @@
-#define uint63_of_value(val) ((uint64)(val) >> 1)
+#define uint63_of_value(val) ((uint64_t)(val) >> 1)
 
 /* 2^63 * y + x as a value */
-//#define Val_intint(x,y) ((value)(((uint64)(x)) << 1 + ((uint64)(y) << 64)))
+//#define Val_intint(x,y) ((value)(((uint64_t)(x)) << 1 + ((uint64_t)(y) << 64)))
 
 #define uint63_zero ((value) 1) /* 2*0 + 1 */
 #define uint63_one ((value) 3) /* 2*1 + 1 */
 
 #define uint63_eq(x,y) ((x) == (y))
-#define uint63_eq0(x) ((x) == (uint64)1)
-#define uint63_lt(x,y) ((uint64) (x) < (uint64) (y))
-#define uint63_leq(x,y) ((uint64) (x) <= (uint64) (y))
+#define uint63_eq0(x) ((x) == (uint64_t)1)
+#define uint63_lt(x,y) ((uint64_t) (x) < (uint64_t) (y))
+#define uint63_leq(x,y) ((uint64_t) (x) <= (uint64_t) (y))
 
-#define uint63_add(x,y) ((value)((uint64) (x) + (uint64) (y) - 1))
-#define uint63_addcarry(x,y) ((value)((uint64) (x) + (uint64) (y) + 1))
-#define uint63_sub(x,y) ((value)((uint64) (x) - (uint64) (y) + 1))
-#define uint63_subcarry(x,y) ((value)((uint64) (x) - (uint64) (y) - 1))
+#define uint63_add(x,y) ((value)((uint64_t) (x) + (uint64_t) (y) - 1))
+#define uint63_addcarry(x,y) ((value)((uint64_t) (x) + (uint64_t) (y) + 1))
+#define uint63_sub(x,y) ((value)((uint64_t) (x) - (uint64_t) (y) + 1))
+#define uint63_subcarry(x,y) ((value)((uint64_t) (x) - (uint64_t) (y) - 1))
 #define uint63_mul(x,y) (Val_long(Long_val(x) * Long_val(y)))
 #define uint63_div(x,y) (Val_long(Long_val(x) / Long_val(y)))
 #define uint63_mod(x,y) (Val_long(Long_val(x) % Long_val(y)))
 
-#define uint63_lxor(x,y) ((value)(((uint64)(x) ^ (uint64)(y)) | 1))
-#define uint63_lor(x,y) ((value)((uint64)(x) | (uint64)(y)))
-#define uint63_land(x,y) ((value)((uint64)(x) & (uint64)(y)))
+#define uint63_lxor(x,y) ((value)(((uint64_t)(x) ^ (uint64_t)(y)) | 1))
+#define uint63_lor(x,y) ((value)((uint64_t)(x) | (uint64_t)(y)))
+#define uint63_land(x,y) ((value)((uint64_t)(x) & (uint64_t)(y)))
 
 /* TODO: is + or | better? OCAML uses + */
 /* TODO: is - or ^ better? */
-#define uint63_lsl(x,y) ((y) < (uint64) 127 ? ((value)((((uint64)(x)-1) << (uint63_of_value(y))) | 1)) : uint63_zero)
-#define uint63_lsr(x,y) ((y) < (uint64) 127 ? ((value)(((uint64)(x) >> (uint63_of_value(y))) | 1)) : uint63_zero)
-#define uint63_lsl1(x) ((value)((((uint64)(x)-1) << 1) +1))
-#define uint63_lsr1(x) ((value)(((uint64)(x) >> 1) |1))
+#define uint63_lsl(x,y) ((y) < (uint64_t) 127 ? ((value)((((uint64_t)(x)-1) << (uint63_of_value(y))) | 1)) : uint63_zero)
+#define uint63_lsr(x,y) ((y) < (uint64_t) 127 ? ((value)(((uint64_t)(x) >> (uint63_of_value(y))) | 1)) : uint63_zero)
+#define uint63_lsl1(x) ((value)((((uint64_t)(x)-1) << 1) +1))
+#define uint63_lsr1(x) ((value)(((uint64_t)(x) >> 1) |1))
 
 /* addmuldiv(p,x,y) = x * 2^p + y / 2 ^ (63 - p) */
 /* (modulo 2^63) for p <= 63 */
-value uint63_addmuldiv(uint64 p, uint64 x, uint64 y) {
-  uint64 shiftby = uint63_of_value(p);
-  value r = (value)((uint64)(x^1) << shiftby);
-  r |= ((uint64)y >> (63-shiftby)) | 1;
+value uint63_addmuldiv(uint64_t p, uint64_t x, uint64_t y) {
+  uint64_t shiftby = uint63_of_value(p);
+  value r = (value)((uint64_t)(x^1) << shiftby);
+  r |= ((uint64_t)y >> (63-shiftby)) | 1;
   return r;
 }
 
-value uint63_head0(uint64 x) {
+value uint63_head0(uint64_t x) {
   int r = 0;
   if (!(x & 0xFFFFFFFF00000000)) { x <<= 32; r += 32; }
   if (!(x & 0xFFFF000000000000)) { x <<= 16; r += 16; }
@@ -52,7 +52,7 @@ value uint63_head0(uint64 x) {
 
 value uint63_tail0(value x) {
   int r = 0;
-  x = (uint64)x >> 1;
+  x = (uint64_t)x >> 1;
   if (!(x & 0xFFFFFFFF)) { x >>= 32; r += 32; }
   if (!(x & 0x0000FFFF)) { x >>= 16; r += 16; }
   if (!(x & 0x000000FF)) { x >>= 8;  r += 8; }
@@ -63,14 +63,14 @@ value uint63_tail0(value x) {
 }
 
 value uint63_mulc(value x, value y, value* h) {
-  x = (uint64)x >> 1;
-  y = (uint64)y >> 1;
-  uint64 lx = x & 0xFFFFFFFF;
-  uint64 ly = y & 0xFFFFFFFF;
-  uint64 hx = x >> 32;
-  uint64 hy = y >> 32;
-  uint64 hr = hx * hy;
-  uint64 lr = lx * ly;
+  x = (uint64_t)x >> 1;
+  y = (uint64_t)y >> 1;
+  uint64_t lx = x & 0xFFFFFFFF;
+  uint64_t ly = y & 0xFFFFFFFF;
+  uint64_t hx = x >> 32;
+  uint64_t hy = y >> 32;
+  uint64_t hr = hx * hy;
+  uint64_t lr = lx * ly;
   lx *= hy;
   ly *= hx;
   hr += (lx >> 32) + (ly >> 32);
@@ -89,13 +89,13 @@ value uint63_mulc(value x, value y, value* h) {
 #define le128(xh,xl,yh,yl) (uint63_lt(xh,yh) || (uint63_eq(xh,yh) && uint63_leq(xl,yl)))
 
 value uint63_div21(value xh, value xl, value y, value* q) {
-  xh = (uint64)xh >> 1;
-  xl = ((uint64)xl >> 1) | ((uint64)xh << 63);
-  xh = (uint64)xh >> 1;
-  uint64 maskh = 0;
-  uint64 maskl = 1;
-  uint64 dh = 0;
-  uint64 dl = (uint64)y >> 1;
+  xh = (uint64_t)xh >> 1;
+  xl = ((uint64_t)xl >> 1) | ((uint64_t)xh << 63);
+  xh = (uint64_t)xh >> 1;
+  uint64_t maskh = 0;
+  uint64_t maskl = 1;
+  uint64_t dh = 0;
+  uint64_t dl = (uint64_t)y >> 1;
   int cmp = 1;
   while (dh >= 0 && cmp) {
     cmp = lt128(dh,dl,xh,xl);
@@ -104,9 +104,9 @@ value uint63_div21(value xh, value xl, value y, value* q) {
     maskh = (maskh << 1) | (maskl >> 63);
     maskl = maskl << 1;
   }
-  uint64 remh = xh;
-  uint64 reml = xl;
-  uint64 quotient = 0;
+  uint64_t remh = xh;
+  uint64_t reml = xl;
+  uint64_t quotient = 0;
   while (maskh | maskl) {
     if (le128(dh,dl,remh,reml)) {
       quotient = quotient | maskl;

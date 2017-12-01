@@ -51,7 +51,7 @@ plugins/micromega/csdpcert
 kernel/byterun/dllcoqrun.so
 states/initial.coq
 coqdoc.sty
-test-suite/lia.cache
+/lia.cache
 test-suite/trace
 test-suite/misc/universes/all_stdlib.v
 test-suite/misc/universes/universes.txt
@@ -61,6 +61,7 @@ test-suite/misc/universes/universes.txt
 doc/faq/html/
 doc/refman/csdp.cache
 doc/refman/trace
+doc/refman/Reference-Manual.out
 doc/refman/Reference-Manual.pdf
 doc/refman/Reference-Manual.ps
 doc/refman/cover.html
@@ -119,6 +120,7 @@ lib/compat.ml
 parsing/q_util.ml
 parsing/tacextend.ml
 parsing/q_constr.ml
+parsing/q_coqast.ml
 parsing/pcoq.ml
 parsing/vernacextend.ml
 parsing/argextend.ml
@@ -152,6 +154,7 @@ toplevel/mltop.optml
 toplevel/mltop.byteml
 kernel/byterun/coq_jumptbl.h
 kernel/copcodes.ml
+kernel/uint63.ml
 scripts/tolink.ml
 theories/Numbers/Natural/BigN/NMake_gen.v
 ide/index_urls.txt
