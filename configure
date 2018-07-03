@@ -532,16 +532,23 @@ if [ "$usecamlp5" = "yes" ]; then
 	    echo "Configuration script failed!"
 	    exit 1
 	fi
-    elif [ -f "${CAMLLIB}/camlp5/${CAMLP4MOD}.cma" ]; then
-        CAMLP4LIB=+camlp5
-	FULLCAMLP4LIB=${CAMLLIB}/camlp5
-    elif [ -f "${CAMLLIB}/site-lib/${CAMLP4MOD}.cma" ]; then
-        CAMLP4LIB=+site-lib/camlp5
-	FULLCAMLP4LIB=${CAMLLIB}/site-lib/camlp5
     else
-	echo "Objective Caml $CAMLVERSION found but no Camlp5 installed."
-	echo "Configuration script failed!"
-	exit 1
+	# Beware of the final \r in Win32
+	camlp5dir="$(camlp5 -where | tr -d '\r')"
+	if [ "$camlp5dir" != "" ]; then
+	    CAMLP4LIB=$camlp5dir
+	    FULLCAMLP4LIB=$camlp5dir
+	elif [ -f "${CAMLLIB}/camlp5/${CAMLP4MOD}.cma" ]; then
+            CAMLP4LIB=+camlp5
+	    FULLCAMLP4LIB=${CAMLLIB}/camlp5
+	elif [ -f "${CAMLLIB}/site-lib/${CAMLP4MOD}.cma" ]; then
+            CAMLP4LIB=+site-lib/camlp5
+	    FULLCAMLP4LIB=${CAMLLIB}/site-lib/camlp5
+	else
+	    echo "Objective Caml $CAMLVERSION found but no Camlp5 installed."
+	    echo "Configuration script failed!"
+	    exit 1
+	fi
     fi
 
     camlp4oexec=`echo "$camlp4oexec" | tr 4 5`
@@ -905,7 +912,7 @@ case $coqrunbyteflags_spec/$local/$custom_spec/$CUSTOM_OS in
     */true/*/*) COQRUNBYTEFLAGS="-dllib -lcoqrun -dllpath '$COQTOP'/kernel/byterun";;
     *)
         COQRUNBYTEFLAGS="-dllib -lcoqrun -dllpath '$LIBDIR'"
-        BUILDLDPATH="export CAML_LD_LIBRARY_PATH='$COQTOP'/kernel/byterun";;
+        BUILDLDPATH="export CAML_LD_LIBRARY_PATH='$COQTOP'/kernel/byterun:$CAML_LD_LIBRARY_PATH";;
 esac
 case $coqtoolsbyteflags_spec/$custom_spec/$CUSTOM_OS in
     yes/*/*) COQTOOLSBYTEFLAGS="$coqtoolsbyteflags";;
