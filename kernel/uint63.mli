@@ -50,3 +50,8 @@ val compare : t -> t -> int
 val head0   : t -> t
 val tail0   : t -> t
   
+val foldi_cont :
+  (t -> ('a -> 'b) -> 'a -> 'b) -> t -> t -> ('a -> 'b) -> 'a -> 'b
+val foldi_down_cont :
+  (t -> ('a -> 'b) -> 'a -> 'b) -> t -> t -> ('a -> 'b) -> 'a -> 'b
+val print_uint : t -> t
