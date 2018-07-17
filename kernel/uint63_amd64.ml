@@ -181,3 +181,19 @@ let tail0 x =
   if !x land 0x3 = 0    then (x := !x lsr 2;  r := !r + 2);
   if !x land 0x1 = 0    then (                r := !r + 1);
   !r
+
+let rec foldi_cont f min max cont a =
+  if lt min max then f min (foldi_cont f (add min 1) max cont) a
+  else if min = max then f min cont a 
+  else cont a 
+
+let rec foldi_down_cont f max min cont a =
+  if lt min max then
+    f max (foldi_down_cont f (sub max 1) min cont) a
+  else if min = max then f min cont a
+  else cont a
+
+let print_uint x =
+  Printf.fprintf stderr "%s" (to_string x);
+  flush stderr;
+  x

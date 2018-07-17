@@ -115,3 +115,19 @@ let tail0 x =
   if Int64.logand !x 0x3L = 0L    then (x := Int64.shift_right !x 2;  r := !r + 2);
   if Int64.logand !x 0x1L = 0L    then (                r := !r + 1);
   Int64.of_int !r
+
+let rec foldi_cont f min max cont a =
+  if lt min max then f min (foldi_cont f (add min 1) max cont) a
+  else if min = max then f min cont a 
+  else cont a 
+
+let rec foldi_down_cont f max min cont a =
+  if lt min max then
+    f max (foldi_down_cont f (sub max 1) min cont) a
+  else if min = max then f min cont a
+  else cont a
+
+let print_uint x =
+  Printf.fprintf stderr "%s" (to_string x);
+  flush stderr;
+  x
